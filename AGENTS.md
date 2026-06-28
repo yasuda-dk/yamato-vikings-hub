@@ -1,0 +1,30 @@
+- Build for mobile portrait screens between 320px and 430px.
+- Use English UI text only.
+- Use React, TypeScript, Vite and Tailwind CSS.
+- Use HashRouter for GitHub Pages routing.
+- Use Supabase PostgreSQL, Auth and Edge Functions.
+- Keep all schema changes in migration files.
+- Enable RLS on every exposed application table.
+- Never expose secret or service-role keys in frontend code.
+- Never commit production data or plaintext passwords.
+- Store first names only.
+- First names must be unique after normalization.
+- Do not add profile photos, company fields or goalkeeper fields.
+- Use only FW, MF and DF positions.
+- Regular Members do not use email or personal passwords.
+- New devices must pass the shared team-password gate.
+- Admins use email and password.
+- Event Guests do not use the application.
+- Members may change RSVP after the deadline.
+- Record deadline changes as Late responses.
+- Late arrival is a separate Going attribute.
+- Use actual attendance for team generation and voting.
+- Keep Guests event-specific.
+- Do not permanently delete historical Members, events, fines or seasons.
+- Use controlled values instead of free text for analytics fields.
+- Do not rely on drag-and-drop for essential mobile actions.
+- Write tests before considering a task complete.
+- Every phase must pass its full quality gate before the next phase begins.
+- Run lint, typecheck, unit tests, integration tests and build before completing a Pull Request.
+- Keep Pull Requests focused.
+- Update documentation when behavior or architecture changes.

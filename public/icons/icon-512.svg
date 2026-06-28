@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="Yamato Vikings Hub icon">
+  <rect width="512" height="512" rx="92" fill="#132a21"/>
+  <circle cx="256" cy="256" r="156" fill="#e8f1ea"/>
+  <path d="M140 258h232M256 140v232M172 172c52 64 116 64 168 0M172 340c52-64 116-64 168 0" stroke="#1f7a4d" stroke-width="28" stroke-linecap="round" fill="none"/>
+  <path d="M256 92l42 72h-84l42-72Z" fill="#f2b84b"/>
+</svg>
