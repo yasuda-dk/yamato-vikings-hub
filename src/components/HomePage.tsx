@@ -1,4 +1,5 @@
 import type { MemberProfile } from '../lib/member-options';
+import { formatFootballLevel } from '../lib/member-options';
 
 export function HomePage({ selectedMember, onSwitchProfile }: { selectedMember: MemberProfile; onSwitchProfile: () => void }) {
   return (
@@ -7,10 +8,11 @@ export function HomePage({ selectedMember, onSwitchProfile }: { selectedMember: 
       <h2 className="mt-2 text-xl font-bold text-navy">Home</h2>
       <div className="mt-4 grid gap-3">
         <ProfileRow label="Age group" value={selectedMember.age_group} />
-        <ProfileRow label="Football level" value={String(selectedMember.football_level)} />
+        <ProfileRow label="Football level" value={formatFootballLevel(selectedMember.football_level)} />
         <ProfileRow label="Primary position" value={selectedMember.primary_position} />
         <ProfileRow label="Secondary position" value={selectedMember.secondary_position ?? 'None'} />
         <ProfileRow label="Residence type" value={selectedMember.residence_type} />
+        <ProfileRow label="Gender" value={selectedMember.gender} />
       </div>
       <button type="button" onClick={onSwitchProfile} className="mt-5 min-h-12 w-full rounded-md border border-navy/20 bg-white px-4 text-base font-bold text-navy">
         Switch profile

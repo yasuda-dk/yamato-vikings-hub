@@ -37,4 +37,5 @@ Rules for future phases:
 - Keep historical records instead of permanently deleting operational data.
 - Store only first names for members.
 - Store normalized first names for uniqueness checks.
+- Use controlled profile values for age group, gender, residence type, position, and football level.
 - Never store plaintext team passwords.

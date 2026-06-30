@@ -19,6 +19,7 @@ function toMember(input: MemberRegistrationInput): MemberProfile {
     primary_position: input.primaryPosition,
     secondary_position: input.secondaryPosition === 'None' ? null : input.secondaryPosition,
     residence_type: input.residenceType,
+    gender: input.gender,
     membership_status: 'Active',
     application_role: 'Player',
     created_at: new Date().toISOString(),
