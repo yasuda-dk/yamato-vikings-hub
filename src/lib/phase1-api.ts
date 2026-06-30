@@ -1,5 +1,5 @@
 import type { Session } from '@supabase/supabase-js';
-import type { EventCreateInput, EventDetail, EventSummary, RsvpInput } from './events';
+import type { AttendanceInput, EventCreateInput, EventDetail, EventGuestInput, EventSummary, GuestAttendanceInput, RsvpInput } from './events';
 import { createSupabaseBrowserClient } from './supabase';
 import { DEFAULT_TEAM_ID, type MemberProfile, type MemberRegistrationInput } from './member-options';
 
@@ -19,6 +19,9 @@ export type Phase1Api = {
   getEventDetail: (eventId: string) => Promise<EventDetail>;
   createEvent: (input: EventCreateInput) => Promise<string>;
   updateRsvp: (input: RsvpInput) => Promise<void>;
+  createEventGuest: (input: EventGuestInput) => Promise<string>;
+  updateAttendance: (input: AttendanceInput) => Promise<void>;
+  updateGuestAttendance: (input: GuestAttendanceInput) => Promise<void>;
 };
 
 let supabaseClient: ReturnType<typeof createSupabaseBrowserClient> | null = null;
@@ -89,5 +92,18 @@ export const phase1Api: Phase1Api = {
 
   async updateRsvp(input: RsvpInput) {
     await invokeFunction('update-rsvp', input);
+  },
+
+  async createEventGuest(input: EventGuestInput) {
+    const data = await invokeFunction<{ eventGuestId: string }>('create-event-guest', input);
+    return data.eventGuestId;
+  },
+
+  async updateAttendance(input: AttendanceInput) {
+    await invokeFunction('update-attendance', input);
+  },
+
+  async updateGuestAttendance(input: GuestAttendanceInput) {
+    await invokeFunction('update-guest-attendance', input);
   },
 };

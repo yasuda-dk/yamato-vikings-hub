@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { defaultEventSettings, formatEventDate, validateEventInput, validateRsvpInput, type EventCreateInput } from './events';
+import { createDefaultGuestInput, defaultEventSettings, formatEventDate, validateEventGuestInput, validateEventInput, validateRsvpInput, type EventCreateInput } from './events';
 
 const validEvent: EventCreateInput = {
   title: 'Friday Football',
@@ -52,5 +52,13 @@ describe('event helpers', () => {
 
   it('formats event date labels for compact mobile display', () => {
     expect(formatEventDate('2026-07-03', '19:00:00')).toContain('Jul');
+  });
+
+  it('validates event guest names against current participants', () => {
+    const input = createDefaultGuestInput('event-1');
+    expect(validateEventGuestInput({ ...input, firstName: 'Ken' }, [])).toEqual({});
+    expect(validateEventGuestInput({ ...input, firstName: ' Ken ' }, [{ first_name: 'ken' }])).toEqual({
+      firstName: 'This name is already used by a participant in this event.',
+    });
   });
 });

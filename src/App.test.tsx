@@ -2,7 +2,7 @@ import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { App } from './App';
-import type { EventDetail, EventSummary, RsvpInput } from './lib/events';
+import type { ActualStatus, EventDetail, EventGuest, EventSummary, RsvpInput } from './lib/events';
 import type { MemberProfile } from './lib/member-options';
 import type { Phase1Api, SessionState } from './lib/phase1-api';
 
@@ -18,6 +18,11 @@ const takashi: MemberProfile = {
   membership_status: 'Active',
   application_role: 'Player',
   created_at: '2026-01-01T00:00:00.000Z',
+};
+
+const adminTakashi: MemberProfile = {
+  ...takashi,
+  application_role: 'Admin',
 };
 
 function createApi(initialState: SessionState): Phase1Api {
@@ -38,6 +43,8 @@ function createApi(initialState: SessionState): Phase1Api {
     late_count: 1,
   };
   let rsvp: EventDetail['myRsvp'] = null;
+  let guest: EventGuest | null = null;
+  let actualStatus: ActualStatus = 'Not confirmed';
 
   return {
     ensureAnonymousSession: async () => null,
@@ -73,7 +80,44 @@ function createApi(initialState: SessionState): Phase1Api {
         maybe: event.maybe_count,
         notGoing: event.not_going_count,
         late: event.late_count,
+        attended: (actualStatus === 'Attended' ? 1 : 0) + (guest?.actual_status === 'Attended' ? 1 : 0),
+        guests: guest ? 1 : 0,
       },
+      participants: [
+        ...(rsvp
+          ? [
+              {
+                kind: 'member' as const,
+                id: takashi.id,
+                first_name: takashi.first_name,
+                rsvp_status: rsvp.rsvp_status,
+                is_arriving_late: rsvp.is_arriving_late,
+                expected_arrival_time: rsvp.expected_arrival_time,
+                actual_status: actualStatus,
+                football_level: takashi.football_level,
+                primary_position: takashi.primary_position,
+                secondary_position: takashi.secondary_position,
+              },
+            ]
+          : []),
+        ...(guest
+          ? [
+              {
+                kind: 'guest' as const,
+                id: guest.id,
+                first_name: guest.first_name,
+                rsvp_status: null,
+                is_arriving_late: false,
+                expected_arrival_time: null,
+                actual_status: guest.actual_status,
+                football_level: guest.football_level,
+                primary_position: guest.primary_position,
+                secondary_position: guest.secondary_position,
+              },
+            ]
+          : []),
+      ],
+      guests: guest ? [guest] : [],
     }),
     createEvent: async () => 'event-new',
     updateRsvp: async (input: RsvpInput) => {
@@ -89,6 +133,30 @@ function createApi(initialState: SessionState): Phase1Api {
         updated_at: '2026-06-30T00:00:00.000Z',
         was_updated_after_deadline: false,
       };
+    },
+    createEventGuest: async (input) => {
+      guest = {
+        id: 'guest-1',
+        event_id: input.eventId,
+        first_name: input.firstName,
+        first_name_normalized: input.firstName.toLowerCase(),
+        age_group: input.ageGroup,
+        football_level: input.footballLevel,
+        primary_position: input.primaryPosition,
+        secondary_position: input.secondaryPosition === 'None' ? null : input.secondaryPosition,
+        residence_type: input.residenceType,
+        gender: input.gender,
+        actual_status: 'Not confirmed',
+        created_by: null,
+        created_at: '2026-06-30T00:00:00.000Z',
+      };
+      return guest.id;
+    },
+    updateAttendance: async (input) => {
+      actualStatus = input.actualStatus;
+    },
+    updateGuestAttendance: async (input) => {
+      if (guest?.id === input.eventGuestId) guest = { ...guest, actual_status: input.actualStatus };
     },
   };
 }
@@ -152,6 +220,25 @@ describe('App shell', () => {
     await user.click(screen.getByRole('button', { name: 'Update RSVP' }));
 
     expect(await screen.findByText('RSVP updated.')).toBeInTheDocument();
+  });
+
+  it('lets an admin add a guest and confirm guest attendance', async () => {
+    const user = userEvent.setup();
+    render(<App api={createApi({ hasAccess: true, selectedMember: adminTakashi, members: [adminTakashi] })} />);
+
+    await user.click(await screen.findByRole('link', { name: /events/i }));
+    await user.click(await screen.findByRole('link', { name: /Friday Football/i }));
+    expect(await screen.findByRole('heading', { name: 'Attendance' })).toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: 'Add guest' }));
+    await user.type(screen.getByLabelText('Guest first name'), 'Ken');
+    await user.click(screen.getByRole('button', { name: 'Add guest' }));
+
+    expect(await screen.findByText('Guest added.')).toBeInTheDocument();
+    expect(screen.getByText('GUEST')).toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: 'Attended' }));
+    expect(await screen.findByText('Guest attendance updated.')).toBeInTheDocument();
   });
 
   it('creates a new member profile after password approval', async () => {
