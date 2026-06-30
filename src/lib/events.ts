@@ -1,10 +1,32 @@
+import {
+  ageGroups,
+  footballLevels,
+  genders,
+  isAgeGroup,
+  isFootballLevel,
+  isGender,
+  isPosition,
+  isResidenceType,
+  normalizeFirstName,
+  positions,
+  residenceTypes,
+  type AgeGroup,
+  type FootballLevel,
+  type Gender,
+  type Position,
+  type ResidenceType,
+  type SecondaryPosition,
+} from './member-options';
+
 export const eventTypes = ['Football', 'Tournament', 'Social', 'Other'] as const;
 export const eventStatuses = ['Draft', 'Open', 'Attendance confirmed', 'Teams confirmed', 'Voting open', 'Completed', 'Cancelled'] as const;
 export const rsvpStatuses = ['Going', 'Maybe', 'Not going'] as const;
+export const actualStatuses = ['Not confirmed', 'Attended', 'Absent'] as const;
 
 export type EventType = (typeof eventTypes)[number];
 export type EventStatus = (typeof eventStatuses)[number];
 export type RsvpStatus = (typeof rsvpStatuses)[number];
+export type ActualStatus = (typeof actualStatuses)[number];
 
 export type EventSummary = {
   id: string;
@@ -54,6 +76,35 @@ export type MyRsvp = {
   was_updated_after_deadline: boolean;
 };
 
+export type EventGuest = {
+  id: string;
+  event_id: string;
+  first_name: string;
+  first_name_normalized: string;
+  age_group: AgeGroup;
+  football_level: FootballLevel;
+  primary_position: Position;
+  secondary_position: Position | null;
+  residence_type: ResidenceType;
+  gender: Gender;
+  actual_status: ActualStatus;
+  created_by: string | null;
+  created_at: string;
+};
+
+export type EventParticipant = {
+  kind: 'member' | 'guest';
+  id: string;
+  first_name: string;
+  rsvp_status: RsvpStatus | null;
+  is_arriving_late: boolean;
+  expected_arrival_time: string | null;
+  actual_status: ActualStatus;
+  football_level: FootballLevel;
+  primary_position: Position;
+  secondary_position: Position | null;
+};
+
 export type EventDetail = {
   event: EventRecord;
   myRsvp: MyRsvp | null;
@@ -62,7 +113,11 @@ export type EventDetail = {
     maybe: number;
     notGoing: number;
     late: number;
+    attended: number;
+    guests: number;
   };
+  participants: EventParticipant[];
+  guests: EventGuest[];
 };
 
 export type EventCreateInput = {
@@ -84,6 +139,28 @@ export type RsvpInput = {
   rsvpStatus: RsvpStatus;
   isArrivingLate: boolean;
   expectedArrivalTime: string;
+};
+
+export type EventGuestInput = {
+  eventId: string;
+  firstName: string;
+  ageGroup: AgeGroup;
+  footballLevel: FootballLevel;
+  primaryPosition: Position;
+  secondaryPosition: SecondaryPosition;
+  residenceType: ResidenceType;
+  gender: Gender;
+};
+
+export type AttendanceInput = {
+  eventId: string;
+  memberId: string;
+  actualStatus: ActualStatus;
+};
+
+export type GuestAttendanceInput = {
+  eventGuestId: string;
+  actualStatus: ActualStatus;
 };
 
 export function defaultEventSettings(eventType: EventType) {
@@ -121,6 +198,44 @@ export function validateRsvpInput(input: RsvpInput) {
   }
 
   return null;
+}
+
+export function validateEventGuestInput(input: EventGuestInput, participants: Pick<EventParticipant, 'first_name'>[]) {
+  const errors: Partial<Record<keyof EventGuestInput, string>> = {};
+  const normalizedName = normalizeFirstName(input.firstName);
+
+  if (!normalizedName) {
+    errors.firstName = 'First name is required.';
+  } else if (participants.some((participant) => normalizeFirstName(participant.first_name) === normalizedName)) {
+    errors.firstName = 'This name is already used by a participant in this event.';
+  }
+
+  if (!isAgeGroup(input.ageGroup)) errors.ageGroup = 'Select an age group.';
+  if (!isFootballLevel(input.footballLevel)) errors.footballLevel = 'Select a football level.';
+  if (!isPosition(input.primaryPosition)) errors.primaryPosition = 'Select a primary position.';
+  if (input.secondaryPosition !== 'None' && !isPosition(input.secondaryPosition)) {
+    errors.secondaryPosition = 'Select a secondary position.';
+  }
+  if (input.secondaryPosition !== 'None' && input.secondaryPosition === input.primaryPosition) {
+    errors.secondaryPosition = 'Secondary position must be different from primary position.';
+  }
+  if (!isResidenceType(input.residenceType)) errors.residenceType = 'Select a residence type.';
+  if (!isGender(input.gender)) errors.gender = 'Select a gender.';
+
+  return errors;
+}
+
+export function createDefaultGuestInput(eventId: string): EventGuestInput {
+  return {
+    eventId,
+    firstName: '',
+    ageGroup: ageGroups[ageGroups.length - 1],
+    footballLevel: footballLevels[2],
+    primaryPosition: positions[1],
+    secondaryPosition: 'None',
+    residenceType: residenceTypes[residenceTypes.length - 1],
+    gender: genders[genders.length - 1],
+  };
 }
 
 export function formatEventDate(date: string, startTime: string) {

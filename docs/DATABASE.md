@@ -39,6 +39,7 @@ Tables:
 - `seasons`
 - `events`
 - `attendance`
+- `event_guests`
 
 Controlled values:
 
@@ -53,6 +54,9 @@ Server-side functions:
 - `list_events`
 - `get_event_detail`
 - `upsert_my_rsvp`
+- `create_event_guest`
+- `set_member_actual_status`
+- `set_guest_actual_status`
 
 Rules enforced in this slice:
 
@@ -64,6 +68,11 @@ Rules enforced in this slice:
 - Changing RSVP away from `Going` clears late-arrival data.
 - RSVP updates after the deadline are marked as late responses.
 - Cancelled events reject RSVP changes.
+- Event Guests are scoped to one event and do not create member profiles.
+- Guest names are normalized and must be unique within the event.
+- Guest names cannot duplicate a Member who already has an attendance row for the same event.
+- Only Admin profiles can add Guests or confirm actual attendance.
+- Actual attendance is stored separately from planned RSVP.
 
 Rules for future phases:
 

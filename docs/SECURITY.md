@@ -38,4 +38,7 @@ The event and RSVP slice keeps direct table writes closed to regular frontend co
 - `update-rsvp` requires an active linked Member profile.
 - RSVP updates are scoped to `current_member_id()`.
 - Late-arrival and cancelled-event rules are enforced in the database function, not only in the UI.
-- Actual attendance confirmation, Guests, team generation, voting, and fines remain out of scope for this slice.
+- `create-event-guest` requires an Admin profile and keeps Guests event-specific.
+- `update-attendance` and `update-guest-attendance` require an Admin profile.
+- Actual attendance confirmation is separated from RSVP and remains server-enforced.
+- Team generation, voting, and fines remain out of scope for this slice.
