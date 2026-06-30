@@ -47,4 +47,12 @@ Deployment is configured in `.github/workflows/deploy-pages.yml` and should run 
 
 Local Supabase configuration is in `supabase/config.toml`.
 
-Phase 0 does not create application tables. Schema migrations, RLS policies, and Edge Functions begin in later phases.
+Phase 1 adds the access/profile schema and Edge Functions.
+
+After deploying the Phase 1 migration and functions, set the first shared team password locally without committing it:
+
+```bash
+TEAM_PASSWORD='choose-a-real-team-password' npm run setup:team-password
+```
+
+The plaintext password is sent only to the setup Edge Function and stored as a salted hash.

@@ -6,6 +6,7 @@
 npm run lint
 npm run typecheck
 npm run test
+npm run test:functions
 npm run build
 npm run test:e2e
 ```
@@ -20,5 +21,6 @@ npm run test:e2e
 - GitHub Pages base-path helper
 - PWA manifest metadata
 - Playwright mobile smoke test on iPhone and Android-sized devices
+- Edge Function shared response tests with Deno
 
-Database, RLS, and Edge Function tests begin when schema and functions are added.
+Database and RLS tests should be expanded as Phase 1 hardens and before the Phase 1 PR is merged.

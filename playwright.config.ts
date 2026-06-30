@@ -16,6 +16,7 @@ export default defineConfig({
       GITHUB_PAGES: 'true',
       VITE_SUPABASE_URL: 'http://127.0.0.1:54321',
       VITE_SUPABASE_PUBLISHABLE_KEY: 'phase0-placeholder-publishable-key',
+      VITE_USE_DEMO_API: 'true',
     },
   },
   projects: [

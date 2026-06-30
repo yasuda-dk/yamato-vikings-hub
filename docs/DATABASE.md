@@ -1,8 +1,34 @@
 # Database
 
-Phase 0 includes Supabase local configuration only.
+Phase 1 creates the access and member-profile foundation.
 
-Application schema starts in Phase 1 and must be implemented with migrations under `supabase/migrations`.
+Schema changes must be implemented with migrations under `supabase/migrations`.
+
+## Phase 1 Tables
+
+- `teams`
+- `team_settings`
+- `device_access`
+- `members`
+- `member_device_links`
+- `member_public_history`
+- `audit_log`
+
+## Phase 1 Functions
+
+- `normalize_first_name`
+- `has_current_device_access`
+- `current_member_id`
+- `is_admin`
+- `verify_team_password`
+- `select_member_profile`
+- `register_member_profile`
+- `update_own_member_profile`
+- `reset_device_access`
+- `change_team_password`
+- `initialize_team_password`
+
+The initial team password is configured through the setup Edge Function and stored only as a salted hash.
 
 Rules for future phases:
 

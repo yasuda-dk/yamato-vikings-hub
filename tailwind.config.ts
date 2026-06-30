@@ -5,14 +5,17 @@ export default {
   theme: {
     extend: {
       colors: {
-        field: '#132a21',
-        turf: '#1f7a4d',
+        navy: '#10233f',
+        footballBlue: '#005bac',
+        mist: '#f4f7fb',
+        field: '#10233f',
+        turf: '#005bac',
         line: '#e8f1ea',
-        gold: '#f2b84b',
-        ink: '#17211c',
+        gold: '#005bac',
+        ink: '#10233f',
       },
       boxShadow: {
-        soft: '0 18px 50px rgba(19, 42, 33, 0.16)',
+        soft: '0 8px 24px rgba(16, 35, 63, 0.08)',
       },
     },
   },

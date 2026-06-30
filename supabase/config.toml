@@ -19,10 +19,14 @@ port = 54323
 [auth]
 enabled = true
 site_url = "http://127.0.0.1:5173"
-additional_redirect_urls = ["http://127.0.0.1:5173"]
+additional_redirect_urls = ["http://127.0.0.1:5173", "https://yasuda-dk.github.io/yamato-vikings-hub/"]
 jwt_expiry = 3600
 enable_signup = true
+enable_anonymous_sign_ins = true
 
 [edge_runtime]
 enabled = true
 policy = "oneshot"
+
+[functions.setup-team-password]
+verify_jwt = false
