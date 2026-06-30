@@ -2,6 +2,7 @@ import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { App } from './App';
+import type { EventDetail, EventSummary, RsvpInput } from './lib/events';
 import type { MemberProfile } from './lib/member-options';
 import type { Phase1Api, SessionState } from './lib/phase1-api';
 
@@ -21,6 +22,23 @@ const takashi: MemberProfile = {
 
 function createApi(initialState: SessionState): Phase1Api {
   let state = initialState;
+  let event: EventSummary = {
+    id: 'event-1',
+    title: 'Friday Football',
+    event_type: 'Football',
+    event_date: '2026-07-03',
+    start_time: '19:00:00',
+    location: 'Yamato Pitch',
+    rsvp_deadline: '2026-07-02T18:00:00.000Z',
+    status: 'Open',
+    my_rsvp_status: null,
+    going_count: 8,
+    maybe_count: 2,
+    not_going_count: 1,
+    late_count: 1,
+  };
+  let rsvp: EventDetail['myRsvp'] = null;
+
   return {
     ensureAnonymousSession: async () => null,
     getSessionState: async () => state,
@@ -34,6 +52,43 @@ function createApi(initialState: SessionState): Phase1Api {
     },
     selectProfile: async (memberId) => {
       state = { ...state, selectedMember: state.members.find((member) => member.id === memberId) ?? null };
+    },
+    listEvents: async () => [event],
+    getEventDetail: async () => ({
+      event: {
+        ...event,
+        team_id: 'team-1',
+        season_id: 'season-1',
+        number_of_teams: 2,
+        notes: 'Bring two shirts.',
+        enable_team_generation: true,
+        enable_voting: true,
+        created_by: null,
+        created_at: '2026-06-30T00:00:00.000Z',
+        updated_at: '2026-06-30T00:00:00.000Z',
+      },
+      myRsvp: rsvp,
+      counts: {
+        going: event.going_count,
+        maybe: event.maybe_count,
+        notGoing: event.not_going_count,
+        late: event.late_count,
+      },
+    }),
+    createEvent: async () => 'event-new',
+    updateRsvp: async (input: RsvpInput) => {
+      event = { ...event, my_rsvp_status: input.rsvpStatus };
+      rsvp = {
+        id: 'attendance-1',
+        event_id: input.eventId,
+        member_id: state.selectedMember?.id ?? 'member-1',
+        rsvp_status: input.rsvpStatus,
+        is_arriving_late: input.rsvpStatus === 'Going' && input.isArrivingLate,
+        expected_arrival_time: input.expectedArrivalTime || null,
+        responded_at: '2026-06-30T00:00:00.000Z',
+        updated_at: '2026-06-30T00:00:00.000Z',
+        was_updated_after_deadline: false,
+      };
     },
   };
 }
@@ -57,7 +112,7 @@ describe('App shell', () => {
     expect(await screen.findByRole('heading', { name: 'Home' })).toBeInTheDocument();
 
     await user.click(screen.getByRole('link', { name: /events/i }));
-    expect(screen.getByRole('heading', { name: 'Events' })).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: 'Events' })).toBeInTheDocument();
 
     await user.click(screen.getByRole('link', { name: /fines/i }));
     expect(screen.getByRole('heading', { name: 'Fines' })).toBeInTheDocument();
@@ -82,6 +137,21 @@ describe('App shell', () => {
 
     expect(await screen.findByTestId('app-main')).toBeInTheDocument();
     expect(document.body.scrollWidth).toBeLessThanOrEqual(320);
+  });
+
+  it('opens an event and updates RSVP with late arrival', async () => {
+    const user = userEvent.setup();
+    render(<App api={createApi({ hasAccess: true, selectedMember: takashi, members: [takashi] })} />);
+
+    await user.click(await screen.findByRole('link', { name: /events/i }));
+    await user.click(await screen.findByRole('link', { name: /Friday Football/i }));
+    expect(await screen.findByRole('heading', { name: 'Your RSVP' })).toBeInTheDocument();
+
+    await user.click(screen.getByLabelText('I’ll be late'));
+    await user.type(screen.getByLabelText('Expected arrival time'), '1930');
+    await user.click(screen.getByRole('button', { name: 'Update RSVP' }));
+
+    expect(await screen.findByText('RSVP updated.')).toBeInTheDocument();
   });
 
   it('creates a new member profile after password approval', async () => {
