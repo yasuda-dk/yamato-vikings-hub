@@ -1,4 +1,5 @@
 import type { Session } from '@supabase/supabase-js';
+import type { EventCreateInput, EventDetail, EventSummary, RsvpInput } from './events';
 import { createSupabaseBrowserClient } from './supabase';
 import { DEFAULT_TEAM_ID, type MemberProfile, type MemberRegistrationInput } from './member-options';
 
@@ -14,6 +15,10 @@ export type Phase1Api = {
   verifyTeamPassword: (password: string) => Promise<void>;
   registerMember: (input: MemberRegistrationInput) => Promise<void>;
   selectProfile: (memberId: string) => Promise<void>;
+  listEvents: () => Promise<EventSummary[]>;
+  getEventDetail: (eventId: string) => Promise<EventDetail>;
+  createEvent: (input: EventCreateInput) => Promise<string>;
+  updateRsvp: (input: RsvpInput) => Promise<void>;
 };
 
 let supabaseClient: ReturnType<typeof createSupabaseBrowserClient> | null = null;
@@ -65,5 +70,24 @@ export const phase1Api: Phase1Api = {
 
   async selectProfile(memberId: string) {
     await invokeFunction('select-profile', { memberId });
+  },
+
+  async listEvents() {
+    const data = await invokeFunction<{ events: EventSummary[] }>('events-list', {});
+    return data.events;
+  },
+
+  async getEventDetail(eventId: string) {
+    const data = await invokeFunction<{ detail: EventDetail }>('event-detail', { eventId });
+    return data.detail;
+  },
+
+  async createEvent(input: EventCreateInput) {
+    const data = await invokeFunction<{ eventId: string }>('create-event', input);
+    return data.eventId;
+  },
+
+  async updateRsvp(input: RsvpInput) {
+    await invokeFunction('update-rsvp', input);
   },
 };

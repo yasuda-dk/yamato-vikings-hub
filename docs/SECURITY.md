@@ -28,3 +28,14 @@ This command reads `TEAM_SETUP_TOKEN` from ignored `.env.setup.local`, calls the
 Do not paste the real team password into chat, commit it, or store it in frontend code.
 
 The `setup-team-password` function is protected by `TEAM_SETUP_TOKEN` and can initialize the password only once. Later password changes must go through authenticated Admin flows.
+
+## Phase 2 Event And RSVP Controls
+
+The event and RSVP slice keeps direct table writes closed to regular frontend code. The browser calls Edge Functions, and those functions execute database functions with the authenticated Supabase user context.
+
+- `create-event` requires the selected profile to be an Admin.
+- `events-list` and `event-detail` require current approved device access.
+- `update-rsvp` requires an active linked Member profile.
+- RSVP updates are scoped to `current_member_id()`.
+- Late-arrival and cancelled-event rules are enforced in the database function, not only in the UI.
+- Actual attendance confirmation, Guests, team generation, voting, and fines remain out of scope for this slice.

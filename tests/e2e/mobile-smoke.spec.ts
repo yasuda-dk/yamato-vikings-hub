@@ -17,6 +17,12 @@ test('mobile shell renders and navigates without horizontal overflow', async ({ 
 
   await page.getByRole('link', { name: /events/i }).click();
   await expect(page.getByRole('heading', { name: 'Events' })).toBeVisible();
+  await page.getByRole('link', { name: /Friday Football/i }).click();
+  await expect(page.getByRole('heading', { name: 'Your RSVP' })).toBeVisible();
+  await page.getByLabel('I’ll be late').check();
+  await page.getByLabel('Expected arrival time').fill('19:30');
+  await page.getByRole('button', { name: 'Update RSVP' }).click();
+  await expect(page.getByText('RSVP updated.')).toBeVisible();
 
   await page.getByRole('link', { name: /fines/i }).click();
   await expect(page.getByRole('heading', { name: 'Fines' })).toBeVisible();
