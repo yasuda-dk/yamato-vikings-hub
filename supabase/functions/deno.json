@@ -1,0 +1,11 @@
+{
+  "tasks": {
+    "test": "deno test --allow-env --allow-net"
+  },
+  "compilerOptions": {
+    "strict": true
+  },
+  "fmt": {
+    "singleQuote": true
+  }
+}

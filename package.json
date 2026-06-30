@@ -10,7 +10,9 @@
     "lint": "eslint .",
     "typecheck": "tsc -b --pretty false",
     "test": "vitest run",
-    "test:e2e": "playwright test"
+    "test:e2e": "playwright test",
+    "test:functions": "deno test --allow-env --allow-net supabase/functions",
+    "setup:team-password": "bash scripts/setup-team-password.sh"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.50.0",

@@ -23,8 +23,14 @@
 - Do not permanently delete historical Members, events, fines or seasons.
 - Use controlled values instead of free text for analytics fields.
 - Do not rely on drag-and-drop for essential mobile actions.
+- Use the `mobile-ui-review` skill for every new screen and meaningful visual change.
+- Read `docs/UI_UX.md` before UI implementation.
+- Validate every screen at 320px, 390px and 430px.
+- Use browser screenshots as part of the Definition of Done.
+- Do not accept technically functional but visually unreviewed UI.
 - Write tests before considering a task complete.
 - Every phase must pass its full quality gate before the next phase begins.
+- Run lint, typecheck, unit tests, Playwright tests and build before completing the task.
 - Run lint, typecheck, unit tests, integration tests and build before completing a Pull Request.
 - Keep Pull Requests focused.
 - Update documentation when behavior or architecture changes.

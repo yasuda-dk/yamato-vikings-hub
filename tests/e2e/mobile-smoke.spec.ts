@@ -3,7 +3,16 @@ import { expect, test } from '@playwright/test';
 test('mobile shell renders and navigates without horizontal overflow', async ({ page }) => {
   await page.goto('./');
 
-  await expect(page.getByRole('heading', { name: 'Team Hub' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Team Hub', exact: true })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Enter team password' })).toBeVisible();
+
+  await page.getByLabel('Team password').fill('demo');
+  await page.getByRole('button', { name: 'Continue' }).click();
+
+  await expect(page.getByRole('heading', { name: 'Choose profile' })).toBeVisible();
+  await page.getByLabel('First name').fill('Takashi');
+  await page.getByRole('button', { name: 'Create profile' }).click();
+
   await expect(page.getByRole('heading', { name: 'Home' })).toBeVisible();
 
   await page.getByRole('link', { name: /events/i }).click();
