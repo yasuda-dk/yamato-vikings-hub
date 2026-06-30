@@ -1,15 +1,24 @@
 export const DEFAULT_TEAM_ID = '00000000-0000-0000-0000-000000000001';
 
-export const ageGroups = ['Under 25', '25–29', '30–34', '35–39', '40+', 'Not specified'] as const;
+export const ageGroups = ['Under 25', '25–29', '30–34', '35–39', '40–49', '50+', 'Not specified'] as const;
 export const residenceTypes = ['Local resident', 'Expat', 'Student', 'Working holiday', 'Other', 'Not specified'] as const;
 export const positions = ['FW', 'MF', 'DF'] as const;
 export const footballLevels = [1, 2, 3, 4, 5] as const;
+export const genders = ['Male', 'Female', 'Non-binary', 'Other', 'Not specified'] as const;
+export const footballLevelLabels: Record<FootballLevel, string> = {
+  1: 'No experience',
+  2: 'A bit',
+  3: 'Decent',
+  4: 'High level',
+  5: 'Top level',
+};
 
 export type AgeGroup = (typeof ageGroups)[number];
 export type ResidenceType = (typeof residenceTypes)[number];
 export type Position = (typeof positions)[number];
 export type FootballLevel = (typeof footballLevels)[number];
 export type SecondaryPosition = Position | 'None';
+export type Gender = (typeof genders)[number];
 
 export type MemberProfile = {
   id: string;
@@ -19,6 +28,7 @@ export type MemberProfile = {
   primary_position: Position;
   secondary_position: Position | null;
   residence_type: ResidenceType;
+  gender: Gender;
   membership_status: 'Active' | 'Inactive';
   application_role: 'Player' | 'Admin';
   created_at: string;
@@ -31,6 +41,7 @@ export type MemberRegistrationInput = {
   primaryPosition: Position;
   secondaryPosition: SecondaryPosition;
   residenceType: ResidenceType;
+  gender: Gender;
 };
 
 export function normalizeFirstName(value: string) {
@@ -53,6 +64,14 @@ export function isFootballLevel(value: number): value is FootballLevel {
   return footballLevels.includes(value as FootballLevel);
 }
 
+export function isGender(value: string): value is Gender {
+  return genders.includes(value as Gender);
+}
+
+export function formatFootballLevel(level: FootballLevel) {
+  return `${level} - ${footballLevelLabels[level]}`;
+}
+
 export function validateRegistration(input: MemberRegistrationInput, existingMembers: MemberProfile[]) {
   const errors: Partial<Record<keyof MemberRegistrationInput, string>> = {};
   const normalizedName = normalizeFirstName(input.firstName);
@@ -73,6 +92,7 @@ export function validateRegistration(input: MemberRegistrationInput, existingMem
     errors.secondaryPosition = 'Secondary position must be different from primary position.';
   }
   if (!isResidenceType(input.residenceType)) errors.residenceType = 'Select a residence type.';
+  if (!isGender(input.gender)) errors.gender = 'Select a gender.';
 
   return errors;
 }

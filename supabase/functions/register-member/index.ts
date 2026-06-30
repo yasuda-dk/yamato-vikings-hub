@@ -19,6 +19,7 @@ Deno.serve(async (req) => {
       p_primary_position: body.primaryPosition,
       p_secondary_position: body.secondaryPosition === 'None' ? null : body.secondaryPosition,
       p_residence_type: body.residenceType,
+      p_gender: body.gender,
     });
 
     if (error) {

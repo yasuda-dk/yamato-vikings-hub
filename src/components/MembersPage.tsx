@@ -1,4 +1,5 @@
 import type { MemberProfile } from '../lib/member-options';
+import { formatFootballLevel } from '../lib/member-options';
 
 export function MembersPage({ members }: { members: MemberProfile[] }) {
   return (
@@ -15,8 +16,8 @@ export function MembersPage({ members }: { members: MemberProfile[] }) {
                 <span className="rounded-md bg-white px-2 py-1 text-xs font-bold text-navy">{member.membership_status}</span>
               </div>
               <p className="mt-2 text-sm text-navy/70">
-                Level {member.football_level} · {member.primary_position}
-                {member.secondary_position ? ` / ${member.secondary_position}` : ''} · {member.age_group}
+                {formatFootballLevel(member.football_level)} · {member.primary_position}
+                {member.secondary_position ? ` / ${member.secondary_position}` : ''} · {member.age_group} · {member.gender}
               </p>
             </article>
           ))}

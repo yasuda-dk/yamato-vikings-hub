@@ -13,6 +13,7 @@ const takashi: MemberProfile = {
   primary_position: 'MF',
   secondary_position: 'DF',
   residence_type: 'Local resident',
+  gender: 'Male',
   membership_status: 'Active',
   application_role: 'Player',
   created_at: '2026-01-01T00:00:00.000Z',
@@ -28,7 +29,7 @@ function createApi(initialState: SessionState): Phase1Api {
       state = { ...state, hasAccess: true };
     },
     registerMember: async (input) => {
-      const member = { ...takashi, id: 'member-new', first_name: input.firstName };
+      const member = { ...takashi, id: 'member-new', first_name: input.firstName, gender: input.gender };
       state = { hasAccess: true, selectedMember: member, members: [member] };
     },
     selectProfile: async (memberId) => {

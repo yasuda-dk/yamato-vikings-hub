@@ -5,7 +5,8 @@ create type public.age_group as enum (
   '25–29',
   '30–34',
   '35–39',
-  '40+',
+  '40–49',
+  '50+',
   'Not specified'
 );
 
@@ -19,6 +20,7 @@ create type public.residence_type as enum (
 );
 
 create type public.position_code as enum ('FW', 'MF', 'DF');
+create type public.gender_type as enum ('Male', 'Female', 'Non-binary', 'Other', 'Not specified');
 create type public.membership_status as enum ('Active', 'Inactive');
 create type public.application_role as enum ('Player', 'Admin');
 
@@ -61,6 +63,7 @@ create table public.members (
   primary_position public.position_code not null,
   secondary_position public.position_code,
   residence_type public.residence_type not null default 'Not specified',
+  gender public.gender_type not null default 'Not specified',
   membership_status public.membership_status not null default 'Active',
   application_role public.application_role not null default 'Player',
   created_at timestamptz not null default now(),
@@ -277,7 +280,8 @@ create or replace function public.register_member_profile(
   p_football_level integer,
   p_primary_position public.position_code,
   p_secondary_position public.position_code,
-  p_residence_type public.residence_type
+  p_residence_type public.residence_type,
+  p_gender public.gender_type
 )
 returns uuid
 language plpgsql
@@ -303,7 +307,8 @@ begin
     football_level,
     primary_position,
     secondary_position,
-    residence_type
+    residence_type,
+    gender
   )
   values (
     target_team_id,
@@ -313,7 +318,8 @@ begin
     p_football_level,
     p_primary_position,
     p_secondary_position,
-    p_residence_type
+    p_residence_type,
+    p_gender
   )
   returning id into new_member_id;
 
@@ -333,7 +339,8 @@ create or replace function public.update_own_member_profile(
   p_age_group public.age_group,
   p_primary_position public.position_code,
   p_secondary_position public.position_code,
-  p_residence_type public.residence_type
+  p_residence_type public.residence_type,
+  p_gender public.gender_type
 )
 returns uuid
 language plpgsql
@@ -352,7 +359,8 @@ begin
     age_group = p_age_group,
     primary_position = p_primary_position,
     secondary_position = p_secondary_position,
-    residence_type = p_residence_type
+    residence_type = p_residence_type,
+    gender = p_gender
   where id = active_member_id;
 
   insert into public.member_public_history (member_id, event_type, public_description)
@@ -486,7 +494,7 @@ grant execute on function public.current_member_id() to anon, authenticated;
 grant execute on function public.is_admin(uuid) to anon, authenticated;
 grant execute on function public.verify_team_password(uuid, text) to authenticated;
 grant execute on function public.select_member_profile(uuid) to authenticated;
-grant execute on function public.register_member_profile(uuid, text, public.age_group, integer, public.position_code, public.position_code, public.residence_type) to authenticated;
-grant execute on function public.update_own_member_profile(public.age_group, public.position_code, public.position_code, public.residence_type) to authenticated;
+grant execute on function public.register_member_profile(uuid, text, public.age_group, integer, public.position_code, public.position_code, public.residence_type, public.gender_type) to authenticated;
+grant execute on function public.update_own_member_profile(public.age_group, public.position_code, public.position_code, public.residence_type, public.gender_type) to authenticated;
 grant execute on function public.reset_device_access(uuid) to authenticated;
 grant execute on function public.change_team_password(uuid, text) to authenticated;

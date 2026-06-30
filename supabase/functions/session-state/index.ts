@@ -27,7 +27,7 @@ Deno.serve(async (req) => {
     const { data: currentMemberId } = await supabase.rpc('current_member_id');
     const { data: members, error: membersError } = await supabase
       .from('members')
-      .select('id, first_name, age_group, football_level, primary_position, secondary_position, residence_type, membership_status, application_role, created_at')
+      .select('id, first_name, age_group, football_level, primary_position, secondary_position, residence_type, gender, membership_status, application_role, created_at')
       .eq('team_id', teamId)
       .order('first_name');
 

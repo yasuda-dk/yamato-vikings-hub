@@ -1,7 +1,10 @@
 import { type FormEvent, useMemo, useState } from 'react';
 import {
   ageGroups,
+  footballLevelLabels,
   footballLevels,
+  genders,
+  formatFootballLevel,
   positions,
   residenceTypes,
   validateRegistration,
@@ -25,6 +28,7 @@ const defaultRegistration: MemberRegistrationInput = {
   primaryPosition: 'MF',
   secondaryPosition: 'None',
   residenceType: 'Not specified',
+  gender: 'Not specified',
 };
 
 export function ProfileSetup({ members, onSelectProfile, onRegister, isBusy, error }: ProfileSetupProps) {
@@ -81,6 +85,7 @@ export function ProfileSetup({ members, onSelectProfile, onRegister, isBusy, err
             label="Football level"
             value={String(registration.footballLevel)}
             options={footballLevels.map(String)}
+            getOptionLabel={(footballLevel) => formatFootballLevel(Number(footballLevel) as keyof typeof footballLevelLabels)}
             onChange={(footballLevel) => setRegistration((current) => ({ ...current, footballLevel: Number(footballLevel) as MemberRegistrationInput['footballLevel'] }))}
           />
           <Select label="Primary position" value={registration.primaryPosition} options={positions} onChange={(primaryPosition) => setRegistration((current) => ({ ...current, primaryPosition }))} />
@@ -92,6 +97,7 @@ export function ProfileSetup({ members, onSelectProfile, onRegister, isBusy, err
             error={fieldErrors.secondaryPosition}
           />
           <Select label="Residence type" value={registration.residenceType} options={residenceTypes} onChange={(residenceType) => setRegistration((current) => ({ ...current, residenceType }))} />
+          <Select label="Gender" value={registration.gender} options={genders} onChange={(gender) => setRegistration((current) => ({ ...current, gender }))} />
           {error ? <p className="text-sm font-semibold text-red-700">{error}</p> : null}
           <button type="submit" disabled={isBusy || Object.keys(fieldErrors).length > 0} className="min-h-12 w-full rounded-md bg-footballBlue px-4 text-base font-bold text-white disabled:bg-navy/40">
             Create profile
@@ -116,14 +122,28 @@ function TextInput({ label, value, onChange, error }: { label: string; value: st
   );
 }
 
-function Select<T extends string>({ label, value, options, onChange, error }: { label: string; value: string; options: readonly T[]; onChange: (value: T) => void; error?: string }) {
+function Select<T extends string>({
+  label,
+  value,
+  options,
+  onChange,
+  error,
+  getOptionLabel = (option) => option,
+}: {
+  label: string;
+  value: string;
+  options: readonly T[];
+  onChange: (value: T) => void;
+  error?: string;
+  getOptionLabel?: (value: T) => string;
+}) {
   return (
     <label className="block text-sm font-semibold text-navy">
       {label}
       <select aria-label={label} value={value} onChange={(event) => onChange(event.target.value as T)} className="mt-2 min-h-12 w-full rounded-md border border-navy/20 px-3 text-base">
         {options.map((option) => (
           <option key={option} value={option}>
-            {option}
+            {getOptionLabel(option)}
           </option>
         ))}
       </select>

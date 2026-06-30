@@ -22,6 +22,8 @@
 - Keep Guests event-specific.
 - Do not permanently delete historical Members, events, fines or seasons.
 - Use controlled values instead of free text for analytics fields.
+- Include gender as a controlled member profile field.
+- Use football level labels: 1 - No experience, 2 - A bit, 3 - Decent, 4 - High level, 5 - Top level.
 - Do not rely on drag-and-drop for essential mobile actions.
 - Use the `mobile-ui-review` skill for every new screen and meaningful visual change.
 - Read `docs/UI_UX.md` before UI implementation.

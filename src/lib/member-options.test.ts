@@ -8,6 +8,7 @@ const baseInput: MemberRegistrationInput = {
   primaryPosition: 'MF',
   secondaryPosition: 'None',
   residenceType: 'Local resident',
+  gender: 'Male',
 };
 
 const existingMember: MemberProfile = {
@@ -18,6 +19,7 @@ const existingMember: MemberProfile = {
   primary_position: 'MF',
   secondary_position: null,
   residence_type: 'Local resident',
+  gender: 'Male',
   membership_status: 'Active',
   application_role: 'Player',
   created_at: '2026-01-01T00:00:00.000Z',
