@@ -1,10 +1,7 @@
 import { type FormEvent, useMemo, useState } from 'react';
 import {
   ageGroups,
-  footballLevelLabels,
-  footballLevels,
   genders,
-  formatFootballLevel,
   positions,
   residenceTypes,
   validateRegistration,
@@ -81,13 +78,6 @@ export function ProfileSetup({ members, onSelectProfile, onRegister, isBusy, err
         <form onSubmit={handleRegister} className="mt-5 space-y-4">
           <TextInput label="First name" value={registration.firstName} error={fieldErrors.firstName} onChange={(firstName) => setRegistration((current) => ({ ...current, firstName }))} />
           <Select label="Age group" value={registration.ageGroup} options={ageGroups} onChange={(ageGroup) => setRegistration((current) => ({ ...current, ageGroup }))} />
-          <Select
-            label="Football level"
-            value={String(registration.footballLevel)}
-            options={footballLevels.map(String)}
-            getOptionLabel={(footballLevel) => formatFootballLevel(Number(footballLevel) as keyof typeof footballLevelLabels)}
-            onChange={(footballLevel) => setRegistration((current) => ({ ...current, footballLevel: Number(footballLevel) as MemberRegistrationInput['footballLevel'] }))}
-          />
           <Select label="Primary position" value={registration.primaryPosition} options={positions} onChange={(primaryPosition) => setRegistration((current) => ({ ...current, primaryPosition }))} />
           <Select
             label="Secondary position"

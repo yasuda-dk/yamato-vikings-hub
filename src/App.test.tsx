@@ -311,6 +311,7 @@ describe('App shell', () => {
 
     expect(await screen.findByRole('heading', { name: 'Choose profile' })).toBeInTheDocument();
     await user.type(screen.getByLabelText('First name'), 'Takashi');
+    expect(screen.queryByLabelText('Football level')).not.toBeInTheDocument();
     await user.click(screen.getByRole('button', { name: 'Create profile' }));
 
     expect((await screen.findAllByText('Submitting as Takashi')).length).toBeGreaterThan(0);
