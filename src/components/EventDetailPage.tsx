@@ -219,6 +219,29 @@ export function EventDetailPage({ api, selectedMember }: EventDetailPageProps) {
     }
   }
 
+  async function handleCancelEvent() {
+    if (!detail || adminBusyId === 'cancel-event') return;
+
+    setAdminBusyId('cancel-event');
+    setError(null);
+    setSuccess(null);
+    try {
+      await api.updateEvent({
+        ...eventRecordToInput(detail.event),
+        eventId: detail.event.id,
+        rsvpDeadline: detail.event.rsvp_deadline,
+        status: 'Cancelled',
+      });
+      setShowEventForm(false);
+      setShowDuplicateForm(false);
+      await refreshDetail('Event cancelled.');
+    } catch (cancelError) {
+      setError(cancelError instanceof Error ? cancelError.message : 'Could not cancel event.');
+    } finally {
+      setAdminBusyId(null);
+    }
+  }
+
   return (
     <section className="space-y-4">
       <Link to="/events" className="inline-flex min-h-11 items-center rounded-md text-sm font-bold text-footballBlue">
@@ -279,6 +302,14 @@ export function EventDetailPage({ api, selectedMember }: EventDetailPageProps) {
                   {showDuplicateForm ? 'Close copy' : 'Duplicate'}
                 </button>
               </div>
+              <button
+                type="button"
+                onClick={handleCancelEvent}
+                disabled={detail.event.status === 'Cancelled' || adminBusyId === 'cancel-event'}
+                className="mt-2 min-h-11 w-full rounded-md border border-red-200 bg-white px-3 text-sm font-bold text-red-700 disabled:border-navy/10 disabled:text-navy/45"
+              >
+                {detail.event.status === 'Cancelled' ? 'Event cancelled' : adminBusyId === 'cancel-event' ? 'Cancelling...' : 'Cancel event'}
+              </button>
 
               {showEventForm && eventDraft ? (
                 <form onSubmit={handleUpdateEvent} className="mt-4 space-y-4">
