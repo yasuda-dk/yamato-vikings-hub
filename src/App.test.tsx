@@ -2,7 +2,7 @@ import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { App } from './App';
-import type { ActualStatus, EventDetail, EventGuest, EventSummary, RsvpInput } from './lib/events';
+import type { ActualStatus, EventDetail, EventGuest, EventSummary, EventTeam, RsvpInput } from './lib/events';
 import type { MemberProfile } from './lib/member-options';
 import type { Phase1Api, SessionState } from './lib/phase1-api';
 
@@ -45,6 +45,7 @@ function createApi(initialState: SessionState): Phase1Api {
   let rsvp: EventDetail['myRsvp'] = null;
   let guest: EventGuest | null = null;
   let actualStatus: ActualStatus = 'Not confirmed';
+  let teams: EventTeam[] = [];
 
   return {
     ensureAnonymousSession: async () => null,
@@ -97,6 +98,7 @@ function createApi(initialState: SessionState): Phase1Api {
                 football_level: takashi.football_level,
                 primary_position: takashi.primary_position,
                 secondary_position: takashi.secondary_position,
+                age_group: takashi.age_group,
               },
             ]
           : []),
@@ -113,6 +115,7 @@ function createApi(initialState: SessionState): Phase1Api {
                 football_level: guest.football_level,
                 primary_position: guest.primary_position,
                 secondary_position: guest.secondary_position,
+                age_group: guest.age_group,
               },
             ]
           : []),
@@ -184,6 +187,56 @@ function createApi(initialState: SessionState): Phase1Api {
     },
     updateGuestAttendance: async (input) => {
       if (guest?.id === input.eventGuestId) guest = { ...guest, actual_status: input.actualStatus };
+    },
+    getEventTeams: async () => teams,
+    generateTeams: async (input) => {
+      teams = [
+        {
+          id: 'team-a',
+          event_id: input.eventId,
+          name: 'Team A',
+          display_order: 0,
+          is_confirmed: false,
+          balance_score: 0,
+          score_breakdown: {},
+          participants: [
+            {
+              kind: 'member',
+              id: takashi.id,
+              first_name: takashi.first_name,
+              football_level: takashi.football_level,
+              primary_position: takashi.primary_position,
+              secondary_position: takashi.secondary_position,
+              age_group: takashi.age_group,
+              is_locked: false,
+            },
+          ],
+        },
+        {
+          id: 'team-b',
+          event_id: input.eventId,
+          name: 'Team B',
+          display_order: 1,
+          is_confirmed: false,
+          balance_score: 0,
+          score_breakdown: {},
+          participants: guest
+            ? [
+                {
+                  kind: 'guest',
+                  id: guest.id,
+                  first_name: guest.first_name,
+                  football_level: guest.football_level,
+                  primary_position: guest.primary_position,
+                  secondary_position: guest.secondary_position,
+                  age_group: guest.age_group,
+                  is_locked: false,
+                },
+              ]
+            : [],
+        },
+      ];
+      return teams;
     },
   };
 }
@@ -300,6 +353,29 @@ describe('App shell', () => {
     expect(await screen.findByText('Event cancelled.')).toBeInTheDocument();
     expect(screen.getByText('Cancelled')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Update RSVP' })).toBeDisabled();
+  });
+
+  it('lets an admin generate draft teams from attended participants', async () => {
+    const user = userEvent.setup();
+    render(<App api={createApi({ hasAccess: true, selectedMember: adminTakashi, members: [adminTakashi] })} />);
+
+    await user.click(await screen.findByRole('link', { name: /events/i }));
+    await user.click(await screen.findByRole('link', { name: /Friday Football/i }));
+    await user.click(screen.getByRole('button', { name: 'Add guest' }));
+    await user.type(screen.getByLabelText('Guest first name'), 'Ken');
+    await user.click(screen.getByRole('button', { name: 'Add guest' }));
+    await user.click(screen.getByRole('button', { name: 'Update RSVP' }));
+    await screen.findByText('RSVP updated.');
+    await user.click((await screen.findAllByRole('button', { name: 'Attended' }))[0]);
+    await screen.findByText('Attendance updated.');
+    await user.click((await screen.findAllByRole('button', { name: 'Attended' }))[1]);
+    await screen.findByText('Guest attendance updated.');
+
+    await user.click(screen.getByRole('button', { name: '2 teams' }));
+
+    expect(await screen.findByText('Draft teams generated.')).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Team A' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Team B' })).toBeInTheDocument();
   });
 
   it('creates a new member profile after password approval', async () => {

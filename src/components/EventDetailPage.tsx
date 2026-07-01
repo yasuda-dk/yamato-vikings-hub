@@ -1,6 +1,6 @@
 import { type FormEvent, useEffect, useMemo, useState } from 'react';
 import { Link, Navigate, useNavigate, useParams } from 'react-router-dom';
-import type { ActualStatus, EventCreateInput, EventDetail, EventDuplicateInput, EventGuestInput, EventParticipant, EventUpdateInput, RsvpInput, RsvpStatus } from '../lib/events';
+import type { ActualStatus, EventCreateInput, EventDetail, EventDuplicateInput, EventGuestInput, EventParticipant, EventTeam, EventUpdateInput, RsvpInput, RsvpStatus } from '../lib/events';
 import {
   actualStatuses,
   createDefaultGuestInput,
@@ -26,10 +26,13 @@ export function EventDetailPage({ api, selectedMember }: EventDetailPageProps) {
   const { eventId } = useParams();
   const navigate = useNavigate();
   const [detail, setDetail] = useState<EventDetail | null>(null);
+  const [teams, setTeams] = useState<EventTeam[]>([]);
   const [loadState, setLoadState] = useState<'loading' | 'ready' | 'error'>('loading');
+  const [teamsLoadState, setTeamsLoadState] = useState<'idle' | 'loading' | 'ready' | 'error'>('idle');
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
+  const [teamAttempt, setTeamAttempt] = useState(1);
   const [adminBusyId, setAdminBusyId] = useState<string | null>(null);
   const [guestDraft, setGuestDraft] = useState<EventGuestInput>(() => createDefaultGuestInput(eventId ?? ''));
   const [eventDraft, setEventDraft] = useState<EventCreateInput | null>(null);
@@ -65,16 +68,20 @@ export function EventDetailPage({ api, selectedMember }: EventDetailPageProps) {
     async function loadDetail() {
       try {
         setLoadState('loading');
+        setTeamsLoadState('loading');
         setError(null);
-        const nextDetail = await api.getEventDetail(currentEventId);
+        const [nextDetail, nextTeams] = await Promise.all([api.getEventDetail(currentEventId), api.getEventTeams(currentEventId)]);
         if (isMounted) {
           setDetail(nextDetail);
+          setTeams(nextTeams);
           setLoadState('ready');
+          setTeamsLoadState('ready');
         }
       } catch (loadError) {
         if (isMounted) {
           setError(loadError instanceof Error ? loadError.message : 'Could not load event.');
           setLoadState('error');
+          setTeamsLoadState('error');
         }
       }
     }
@@ -127,9 +134,35 @@ export function EventDetailPage({ api, selectedMember }: EventDetailPageProps) {
   }
 
   async function refreshDetail(message: string) {
-    const nextDetail = await api.getEventDetail(draft.eventId);
+    const [nextDetail, nextTeams] = await Promise.all([api.getEventDetail(draft.eventId), api.getEventTeams(draft.eventId)]);
     setDetail(nextDetail);
+    setTeams(nextTeams);
     setSuccess(message);
+  }
+
+  async function handleGenerateTeams(teamCount: 2 | 3 | 4) {
+    if (!detail || adminBusyId?.startsWith('generate-teams')) return;
+
+    setAdminBusyId(`generate-teams-${teamCount}`);
+    setTeamsLoadState('loading');
+    setError(null);
+    setSuccess(null);
+    try {
+      const nextTeams = await api.generateTeams({
+        eventId: detail.event.id,
+        teamCount,
+        attemptNumber: teamAttempt,
+      });
+      setTeams(nextTeams);
+      setTeamAttempt((current) => current + 1);
+      setTeamsLoadState('ready');
+      setSuccess('Draft teams generated.');
+    } catch (teamError) {
+      setTeamsLoadState('error');
+      setError(teamError instanceof Error ? teamError.message : 'Could not generate teams.');
+    } finally {
+      setAdminBusyId(null);
+    }
   }
 
   async function updateMemberAttendance(memberId: string, actualStatus: ActualStatus) {
@@ -274,6 +307,13 @@ export function EventDetailPage({ api, selectedMember }: EventDetailPageProps) {
             {detail.event.notes ? <p className="mt-4 rounded-md bg-mist p-3 text-sm leading-5 text-navy/75">{detail.event.notes}</p> : null}
           </div>
 
+          {error ? (
+            <p className="rounded-md border border-red-200 bg-white p-3 text-sm font-semibold text-red-800" role="alert">
+              {error}
+            </p>
+          ) : null}
+          {success ? <p className="rounded-md border border-footballBlue/20 bg-white p-3 text-sm font-semibold text-footballBlue">{success}</p> : null}
+
           <div className="rounded-lg border border-navy/10 bg-white p-4">
             <h3 className="text-base font-bold text-navy">Participants</h3>
             <div className="mt-3 grid grid-cols-2 gap-2">
@@ -391,15 +431,51 @@ export function EventDetailPage({ api, selectedMember }: EventDetailPageProps) {
             </div>
           ) : null}
 
+          {isAdmin ? (
+            <div className="rounded-lg border border-navy/10 bg-white p-4">
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <p className="text-sm font-semibold text-footballBlue">Admin</p>
+                  <h3 className="mt-1 text-base font-bold text-navy">Teams</h3>
+                  <p className="mt-1 text-sm text-navy/70">{detail.counts.attended} attended participants available.</p>
+                </div>
+                <span className="shrink-0 rounded-md bg-mist px-2 py-1 text-xs font-bold text-navy">Draft</span>
+              </div>
+
+              {!detail.event.enable_team_generation ? <p className="mt-3 rounded-md bg-mist p-3 text-sm font-semibold text-navy/70">Team generation is disabled for this event.</p> : null}
+
+              <div className="mt-4 grid grid-cols-3 gap-2">
+                {[2, 3, 4].map((teamCount) => (
+                  <button
+                    key={teamCount}
+                    type="button"
+                    disabled={!detail.event.enable_team_generation || detail.counts.attended < teamCount || adminBusyId === `generate-teams-${teamCount}`}
+                    onClick={() => handleGenerateTeams(teamCount as 2 | 3 | 4)}
+                    className="min-h-11 rounded-md bg-footballBlue px-2 text-sm font-bold text-white disabled:bg-navy/35"
+                  >
+                    {adminBusyId === `generate-teams-${teamCount}` ? '...' : `${teamCount} teams`}
+                  </button>
+                ))}
+              </div>
+
+              {detail.counts.attended < 2 ? <p className="mt-3 rounded-md bg-mist p-3 text-sm text-navy/70">Confirm at least two attendees before generating teams.</p> : null}
+              {teamsLoadState === 'loading' ? <p className="mt-3 rounded-md bg-mist p-3 text-sm font-semibold text-navy/70">Loading teams...</p> : null}
+              {teamsLoadState === 'error' ? <p className="mt-3 rounded-md border border-red-200 p-3 text-sm font-semibold text-red-800">Teams could not load. Try again.</p> : null}
+              {teamsLoadState === 'ready' && teams.length === 0 ? <p className="mt-3 rounded-md bg-mist p-3 text-sm text-navy/70">No draft teams yet.</p> : null}
+
+              {teams.length > 0 ? (
+                <div className="mt-4 space-y-3">
+                  {teams.map((team) => (
+                    <TeamDraft key={team.id} team={team} />
+                  ))}
+                </div>
+              ) : null}
+            </div>
+          ) : null}
+
           <form onSubmit={handleSubmit} className="rounded-lg border border-navy/10 bg-white p-4">
             <h3 className="text-base font-bold text-navy">Your RSVP</h3>
             {detail.myRsvp?.was_updated_after_deadline ? <p className="mt-2 text-sm font-semibold text-navy">Late response recorded</p> : null}
-            {error ? (
-              <p className="mt-3 rounded-md border border-red-200 bg-white p-3 text-sm font-semibold text-red-800" role="alert">
-                {error}
-              </p>
-            ) : null}
-            {success ? <p className="mt-3 rounded-md border border-footballBlue/20 bg-white p-3 text-sm font-semibold text-footballBlue">{success}</p> : null}
 
             <div className="mt-4 grid grid-cols-3 gap-2">
               {rsvpStatuses.map((status) => (
@@ -488,6 +564,58 @@ function ParticipantRow({
       </div>
     </div>
   );
+}
+
+function TeamDraft({ team }: { team: EventTeam }) {
+  const summary = summarizeTeam(team);
+
+  return (
+    <section className="rounded-md bg-mist p-3">
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <h4 className="break-words text-sm font-bold text-navy">{team.name}</h4>
+          <p className="mt-1 text-xs font-semibold text-navy/65">
+            {summary.playerCount} players · Level {summary.totalFootballLevel} total · Avg {summary.averageFootballLevel.toFixed(1)}
+          </p>
+        </div>
+        <span className="shrink-0 rounded bg-white px-2 py-1 text-xs font-bold text-navy">
+          FW {summary.positionCounts.FW} · MF {summary.positionCounts.MF} · DF {summary.positionCounts.DF}
+        </span>
+      </div>
+
+      {team.participants.length === 0 ? <p className="mt-3 rounded bg-white px-3 py-2 text-sm text-navy/65">No players assigned.</p> : null}
+      <div className="mt-3 space-y-2">
+        {team.participants.map((participant) => (
+          <div key={`${participant.kind}-${participant.id}`} className="flex min-h-11 items-center justify-between gap-3 rounded bg-white px-3">
+            <div className="min-w-0">
+              <p className="break-words text-sm font-bold text-navy">{participant.first_name}</p>
+              <p className="text-xs font-semibold text-navy/60">
+                {participant.primary_position} · Level {participant.football_level}
+              </p>
+            </div>
+            <div className="flex shrink-0 items-center gap-2">
+              {participant.kind === 'guest' ? <span className="rounded bg-mist px-2 py-1 text-xs font-bold text-footballBlue">GUEST</span> : null}
+              {participant.is_locked ? <span className="rounded bg-mist px-2 py-1 text-xs font-bold text-navy">Locked</span> : null}
+            </div>
+          </div>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function summarizeTeam(team: EventTeam) {
+  const totalFootballLevel = team.participants.reduce((sum, participant) => sum + participant.football_level, 0);
+  return {
+    playerCount: team.participants.length,
+    totalFootballLevel,
+    averageFootballLevel: team.participants.length ? totalFootballLevel / team.participants.length : 0,
+    positionCounts: {
+      FW: team.participants.filter((participant) => participant.primary_position === 'FW').length,
+      MF: team.participants.filter((participant) => participant.primary_position === 'MF').length,
+      DF: team.participants.filter((participant) => participant.primary_position === 'DF').length,
+    },
+  };
 }
 
 function InfoRow({ label, value }: { label: string; value: string }) {

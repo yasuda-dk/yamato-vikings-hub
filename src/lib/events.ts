@@ -103,6 +103,29 @@ export type EventParticipant = {
   football_level: FootballLevel;
   primary_position: Position;
   secondary_position: Position | null;
+  age_group: AgeGroup;
+};
+
+export type EventTeamParticipant = {
+  kind: 'member' | 'guest';
+  id: string;
+  first_name: string;
+  football_level: FootballLevel;
+  primary_position: Position;
+  secondary_position: Position | null;
+  age_group: AgeGroup;
+  is_locked: boolean;
+};
+
+export type EventTeam = {
+  id: string;
+  event_id: string;
+  name: string;
+  display_order: number;
+  is_confirmed: boolean;
+  balance_score: number | null;
+  score_breakdown: Record<string, number> | null;
+  participants: EventTeamParticipant[];
 };
 
 export type EventDetail = {
@@ -170,6 +193,12 @@ export type AttendanceInput = {
 export type GuestAttendanceInput = {
   eventGuestId: string;
   actualStatus: ActualStatus;
+};
+
+export type GenerateTeamsInput = {
+  eventId: string;
+  teamCount: 2 | 3 | 4;
+  attemptNumber: number;
 };
 
 export function defaultEventSettings(eventType: EventType) {
