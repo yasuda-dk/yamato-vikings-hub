@@ -15,6 +15,7 @@ import type {
   GuestAttendanceInput,
   MyRsvp,
   RsvpInput,
+  TeamAdjustmentInput,
 } from './events';
 import { normalizeFirstName } from './member-options';
 import type { MemberProfile, MemberRegistrationInput } from './member-options';
@@ -345,5 +346,46 @@ export const demoPhase1Api: Phase1Api = {
     });
 
     return demoTeams;
+  },
+
+  async adjustTeam(input: TeamAdjustmentInput) {
+    if (input.action === 'move-participant') {
+      const sourceTeam = demoTeams.find((team) => team.participants.some((participant) => participant.kind === input.participantKind && participant.id === input.participantId));
+      const targetTeam = demoTeams.find((team) => team.id === input.targetTeamId);
+      const participant = sourceTeam?.participants.find((item) => item.kind === input.participantKind && item.id === input.participantId);
+      if (!sourceTeam || !targetTeam || !participant) throw new Error('Draft participant not found');
+      if (participant.is_locked) throw new Error('Unlock this participant before moving');
+
+      demoTeams = demoTeams.map((team) => {
+        if (team.id === sourceTeam.id) {
+          return { ...team, balance_score: null, score_breakdown: null, participants: team.participants.filter((item) => !(item.kind === input.participantKind && item.id === input.participantId)) };
+        }
+        if (team.id === targetTeam.id) {
+          return { ...team, balance_score: null, score_breakdown: null, participants: [...team.participants, participant] };
+        }
+        return { ...team, balance_score: null, score_breakdown: null };
+      });
+    }
+
+    if (input.action === 'toggle-lock') {
+      demoTeams = demoTeams.map((team) => ({
+        ...team,
+        participants: team.participants.map((participant) =>
+          participant.kind === input.participantKind && participant.id === input.participantId ? { ...participant, is_locked: input.isLocked } : participant,
+        ),
+      }));
+    }
+
+    if (input.action === 'rename-team') {
+      if (!input.name.trim()) throw new Error('Team name is required');
+      demoTeams = demoTeams.map((team) => (team.id === input.teamId ? { ...team, name: input.name.trim() } : team));
+    }
+
+    if (input.action === 'confirm-teams') {
+      demoTeams = demoTeams.map((team) => (team.event_id === input.eventId ? { ...team, is_confirmed: true } : team));
+      demoEvents = demoEvents.map((event) => (event.id === input.eventId ? { ...event, status: 'Teams confirmed' } : event));
+    }
+
+    return demoTeams.filter((team) => team.event_id === input.eventId);
   },
 };

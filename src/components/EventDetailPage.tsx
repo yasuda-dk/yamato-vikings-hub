@@ -34,6 +34,7 @@ export function EventDetailPage({ api, selectedMember }: EventDetailPageProps) {
   const [isSaving, setIsSaving] = useState(false);
   const [teamAttempt, setTeamAttempt] = useState(1);
   const [adminBusyId, setAdminBusyId] = useState<string | null>(null);
+  const [teamNameDrafts, setTeamNameDrafts] = useState<Record<string, string>>({});
   const [guestDraft, setGuestDraft] = useState<EventGuestInput>(() => createDefaultGuestInput(eventId ?? ''));
   const [eventDraft, setEventDraft] = useState<EventCreateInput | null>(null);
   const [duplicateDraft, setDuplicateDraft] = useState<EventDuplicateInput>({ eventId: eventId ?? '', eventDate: '' });
@@ -59,6 +60,16 @@ export function EventDetailPage({ api, selectedMember }: EventDetailPageProps) {
     setDuplicateDraft((current) => ({ ...current, eventId }));
     setEventDraft(eventRecordToInput(detail.event));
   }, [detail, eventId]);
+
+  useEffect(() => {
+    setTeamNameDrafts((current) => {
+      const nextDrafts: Record<string, string> = {};
+      for (const team of teams) {
+        nextDrafts[team.id] = current[team.id] ?? team.name;
+      }
+      return nextDrafts;
+    });
+  }, [teams]);
 
   useEffect(() => {
     if (!eventId) return;
@@ -163,6 +174,70 @@ export function EventDetailPage({ api, selectedMember }: EventDetailPageProps) {
     } finally {
       setAdminBusyId(null);
     }
+  }
+
+  async function adjustTeam(input: Parameters<Phase1Api['adjustTeam']>[0], message: string) {
+    if (adminBusyId?.startsWith('team-action')) return;
+
+    setAdminBusyId('team-action');
+    setError(null);
+    setSuccess(null);
+    try {
+      const nextTeams = await api.adjustTeam(input);
+      setTeams(nextTeams);
+      if (input.action === 'confirm-teams') {
+        const nextDetail = await api.getEventDetail(input.eventId);
+        setDetail(nextDetail);
+      }
+      setSuccess(message);
+    } catch (teamError) {
+      setError(teamError instanceof Error ? teamError.message : 'Could not update teams.');
+    } finally {
+      setAdminBusyId(null);
+    }
+  }
+
+  async function handleMoveParticipant(team: EventTeam, participant: EventTeam['participants'][number], targetTeamId: string) {
+    await adjustTeam(
+      {
+        action: 'move-participant',
+        eventId: team.event_id,
+        participantKind: participant.kind,
+        participantId: participant.id,
+        targetTeamId,
+      },
+      'Participant moved.',
+    );
+  }
+
+  async function handleToggleLock(team: EventTeam, participant: EventTeam['participants'][number]) {
+    await adjustTeam(
+      {
+        action: 'toggle-lock',
+        eventId: team.event_id,
+        participantKind: participant.kind,
+        participantId: participant.id,
+        isLocked: !participant.is_locked,
+      },
+      participant.is_locked ? 'Participant unlocked.' : 'Participant locked.',
+    );
+  }
+
+  async function handleRenameTeam(team: EventTeam) {
+    await adjustTeam(
+      {
+        action: 'rename-team',
+        eventId: team.event_id,
+        teamId: team.id,
+        name: teamNameDrafts[team.id] ?? team.name,
+      },
+      'Team renamed.',
+    );
+  }
+
+  async function handleConfirmTeams() {
+    if (!detail) return;
+    await adjustTeam({ action: 'confirm-teams', eventId: detail.event.id }, 'Teams confirmed.');
   }
 
   async function updateMemberAttendance(memberId: string, actualStatus: ActualStatus) {
@@ -431,44 +506,63 @@ export function EventDetailPage({ api, selectedMember }: EventDetailPageProps) {
             </div>
           ) : null}
 
-          {isAdmin ? (
+          {isAdmin || teams.length > 0 ? (
             <div className="rounded-lg border border-navy/10 bg-white p-4">
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0">
-                  <p className="text-sm font-semibold text-footballBlue">Admin</p>
+                  <p className="text-sm font-semibold text-footballBlue">{isAdmin ? 'Admin' : 'Teams'}</p>
                   <h3 className="mt-1 text-base font-bold text-navy">Teams</h3>
                   <p className="mt-1 text-sm text-navy/70">{detail.counts.attended} attended participants available.</p>
                 </div>
-                <span className="shrink-0 rounded-md bg-mist px-2 py-1 text-xs font-bold text-navy">Draft</span>
+                <span className="shrink-0 rounded-md bg-mist px-2 py-1 text-xs font-bold text-navy">{teams.some((team) => team.is_confirmed) ? 'Confirmed' : 'Draft'}</span>
               </div>
 
-              {!detail.event.enable_team_generation ? <p className="mt-3 rounded-md bg-mist p-3 text-sm font-semibold text-navy/70">Team generation is disabled for this event.</p> : null}
+              {isAdmin && !detail.event.enable_team_generation ? <p className="mt-3 rounded-md bg-mist p-3 text-sm font-semibold text-navy/70">Team generation is disabled for this event.</p> : null}
 
-              <div className="mt-4 grid grid-cols-3 gap-2">
-                {[2, 3, 4].map((teamCount) => (
-                  <button
-                    key={teamCount}
-                    type="button"
-                    disabled={!detail.event.enable_team_generation || detail.counts.attended < teamCount || adminBusyId === `generate-teams-${teamCount}`}
-                    onClick={() => handleGenerateTeams(teamCount as 2 | 3 | 4)}
-                    className="min-h-11 rounded-md bg-footballBlue px-2 text-sm font-bold text-white disabled:bg-navy/35"
-                  >
-                    {adminBusyId === `generate-teams-${teamCount}` ? '...' : `${teamCount} teams`}
-                  </button>
-                ))}
-              </div>
+              {isAdmin && teams.every((team) => !team.is_confirmed) ? (
+                <div className="mt-4 grid grid-cols-3 gap-2">
+                  {[2, 3, 4].map((teamCount) => (
+                    <button
+                      key={teamCount}
+                      type="button"
+                      disabled={!detail.event.enable_team_generation || detail.counts.attended < teamCount || adminBusyId === `generate-teams-${teamCount}`}
+                      onClick={() => handleGenerateTeams(teamCount as 2 | 3 | 4)}
+                      className="min-h-11 rounded-md bg-footballBlue px-2 text-sm font-bold text-white disabled:bg-navy/35"
+                    >
+                      {adminBusyId === `generate-teams-${teamCount}` ? '...' : `${teamCount} teams`}
+                    </button>
+                  ))}
+                </div>
+              ) : null}
 
-              {detail.counts.attended < 2 ? <p className="mt-3 rounded-md bg-mist p-3 text-sm text-navy/70">Confirm at least two attendees before generating teams.</p> : null}
+              {isAdmin && detail.counts.attended < 2 ? <p className="mt-3 rounded-md bg-mist p-3 text-sm text-navy/70">Confirm at least two attendees before generating teams.</p> : null}
               {teamsLoadState === 'loading' ? <p className="mt-3 rounded-md bg-mist p-3 text-sm font-semibold text-navy/70">Loading teams...</p> : null}
               {teamsLoadState === 'error' ? <p className="mt-3 rounded-md border border-red-200 p-3 text-sm font-semibold text-red-800">Teams could not load. Try again.</p> : null}
-              {teamsLoadState === 'ready' && teams.length === 0 ? <p className="mt-3 rounded-md bg-mist p-3 text-sm text-navy/70">No draft teams yet.</p> : null}
+              {isAdmin && teamsLoadState === 'ready' && teams.length === 0 ? <p className="mt-3 rounded-md bg-mist p-3 text-sm text-navy/70">No draft teams yet.</p> : null}
 
               {teams.length > 0 ? (
                 <div className="mt-4 space-y-3">
                   {teams.map((team) => (
-                    <TeamDraft key={team.id} team={team} />
+                    <TeamDraft
+                      key={team.id}
+                      team={team}
+                      teams={teams}
+                      isAdmin={isAdmin}
+                      isBusy={adminBusyId === 'team-action'}
+                      nameDraft={teamNameDrafts[team.id] ?? team.name}
+                      onNameDraftChange={(name) => setTeamNameDrafts((current) => ({ ...current, [team.id]: name }))}
+                      onRename={handleRenameTeam}
+                      onMove={handleMoveParticipant}
+                      onToggleLock={handleToggleLock}
+                    />
                   ))}
                 </div>
+              ) : null}
+
+              {isAdmin && teams.length > 0 && teams.every((team) => !team.is_confirmed) ? (
+                <button type="button" disabled={adminBusyId === 'team-action'} onClick={handleConfirmTeams} className="mt-4 min-h-12 w-full rounded-md bg-footballBlue px-4 text-base font-bold text-white disabled:bg-navy/40">
+                  {adminBusyId === 'team-action' ? 'Saving...' : 'Confirm teams'}
+                </button>
               ) : null}
             </div>
           ) : null}
@@ -566,8 +660,29 @@ function ParticipantRow({
   );
 }
 
-function TeamDraft({ team }: { team: EventTeam }) {
+function TeamDraft({
+  team,
+  teams,
+  isAdmin,
+  isBusy,
+  nameDraft,
+  onNameDraftChange,
+  onRename,
+  onMove,
+  onToggleLock,
+}: {
+  team: EventTeam;
+  teams: EventTeam[];
+  isAdmin: boolean;
+  isBusy: boolean;
+  nameDraft: string;
+  onNameDraftChange: (name: string) => void;
+  onRename: (team: EventTeam) => Promise<void>;
+  onMove: (team: EventTeam, participant: EventTeam['participants'][number], targetTeamId: string) => Promise<void>;
+  onToggleLock: (team: EventTeam, participant: EventTeam['participants'][number]) => Promise<void>;
+}) {
   const summary = summarizeTeam(team);
+  const canEdit = isAdmin && !team.is_confirmed;
 
   return (
     <section className="rounded-md bg-mist p-3">
@@ -583,20 +698,54 @@ function TeamDraft({ team }: { team: EventTeam }) {
         </span>
       </div>
 
+      {canEdit ? (
+        <div className="mt-3 grid gap-2">
+          <label className="text-xs font-bold text-navy/65">
+            Team name
+            <input aria-label={`${team.name} name`} value={nameDraft} onChange={(event) => onNameDraftChange(event.target.value)} className="mt-1 min-h-11 w-full rounded-md border border-navy/15 px-3 text-sm font-bold text-navy" />
+          </label>
+          <button type="button" disabled={isBusy || nameDraft.trim() === team.name || !nameDraft.trim()} onClick={() => onRename(team)} className="min-h-11 rounded-md border border-footballBlue bg-white px-3 text-sm font-bold text-footballBlue disabled:border-navy/10 disabled:text-navy/40">
+            Save name
+          </button>
+        </div>
+      ) : null}
+
       {team.participants.length === 0 ? <p className="mt-3 rounded bg-white px-3 py-2 text-sm text-navy/65">No players assigned.</p> : null}
       <div className="mt-3 space-y-2">
         {team.participants.map((participant) => (
-          <div key={`${participant.kind}-${participant.id}`} className="flex min-h-11 items-center justify-between gap-3 rounded bg-white px-3">
-            <div className="min-w-0">
-              <p className="break-words text-sm font-bold text-navy">{participant.first_name}</p>
-              <p className="text-xs font-semibold text-navy/60">
-                {participant.primary_position} · Level {participant.football_level}
-              </p>
+          <div key={`${participant.kind}-${participant.id}`} className="rounded bg-white px-3 py-2">
+            <div className="flex min-h-11 items-center justify-between gap-3">
+              <div className="min-w-0">
+                <p className="break-words text-sm font-bold text-navy">{participant.first_name}</p>
+                <p className="text-xs font-semibold text-navy/60">
+                  {participant.primary_position} · Level {participant.football_level}
+                </p>
+              </div>
+              <div className="flex shrink-0 items-center gap-2">
+                {participant.kind === 'guest' ? <span className="rounded bg-mist px-2 py-1 text-xs font-bold text-footballBlue">GUEST</span> : null}
+                {participant.is_locked ? <span className="rounded bg-mist px-2 py-1 text-xs font-bold text-navy">Locked</span> : null}
+              </div>
             </div>
-            <div className="flex shrink-0 items-center gap-2">
-              {participant.kind === 'guest' ? <span className="rounded bg-mist px-2 py-1 text-xs font-bold text-footballBlue">GUEST</span> : null}
-              {participant.is_locked ? <span className="rounded bg-mist px-2 py-1 text-xs font-bold text-navy">Locked</span> : null}
-            </div>
+            {canEdit ? (
+              <div className="mt-2 grid grid-cols-2 gap-2">
+                <button type="button" disabled={isBusy} onClick={() => onToggleLock(team, participant)} className="min-h-11 rounded-md bg-mist px-2 text-xs font-bold text-navy disabled:text-navy/40">
+                  {participant.is_locked ? 'Unlock' : 'Lock'}
+                </button>
+                {teams
+                  .filter((targetTeam) => targetTeam.id !== team.id)
+                  .map((targetTeam) => (
+                    <button
+                      key={targetTeam.id}
+                      type="button"
+                      disabled={isBusy || participant.is_locked}
+                      onClick={() => onMove(team, participant, targetTeam.id)}
+                      className="min-h-11 rounded-md border border-footballBlue px-2 text-xs font-bold text-footballBlue disabled:border-navy/10 disabled:text-navy/40"
+                    >
+                      Move to {targetTeam.name}
+                    </button>
+                  ))}
+              </div>
+            ) : null}
           </div>
         ))}
       </div>

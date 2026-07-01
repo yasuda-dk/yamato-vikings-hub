@@ -11,6 +11,7 @@ import type {
   GenerateTeamsInput,
   GuestAttendanceInput,
   RsvpInput,
+  TeamAdjustmentInput,
 } from './events';
 import { createSupabaseBrowserClient } from './supabase';
 import { DEFAULT_TEAM_ID, type MemberProfile, type MemberRegistrationInput } from './member-options';
@@ -38,6 +39,7 @@ export type Phase1Api = {
   updateGuestAttendance: (input: GuestAttendanceInput) => Promise<void>;
   getEventTeams: (eventId: string) => Promise<EventTeam[]>;
   generateTeams: (input: GenerateTeamsInput) => Promise<EventTeam[]>;
+  adjustTeam: (input: TeamAdjustmentInput) => Promise<EventTeam[]>;
 };
 
 let supabaseClient: ReturnType<typeof createSupabaseBrowserClient> | null = null;
@@ -140,6 +142,11 @@ export const phase1Api: Phase1Api = {
 
   async generateTeams(input: GenerateTeamsInput) {
     const data = await invokeFunction<{ teams: EventTeam[] }>('generate-teams', input);
+    return data.teams;
+  },
+
+  async adjustTeam(input: TeamAdjustmentInput) {
+    const data = await invokeFunction<{ teams: EventTeam[] }>('adjust-team', input);
     return data.teams;
   },
 };

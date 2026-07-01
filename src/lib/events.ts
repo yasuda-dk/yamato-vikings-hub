@@ -201,6 +201,32 @@ export type GenerateTeamsInput = {
   attemptNumber: number;
 };
 
+export type TeamAdjustmentInput =
+  | {
+      action: 'move-participant';
+      eventId: string;
+      participantKind: 'member' | 'guest';
+      participantId: string;
+      targetTeamId: string;
+    }
+  | {
+      action: 'toggle-lock';
+      eventId: string;
+      participantKind: 'member' | 'guest';
+      participantId: string;
+      isLocked: boolean;
+    }
+  | {
+      action: 'rename-team';
+      eventId: string;
+      teamId: string;
+      name: string;
+    }
+  | {
+      action: 'confirm-teams';
+      eventId: string;
+    };
+
 export function defaultEventSettings(eventType: EventType) {
   if (eventType === 'Football') {
     return { enableTeamGeneration: true, enableVoting: true };
