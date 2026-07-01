@@ -27,19 +27,46 @@ Deno.serve(async (req) => {
       return jsonResponse({ ok: false, error: participantsError.message }, 400);
     }
 
+    const lockedAssignments: Record<string, number> = {};
+    const lockedState: Record<string, boolean> = {};
+    let existingTeamNames: string[] = [];
+
+    if (body.preserveLocked === true) {
+      const { data: currentTeams, error: currentTeamsError } = await supabase.rpc('get_event_teams', {
+        target_event_id: body.eventId,
+      });
+
+      if (currentTeamsError) {
+        return jsonResponse({ ok: false, error: currentTeamsError.message }, 400);
+      }
+
+      existingTeamNames = (currentTeams ?? []).map((team: { name: string }) => team.name);
+      for (const [teamIndex, team] of (currentTeams ?? []).entries()) {
+        for (const participant of team.participants ?? []) {
+          const key = `${participant.kind}:${participant.id}`;
+          lockedState[key] = participant.is_locked === true;
+          if (participant.is_locked === true) {
+            lockedAssignments[key] = teamIndex;
+          }
+        }
+      }
+    }
+
     const result = generateTeams({
       participants: (participants ?? []) as TeamGenerationParticipant[],
       teamCount: body.teamCount,
       seed: `${body.eventId}:${attemptNumber}`,
+      lockedAssignments,
     });
 
     const { data: teams, error: saveError } = await supabase.rpc('save_draft_teams', {
       target_event_id: body.eventId,
-      p_teams: result.teams.map((team) => ({
-        name: team.name,
+      p_teams: result.teams.map((team, teamIndex) => ({
+        name: existingTeamNames[teamIndex] ?? team.name,
         participants: team.participants.map((participant) => ({
           kind: participant.kind,
           id: participant.id,
+          is_locked: lockedState[`${participant.kind}:${participant.id}`] === true,
         })),
       })),
       p_balance_score: result.score,

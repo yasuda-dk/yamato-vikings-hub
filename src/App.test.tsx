@@ -190,11 +190,21 @@ function createApi(initialState: SessionState): Phase1Api {
     },
     getEventTeams: async () => teams,
     generateTeams: async (input) => {
+      const lockedByKey = new Map<string, boolean>();
+      const existingNames = teams.map((team) => team.name);
+      if (input.preserveLocked) {
+        teams.forEach((team) => {
+          team.participants.forEach((participant) => {
+            lockedByKey.set(`${participant.kind}:${participant.id}`, participant.is_locked);
+          });
+        });
+      }
+
       teams = [
         {
           id: 'team-a',
           event_id: input.eventId,
-          name: 'Team A',
+          name: input.preserveLocked ? (existingNames[0] ?? 'Team A') : 'Team A',
           display_order: 0,
           is_confirmed: false,
           balance_score: 0,
@@ -208,14 +218,14 @@ function createApi(initialState: SessionState): Phase1Api {
               primary_position: takashi.primary_position,
               secondary_position: takashi.secondary_position,
               age_group: takashi.age_group,
-              is_locked: false,
+              is_locked: lockedByKey.get(`member:${takashi.id}`) === true,
             },
           ],
         },
         {
           id: 'team-b',
           event_id: input.eventId,
-          name: 'Team B',
+          name: input.preserveLocked ? (existingNames[1] ?? 'Team B') : 'Team B',
           display_order: 1,
           is_confirmed: false,
           balance_score: 0,
@@ -230,7 +240,7 @@ function createApi(initialState: SessionState): Phase1Api {
                   primary_position: guest.primary_position,
                   secondary_position: guest.secondary_position,
                   age_group: guest.age_group,
-                  is_locked: false,
+                  is_locked: lockedByKey.get(`guest:${guest.id}`) === true,
                 },
               ]
             : [],
@@ -440,6 +450,10 @@ describe('App shell', () => {
 
     await user.click(screen.getAllByRole('button', { name: 'Lock' })[0]);
     expect(await screen.findByText('Participant locked.')).toBeInTheDocument();
+    expect(screen.getByText('Locked')).toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: 'Regenerate unlocked' }));
+    expect(await screen.findByText('Unlocked players regenerated.')).toBeInTheDocument();
     expect(screen.getByText('Locked')).toBeInTheDocument();
 
     await user.click(screen.getByRole('button', { name: 'Unlock' }));

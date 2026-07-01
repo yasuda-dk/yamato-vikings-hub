@@ -110,6 +110,9 @@ export function EventDetailPage({ api, selectedMember }: EventDetailPageProps) {
   const duplicateError = useMemo(() => (detail ? validateDuplicateInput(duplicateDraft, detail.event.event_date) : null), [detail, duplicateDraft]);
   const saveDisabled = isSaving || Boolean(validationError) || loadState !== 'ready' || detail?.event.status === 'Cancelled';
   const isAdmin = selectedMember.application_role === 'Admin';
+  const hasDraftTeams = teams.length > 0 && teams.every((team) => !team.is_confirmed);
+  const canGenerateDraft = teams.length === 0 || hasDraftTeams;
+  const hasUnlockedDraftParticipants = teams.some((team) => team.participants.some((participant) => !participant.is_locked));
 
   if (!eventId) {
     return <Navigate to="/events" replace />;
@@ -171,6 +174,32 @@ export function EventDetailPage({ api, selectedMember }: EventDetailPageProps) {
     } catch (teamError) {
       setTeamsLoadState('error');
       setError(teamError instanceof Error ? teamError.message : 'Could not generate teams.');
+    } finally {
+      setAdminBusyId(null);
+    }
+  }
+
+  async function handleRegenerateUnlocked() {
+    if (!detail || teams.length === 0 || adminBusyId === 'generate-unlocked') return;
+
+    setAdminBusyId('generate-unlocked');
+    setTeamsLoadState('loading');
+    setError(null);
+    setSuccess(null);
+    try {
+      const nextTeams = await api.generateTeams({
+        eventId: detail.event.id,
+        teamCount: teams.length as 2 | 3 | 4,
+        attemptNumber: teamAttempt,
+        preserveLocked: true,
+      });
+      setTeams(nextTeams);
+      setTeamAttempt((current) => current + 1);
+      setTeamsLoadState('ready');
+      setSuccess('Unlocked players regenerated.');
+    } catch (teamError) {
+      setTeamsLoadState('error');
+      setError(teamError instanceof Error ? teamError.message : 'Could not regenerate teams.');
     } finally {
       setAdminBusyId(null);
     }
@@ -519,7 +548,7 @@ export function EventDetailPage({ api, selectedMember }: EventDetailPageProps) {
 
               {isAdmin && !detail.event.enable_team_generation ? <p className="mt-3 rounded-md bg-mist p-3 text-sm font-semibold text-navy/70">Team generation is disabled for this event.</p> : null}
 
-              {isAdmin && teams.every((team) => !team.is_confirmed) ? (
+              {isAdmin && canGenerateDraft ? (
                 <div className="mt-4 grid grid-cols-3 gap-2">
                   {[2, 3, 4].map((teamCount) => (
                     <button
@@ -533,6 +562,17 @@ export function EventDetailPage({ api, selectedMember }: EventDetailPageProps) {
                     </button>
                   ))}
                 </div>
+              ) : null}
+
+              {isAdmin && hasDraftTeams ? (
+                <button
+                  type="button"
+                  disabled={!hasUnlockedDraftParticipants || adminBusyId === 'generate-unlocked'}
+                  onClick={handleRegenerateUnlocked}
+                  className="mt-2 min-h-11 w-full rounded-md border border-footballBlue bg-white px-3 text-sm font-bold text-footballBlue disabled:border-navy/10 disabled:text-navy/40"
+                >
+                  {adminBusyId === 'generate-unlocked' ? 'Regenerating...' : 'Regenerate unlocked'}
+                </button>
               ) : null}
 
               {isAdmin && detail.counts.attended < 2 ? <p className="mt-3 rounded-md bg-mist p-3 text-sm text-navy/70">Confirm at least two attendees before generating teams.</p> : null}
@@ -559,7 +599,7 @@ export function EventDetailPage({ api, selectedMember }: EventDetailPageProps) {
                 </div>
               ) : null}
 
-              {isAdmin && teams.length > 0 && teams.every((team) => !team.is_confirmed) ? (
+              {isAdmin && teams.length > 0 && hasDraftTeams ? (
                 <button type="button" disabled={adminBusyId === 'team-action'} onClick={handleConfirmTeams} className="mt-4 min-h-12 w-full rounded-md bg-footballBlue px-4 text-base font-bold text-white disabled:bg-navy/40">
                   {adminBusyId === 'team-action' ? 'Saving...' : 'Confirm teams'}
                 </button>
