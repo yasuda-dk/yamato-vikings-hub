@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { createDefaultGuestInput, defaultEventSettings, formatEventDate, validateEventGuestInput, validateEventInput, validateRsvpInput, type EventCreateInput } from './events';
+import { createDefaultGuestInput, defaultEventSettings, formatEventDate, validateDuplicateInput, validateEventGuestInput, validateEventInput, validateRsvpInput, type EventCreateInput } from './events';
 
 const validEvent: EventCreateInput = {
   title: 'Friday Football',
@@ -60,5 +60,11 @@ describe('event helpers', () => {
     expect(validateEventGuestInput({ ...input, firstName: ' Ken ' }, [{ first_name: 'ken' }])).toEqual({
       firstName: 'This name is already used by a participant in this event.',
     });
+  });
+
+  it('requires duplicated events to use a new date', () => {
+    expect(validateDuplicateInput({ eventId: 'event-1', eventDate: '' }, '2026-07-03')).toBe('New date is required.');
+    expect(validateDuplicateInput({ eventId: 'event-1', eventDate: '2026-07-03' }, '2026-07-03')).toBe('Choose a new date for the duplicated event.');
+    expect(validateDuplicateInput({ eventId: 'event-1', eventDate: '2026-07-10' }, '2026-07-03')).toBeNull();
   });
 });

@@ -1,5 +1,5 @@
 import type { Session } from '@supabase/supabase-js';
-import type { AttendanceInput, EventCreateInput, EventDetail, EventGuestInput, EventSummary, GuestAttendanceInput, RsvpInput } from './events';
+import type { AttendanceInput, EventCreateInput, EventDetail, EventDuplicateInput, EventGuestInput, EventSummary, EventUpdateInput, GuestAttendanceInput, RsvpInput } from './events';
 import { createSupabaseBrowserClient } from './supabase';
 import { DEFAULT_TEAM_ID, type MemberProfile, type MemberRegistrationInput } from './member-options';
 
@@ -18,6 +18,8 @@ export type Phase1Api = {
   listEvents: () => Promise<EventSummary[]>;
   getEventDetail: (eventId: string) => Promise<EventDetail>;
   createEvent: (input: EventCreateInput) => Promise<string>;
+  updateEvent: (input: EventUpdateInput) => Promise<string>;
+  duplicateEvent: (input: EventDuplicateInput) => Promise<string>;
   updateRsvp: (input: RsvpInput) => Promise<void>;
   createEventGuest: (input: EventGuestInput) => Promise<string>;
   updateAttendance: (input: AttendanceInput) => Promise<void>;
@@ -87,6 +89,16 @@ export const phase1Api: Phase1Api = {
 
   async createEvent(input: EventCreateInput) {
     const data = await invokeFunction<{ eventId: string }>('create-event', input);
+    return data.eventId;
+  },
+
+  async updateEvent(input: EventUpdateInput) {
+    const data = await invokeFunction<{ eventId: string }>('update-event', input);
+    return data.eventId;
+  },
+
+  async duplicateEvent(input: EventDuplicateInput) {
+    const data = await invokeFunction<{ eventId: string }>('duplicate-event', input);
     return data.eventId;
   },
 

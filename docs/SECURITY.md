@@ -34,6 +34,7 @@ The `setup-team-password` function is protected by `TEAM_SETUP_TOKEN` and can in
 The event and RSVP slice keeps direct table writes closed to regular frontend code. The browser calls Edge Functions, and those functions execute database functions with the authenticated Supabase user context.
 
 - `create-event` requires the selected profile to be an Admin.
+- `update-event` and `duplicate-event` require the selected profile to be an Admin.
 - `events-list` and `event-detail` require current approved device access.
 - `update-rsvp` requires an active linked Member profile.
 - RSVP updates are scoped to `current_member_id()`.

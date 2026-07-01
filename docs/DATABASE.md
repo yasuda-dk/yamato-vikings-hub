@@ -51,6 +51,8 @@ Controlled values:
 Server-side functions:
 
 - `create_event`
+- `update_event`
+- `duplicate_event`
 - `list_events`
 - `get_event_detail`
 - `upsert_my_rsvp`
@@ -61,6 +63,8 @@ Server-side functions:
 Rules enforced in this slice:
 
 - Only Admin profiles can create events.
+- Only Admin profiles can edit events.
+- Event duplication copies the operational event configuration but requires a new date.
 - Approved devices can read events and their own/public RSVP counts.
 - A linked Member can update only their own RSVP through `upsert_my_rsvp`.
 - Late arrival is valid only when RSVP is `Going`.
