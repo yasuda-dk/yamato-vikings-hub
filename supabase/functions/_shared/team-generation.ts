@@ -52,11 +52,13 @@ export function generateTeams({
   teamCount,
   seed,
   attempts = 80,
+  lockedAssignments = {},
 }: {
   participants: TeamGenerationParticipant[];
   teamCount: 2 | 3 | 4;
   seed: string;
   attempts?: number;
+  lockedAssignments?: Record<string, number>;
 }) {
   const eligibleParticipants = participants.filter((participant) => participant.actual_status === 'Attended' && participant.membership_status !== 'Inactive');
   const targetSizes = getTargetSizes(eligibleParticipants.length, teamCount);
@@ -66,8 +68,8 @@ export function generateTeams({
 
   for (let attempt = 0; attempt < Math.max(attempts, 1); attempt += 1) {
     const rng = createSeededRandom(`${seed}:${attempt}`);
-    const candidate = createCandidate(eligibleParticipants, targetSizes, teamCount, rng);
-    const improved = improveWithSwaps(candidate);
+    const candidate = createCandidate(eligibleParticipants, targetSizes, teamCount, rng, lockedAssignments);
+    const improved = improveWithSwaps(candidate, lockedAssignments);
     const { score, breakdown } = scoreTeamBuckets(improved);
 
     if (score < bestScore) {
@@ -108,9 +110,17 @@ function summarizeTeam(participants: TeamGenerationParticipant[]): TeamSummary {
   };
 }
 
-function createCandidate(participants: TeamGenerationParticipant[], targetSizes: number[], teamCount: number, rng: () => number) {
+function createCandidate(participants: TeamGenerationParticipant[], targetSizes: number[], teamCount: number, rng: () => number, lockedAssignments: Record<string, number>) {
   const teams = Array.from({ length: teamCount }, () => [] as TeamGenerationParticipant[]);
-  const shuffled = shuffle([...participants], rng).sort((left, right) => right.football_level - left.football_level || rng() - 0.5);
+  const unlocked = participants.filter((participant) => {
+    const lockedTeam = lockedAssignments[getParticipantKey(participant)];
+    if (lockedTeam === undefined) return true;
+    if (lockedTeam >= 0 && lockedTeam < teamCount && teams[lockedTeam].length < targetSizes[lockedTeam]) {
+      teams[lockedTeam].push(participant);
+    }
+    return false;
+  });
+  const shuffled = shuffle([...unlocked], rng).sort((left, right) => right.football_level - left.football_level || rng() - 0.5);
 
   for (const participant of shuffled) {
     let bestIndex = 0;
@@ -132,7 +142,7 @@ function createCandidate(participants: TeamGenerationParticipant[], targetSizes:
   return teams;
 }
 
-function improveWithSwaps(teams: TeamGenerationParticipant[][]) {
+function improveWithSwaps(teams: TeamGenerationParticipant[][], lockedAssignments: Record<string, number>) {
   let current = teams.map((team) => [...team]);
   let currentScore = scoreTeamBuckets(current).score;
   let improved = true;
@@ -147,6 +157,7 @@ function improveWithSwaps(teams: TeamGenerationParticipant[][]) {
         for (let leftPlayerIndex = 0; leftPlayerIndex < current[leftIndex].length; leftPlayerIndex += 1) {
           for (let rightPlayerIndex = 0; rightPlayerIndex < current[rightIndex].length; rightPlayerIndex += 1) {
             const swapped = current.map((team) => [...team]);
+            if (lockedAssignments[getParticipantKey(current[leftIndex][leftPlayerIndex])] !== undefined || lockedAssignments[getParticipantKey(current[rightIndex][rightPlayerIndex])] !== undefined) continue;
             swapped[leftIndex][leftPlayerIndex] = current[rightIndex][rightPlayerIndex];
             swapped[rightIndex][rightPlayerIndex] = current[leftIndex][leftPlayerIndex];
             const swappedScore = scoreTeamBuckets(swapped).score;
@@ -163,6 +174,10 @@ function improveWithSwaps(teams: TeamGenerationParticipant[][]) {
   }
 
   return current;
+}
+
+function getParticipantKey(participant: Pick<TeamGenerationParticipant, 'kind' | 'id'>) {
+  return `${participant.kind}:${participant.id}`;
 }
 
 function scoreTeamBuckets(teams: TeamGenerationParticipant[][]): { score: number; breakdown: ScoreBreakdown } {

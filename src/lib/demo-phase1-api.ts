@@ -312,6 +312,24 @@ export const demoPhase1Api: Phase1Api = {
 
   async generateTeams(input: GenerateTeamsInput) {
     const detail = await this.getEventDetail(input.eventId);
+    const lockedAssignments: Record<string, number> = {};
+    const lockedState: Record<string, boolean> = {};
+    const existingTeamNames = demoTeams.filter((team) => team.event_id === input.eventId).sort((left, right) => left.display_order - right.display_order).map((team) => team.name);
+
+    if (input.preserveLocked) {
+      demoTeams
+        .filter((team) => team.event_id === input.eventId)
+        .forEach((team, teamIndex) => {
+          team.participants.forEach((participant) => {
+            const key = `${participant.kind}:${participant.id}`;
+            lockedState[key] = participant.is_locked;
+            if (participant.is_locked) {
+              lockedAssignments[key] = teamIndex;
+            }
+          });
+        });
+    }
+
     const result = generateBalancedTeams({
       participants: detail.participants.map(
         (participant): TeamGenerationParticipant => ({
@@ -321,13 +339,14 @@ export const demoPhase1Api: Phase1Api = {
       ),
       teamCount: input.teamCount,
       seed: `${input.eventId}:${input.attemptNumber}`,
+      lockedAssignments,
     });
 
     demoTeams = result.teams.map((team, index) => {
       return {
         id: `demo-team-${input.eventId}-${index}`,
         event_id: input.eventId,
-        name: team.name,
+        name: input.preserveLocked ? (existingTeamNames[index] ?? team.name) : team.name,
         display_order: index,
         is_confirmed: false,
         balance_score: result.score,
@@ -340,7 +359,7 @@ export const demoPhase1Api: Phase1Api = {
           primary_position: participant.primary_position,
           secondary_position: participant.secondary_position,
           age_group: participant.age_group,
-          is_locked: false,
+          is_locked: lockedState[`${participant.kind}:${participant.id}`] === true,
         })),
       };
     });

@@ -199,6 +199,7 @@ export type GenerateTeamsInput = {
   eventId: string;
   teamCount: 2 | 3 | 4;
   attemptNumber: number;
+  preserveLocked?: boolean;
 };
 
 export type TeamAdjustmentInput =
