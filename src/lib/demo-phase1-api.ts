@@ -386,6 +386,35 @@ export const demoPhase1Api: Phase1Api = {
       });
     }
 
+    if (input.action === 'swap-participants') {
+      const sourceTeam = demoTeams.find((team) => team.participants.some((participant) => participant.kind === input.participantKind && participant.id === input.participantId));
+      const swapTeam = demoTeams.find((team) => team.participants.some((participant) => participant.kind === input.swapParticipantKind && participant.id === input.swapParticipantId));
+      const participant = sourceTeam?.participants.find((item) => item.kind === input.participantKind && item.id === input.participantId);
+      const swapParticipant = swapTeam?.participants.find((item) => item.kind === input.swapParticipantKind && item.id === input.swapParticipantId);
+      if (!sourceTeam || !swapTeam || !participant || !swapParticipant) throw new Error('Draft participant not found');
+      if (participant.is_locked || swapParticipant.is_locked) throw new Error('Unlock participants before swapping');
+
+      demoTeams = demoTeams.map((team) => {
+        if (team.id === sourceTeam.id) {
+          return {
+            ...team,
+            balance_score: null,
+            score_breakdown: null,
+            participants: team.participants.map((item) => (item.kind === input.participantKind && item.id === input.participantId ? swapParticipant : item)),
+          };
+        }
+        if (team.id === swapTeam.id) {
+          return {
+            ...team,
+            balance_score: null,
+            score_breakdown: null,
+            participants: team.participants.map((item) => (item.kind === input.swapParticipantKind && item.id === input.swapParticipantId ? participant : item)),
+          };
+        }
+        return { ...team, balance_score: null, score_breakdown: null };
+      });
+    }
+
     if (input.action === 'toggle-lock') {
       demoTeams = demoTeams.map((team) => ({
         ...team,

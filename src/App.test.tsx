@@ -277,6 +277,23 @@ function createApi(initialState: SessionState): Phase1Api {
         });
       }
 
+      if (input.action === 'swap-participants') {
+        const source = teams.find((team) => team.participants.some((participant) => participant.kind === input.participantKind && participant.id === input.participantId));
+        const target = teams.find((team) => team.participants.some((participant) => participant.kind === input.swapParticipantKind && participant.id === input.swapParticipantId));
+        const first = source?.participants.find((participant) => participant.kind === input.participantKind && participant.id === input.participantId);
+        const second = target?.participants.find((participant) => participant.kind === input.swapParticipantKind && participant.id === input.swapParticipantId);
+        if (!source || !target || !first || !second) throw new Error('Draft participant not found');
+        teams = teams.map((team) => {
+          if (team.id === source.id) {
+            return { ...team, participants: team.participants.map((participant) => (participant.kind === input.participantKind && participant.id === input.participantId ? second : participant)) };
+          }
+          if (team.id === target.id) {
+            return { ...team, participants: team.participants.map((participant) => (participant.kind === input.swapParticipantKind && participant.id === input.swapParticipantId ? first : participant)) };
+          }
+          return team;
+        });
+      }
+
       if (input.action === 'confirm-teams') {
         teams = teams.map((team) => ({ ...team, is_confirmed: true }));
         event = { ...event, status: 'Teams confirmed' };
@@ -465,6 +482,33 @@ describe('App shell', () => {
     expect(await screen.findByText('Teams confirmed.')).toBeInTheDocument();
     expect(screen.getByText('Teams confirmed')).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Confirm teams' })).not.toBeInTheDocument();
+  });
+
+  it('lets an admin swap two unlocked draft participants', async () => {
+    const user = userEvent.setup();
+    render(<App api={createApi({ hasAccess: true, selectedMember: adminTakashi, members: [adminTakashi] })} />);
+
+    await user.click(await screen.findByRole('link', { name: /events/i }));
+    await user.click(await screen.findByRole('link', { name: /Friday Football/i }));
+    await user.click(screen.getByRole('button', { name: 'Add guest' }));
+    await user.type(screen.getByLabelText('Guest first name'), 'Ken');
+    await user.click(screen.getByRole('button', { name: 'Add guest' }));
+    await user.click(screen.getByRole('button', { name: 'Update RSVP' }));
+    await screen.findByText('RSVP updated.');
+    await user.click((await screen.findAllByRole('button', { name: 'Attended' }))[0]);
+    await screen.findByText('Attendance updated.');
+    await user.click((await screen.findAllByRole('button', { name: 'Attended' }))[1]);
+    await screen.findByText('Guest attendance updated.');
+    await user.click(screen.getByRole('button', { name: '2 teams' }));
+    await screen.findByText('Draft teams generated.');
+
+    await user.click(screen.getAllByRole('button', { name: 'Select to swap' })[0]);
+    expect(await screen.findByText('Selected Takashi for swap.')).toBeInTheDocument();
+    expect(screen.getByText('Selected for swap')).toBeInTheDocument();
+
+    await user.click(screen.getAllByRole('button', { name: 'Swap with selected' })[1]);
+    expect(await screen.findByText('Participants swapped.')).toBeInTheDocument();
+    expect(screen.queryByText('Selected for swap')).not.toBeInTheDocument();
   });
 
   it('creates a new member profile after password approval', async () => {
