@@ -289,6 +289,19 @@ describe('App shell', () => {
     expect(await screen.findByRole('heading', { name: 'Sunday Football' })).toBeInTheDocument();
   });
 
+  it('lets an admin cancel an event without deleting it', async () => {
+    const user = userEvent.setup();
+    render(<App api={createApi({ hasAccess: true, selectedMember: adminTakashi, members: [adminTakashi] })} />);
+
+    await user.click(await screen.findByRole('link', { name: /events/i }));
+    await user.click(await screen.findByRole('link', { name: /Friday Football/i }));
+    await user.click(await screen.findByRole('button', { name: 'Cancel event' }));
+
+    expect(await screen.findByText('Event cancelled.')).toBeInTheDocument();
+    expect(screen.getByText('Cancelled')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Update RSVP' })).toBeDisabled();
+  });
+
   it('creates a new member profile after password approval', async () => {
     const user = userEvent.setup();
     render(<App api={createApi({ hasAccess: false, selectedMember: null, members: [] })} />);
