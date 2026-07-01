@@ -9,6 +9,8 @@ import type {
   EventGuestInput,
   EventParticipant,
   EventSummary,
+  EventTeam,
+  GenerateTeamsInput,
   EventUpdateInput,
   GuestAttendanceInput,
   MyRsvp,
@@ -17,6 +19,7 @@ import type {
 import { normalizeFirstName } from './member-options';
 import type { MemberProfile, MemberRegistrationInput } from './member-options';
 import type { Phase1Api, SessionState } from './phase1-api';
+import { generateTeams as generateBalancedTeams, type TeamGenerationParticipant } from './team-generation';
 
 const demoSession = { access_token: 'demo' } as Session;
 
@@ -46,6 +49,7 @@ let demoEvents: EventSummary[] = [
 ];
 
 const demoRsvps: Record<string, MyRsvp> = {};
+let demoTeams: EventTeam[] = [];
 let demoGuests: EventGuest[] = [
   {
     id: 'demo-guest-1',
@@ -138,6 +142,7 @@ export const demoPhase1Api: Phase1Api = {
           football_level: member?.football_level ?? 3,
           primary_position: member?.primary_position ?? 'MF',
           secondary_position: member?.secondary_position ?? null,
+          age_group: member?.age_group ?? 'Not specified',
         };
       });
     const guestParticipants: EventParticipant[] = demoGuests
@@ -153,6 +158,7 @@ export const demoPhase1Api: Phase1Api = {
         football_level: guest.football_level,
         primary_position: guest.primary_position,
         secondary_position: guest.secondary_position,
+        age_group: guest.age_group,
       }));
     const participants = [...memberParticipants, ...guestParticipants];
 
@@ -297,5 +303,47 @@ export const demoPhase1Api: Phase1Api = {
 
   async updateGuestAttendance(input: GuestAttendanceInput) {
     demoGuests = demoGuests.map((guest) => (guest.id === input.eventGuestId ? { ...guest, actual_status: input.actualStatus } : guest));
+  },
+
+  async getEventTeams(eventId: string) {
+    return demoTeams.filter((team) => team.event_id === eventId);
+  },
+
+  async generateTeams(input: GenerateTeamsInput) {
+    const detail = await this.getEventDetail(input.eventId);
+    const result = generateBalancedTeams({
+      participants: detail.participants.map(
+        (participant): TeamGenerationParticipant => ({
+          ...participant,
+          membership_status: 'Active',
+        }),
+      ),
+      teamCount: input.teamCount,
+      seed: `${input.eventId}:${input.attemptNumber}`,
+    });
+
+    demoTeams = result.teams.map((team, index) => {
+      return {
+        id: `demo-team-${input.eventId}-${index}`,
+        event_id: input.eventId,
+        name: team.name,
+        display_order: index,
+        is_confirmed: false,
+        balance_score: result.score,
+        score_breakdown: result.scoreBreakdown,
+        participants: team.participants.map((participant) => ({
+          kind: participant.kind,
+          id: participant.id,
+          first_name: participant.first_name,
+          football_level: participant.football_level,
+          primary_position: participant.primary_position,
+          secondary_position: participant.secondary_position,
+          age_group: participant.age_group,
+          is_locked: false,
+        })),
+      };
+    });
+
+    return demoTeams;
   },
 };

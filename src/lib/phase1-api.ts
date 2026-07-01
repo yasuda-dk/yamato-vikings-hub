@@ -1,5 +1,17 @@
 import type { Session } from '@supabase/supabase-js';
-import type { AttendanceInput, EventCreateInput, EventDetail, EventDuplicateInput, EventGuestInput, EventSummary, EventUpdateInput, GuestAttendanceInput, RsvpInput } from './events';
+import type {
+  AttendanceInput,
+  EventCreateInput,
+  EventDetail,
+  EventDuplicateInput,
+  EventGuestInput,
+  EventSummary,
+  EventTeam,
+  EventUpdateInput,
+  GenerateTeamsInput,
+  GuestAttendanceInput,
+  RsvpInput,
+} from './events';
 import { createSupabaseBrowserClient } from './supabase';
 import { DEFAULT_TEAM_ID, type MemberProfile, type MemberRegistrationInput } from './member-options';
 
@@ -24,6 +36,8 @@ export type Phase1Api = {
   createEventGuest: (input: EventGuestInput) => Promise<string>;
   updateAttendance: (input: AttendanceInput) => Promise<void>;
   updateGuestAttendance: (input: GuestAttendanceInput) => Promise<void>;
+  getEventTeams: (eventId: string) => Promise<EventTeam[]>;
+  generateTeams: (input: GenerateTeamsInput) => Promise<EventTeam[]>;
 };
 
 let supabaseClient: ReturnType<typeof createSupabaseBrowserClient> | null = null;
@@ -117,5 +131,15 @@ export const phase1Api: Phase1Api = {
 
   async updateGuestAttendance(input: GuestAttendanceInput) {
     await invokeFunction('update-guest-attendance', input);
+  },
+
+  async getEventTeams(eventId: string) {
+    const data = await invokeFunction<{ teams: EventTeam[] }>('get-event-teams', { eventId });
+    return data.teams;
+  },
+
+  async generateTeams(input: GenerateTeamsInput) {
+    const data = await invokeFunction<{ teams: EventTeam[] }>('generate-teams', input);
+    return data.teams;
   },
 };

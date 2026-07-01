@@ -96,3 +96,16 @@ The algorithm is intentionally independent from UI. Future Phase 3 UI work shoul
 - Regenerate unlocked participants
 
 Essential team adjustment must not rely on drag-and-drop.
+
+## Draft Persistence
+
+Draft team generation is saved server-side through Supabase Edge Functions and PostgreSQL RPCs.
+
+- `generate-teams` loads eligible participants from the database, runs seeded generation, and saves a new draft.
+- `get-event-teams` returns teams that the current approved device is allowed to read.
+- `event_teams` stores the team name, display order, confirmation state, balance score, and score breakdown.
+- `event_team_participants` stores exactly one Member or Event Guest per row.
+
+Draft teams are Admin-only. Confirmed teams are readable by approved users. The save RPC deletes the previous unconfirmed draft for the event before inserting the new draft, and it validates that every submitted participant is either an attended active Member or an attended event Guest for that same event.
+
+This slice does not yet include manual move, swap, lock, rename, or confirm controls. Those remain in the next Phase 3 tasks.
