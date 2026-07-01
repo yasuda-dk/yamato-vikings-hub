@@ -238,6 +238,42 @@ function createApi(initialState: SessionState): Phase1Api {
       ];
       return teams;
     },
+    adjustTeam: async (input) => {
+      if (input.action === 'rename-team') {
+        teams = teams.map((team) => (team.id === input.teamId ? { ...team, name: input.name.trim() } : team));
+      }
+
+      if (input.action === 'toggle-lock') {
+        teams = teams.map((team) => ({
+          ...team,
+          participants: team.participants.map((participant) =>
+            participant.kind === input.participantKind && participant.id === input.participantId ? { ...participant, is_locked: input.isLocked } : participant,
+          ),
+        }));
+      }
+
+      if (input.action === 'move-participant') {
+        const source = teams.find((team) => team.participants.some((participant) => participant.kind === input.participantKind && participant.id === input.participantId));
+        const moved = source?.participants.find((participant) => participant.kind === input.participantKind && participant.id === input.participantId);
+        if (!source || !moved) throw new Error('Draft participant not found');
+        teams = teams.map((team) => {
+          if (team.id === source.id) {
+            return { ...team, participants: team.participants.filter((participant) => !(participant.kind === input.participantKind && participant.id === input.participantId)) };
+          }
+          if (team.id === input.targetTeamId) {
+            return { ...team, participants: [...team.participants, moved] };
+          }
+          return team;
+        });
+      }
+
+      if (input.action === 'confirm-teams') {
+        teams = teams.map((team) => ({ ...team, is_confirmed: true }));
+        event = { ...event, status: 'Teams confirmed' };
+      }
+
+      return teams;
+    },
   };
 }
 
@@ -376,6 +412,45 @@ describe('App shell', () => {
     expect(await screen.findByText('Draft teams generated.')).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: 'Team A' })).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: 'Team B' })).toBeInTheDocument();
+  });
+
+  it('lets an admin rename, lock, move and confirm draft teams', async () => {
+    const user = userEvent.setup();
+    render(<App api={createApi({ hasAccess: true, selectedMember: adminTakashi, members: [adminTakashi] })} />);
+
+    await user.click(await screen.findByRole('link', { name: /events/i }));
+    await user.click(await screen.findByRole('link', { name: /Friday Football/i }));
+    await user.click(screen.getByRole('button', { name: 'Add guest' }));
+    await user.type(screen.getByLabelText('Guest first name'), 'Ken');
+    await user.click(screen.getByRole('button', { name: 'Add guest' }));
+    await user.click(screen.getByRole('button', { name: 'Update RSVP' }));
+    await screen.findByText('RSVP updated.');
+    await user.click((await screen.findAllByRole('button', { name: 'Attended' }))[0]);
+    await screen.findByText('Attendance updated.');
+    await user.click((await screen.findAllByRole('button', { name: 'Attended' }))[1]);
+    await screen.findByText('Guest attendance updated.');
+    await user.click(screen.getByRole('button', { name: '2 teams' }));
+    await screen.findByText('Draft teams generated.');
+
+    await user.clear(screen.getByLabelText('Team A name'));
+    await user.type(screen.getByLabelText('Team A name'), 'Blue');
+    await user.click(screen.getAllByRole('button', { name: 'Save name' })[0]);
+    expect(await screen.findByText('Team renamed.')).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Blue' })).toBeInTheDocument();
+
+    await user.click(screen.getAllByRole('button', { name: 'Lock' })[0]);
+    expect(await screen.findByText('Participant locked.')).toBeInTheDocument();
+    expect(screen.getByText('Locked')).toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: 'Unlock' }));
+    expect(await screen.findByText('Participant unlocked.')).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Move to Team B' }));
+    expect(await screen.findByText('Participant moved.')).toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: 'Confirm teams' }));
+    expect(await screen.findByText('Teams confirmed.')).toBeInTheDocument();
+    expect(screen.getByText('Teams confirmed')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Confirm teams' })).not.toBeInTheDocument();
   });
 
   it('creates a new member profile after password approval', async () => {

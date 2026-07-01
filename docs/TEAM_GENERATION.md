@@ -108,4 +108,17 @@ Draft team generation is saved server-side through Supabase Edge Functions and P
 
 Draft teams are Admin-only. Confirmed teams are readable by approved users. The save RPC deletes the previous unconfirmed draft for the event before inserting the new draft, and it validates that every submitted participant is either an attended active Member or an attended event Guest for that same event.
 
-This slice does not yet include manual move, swap, lock, rename, or confirm controls. Those remain in the next Phase 3 tasks.
+## Manual Draft Adjustments
+
+Admins can adjust draft teams with tap-based controls:
+
+- Rename a draft team.
+- Lock or unlock a participant.
+- Move an unlocked participant to another draft team.
+- Confirm draft teams.
+
+Confirmed teams become publicly readable by approved users. Draft edit controls are Admin-only and are hidden after confirmation.
+
+The `adjust-team` Edge Function calls the `adjust_draft_team` RPC. The RPC enforces Admin access, rejects edits to confirmed teams, blocks moves for locked participants, and confirms teams only when the draft includes every eligible participant.
+
+This slice does not yet include participant swaps, removing a participant from draft teams, regenerating unlocked participants, or post-confirmation corrections. Those remain in future Phase 3 tasks.
