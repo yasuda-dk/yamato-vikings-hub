@@ -1,5 +1,19 @@
 import type { Session } from '@supabase/supabase-js';
-import type { ActualStatus, AttendanceInput, EventCreateInput, EventDetail, EventGuest, EventGuestInput, EventParticipant, EventSummary, GuestAttendanceInput, MyRsvp, RsvpInput } from './events';
+import type {
+  ActualStatus,
+  AttendanceInput,
+  EventCreateInput,
+  EventDetail,
+  EventDuplicateInput,
+  EventGuest,
+  EventGuestInput,
+  EventParticipant,
+  EventSummary,
+  EventUpdateInput,
+  GuestAttendanceInput,
+  MyRsvp,
+  RsvpInput,
+} from './events';
 import { normalizeFirstName } from './member-options';
 import type { MemberProfile, MemberRegistrationInput } from './member-options';
 import type { Phase1Api, SessionState } from './phase1-api';
@@ -187,6 +201,47 @@ export const demoPhase1Api: Phase1Api = {
         maybe_count: 0,
         not_going_count: 0,
         late_count: 0,
+      },
+    ];
+    return id;
+  },
+
+  async updateEvent(input: EventUpdateInput) {
+    demoEvents = demoEvents.map((event) =>
+      event.id === input.eventId
+        ? {
+            ...event,
+            title: input.title,
+            event_type: input.eventType,
+            event_date: input.eventDate,
+            start_time: input.startTime,
+            location: input.location,
+            rsvp_deadline: input.rsvpDeadline,
+            status: input.status,
+          }
+        : event,
+    );
+    return input.eventId;
+  },
+
+  async duplicateEvent(input: EventDuplicateInput) {
+    const source = demoEvents.find((event) => event.id === input.eventId);
+    if (!source) throw new Error('Event not found');
+    if (input.eventDate === source.event_date) throw new Error('Choose a new date for the duplicated event');
+
+    const id = crypto.randomUUID();
+    demoEvents = [
+      ...demoEvents,
+      {
+        ...source,
+        id,
+        event_date: input.eventDate,
+        my_rsvp_status: null,
+        going_count: 0,
+        maybe_count: 0,
+        not_going_count: 0,
+        late_count: 0,
+        status: 'Open',
       },
     ];
     return id;

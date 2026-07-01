@@ -134,6 +134,15 @@ export type EventCreateInput = {
   status: EventStatus;
 };
 
+export type EventUpdateInput = EventCreateInput & {
+  eventId: string;
+};
+
+export type EventDuplicateInput = {
+  eventId: string;
+  eventDate: string;
+};
+
 export type RsvpInput = {
   eventId: string;
   rsvpStatus: RsvpStatus;
@@ -188,6 +197,12 @@ export function validateEventInput(input: EventCreateInput) {
   return errors;
 }
 
+export function validateDuplicateInput(input: EventDuplicateInput, sourceDate: string) {
+  if (!input.eventDate) return 'New date is required.';
+  if (input.eventDate === sourceDate) return 'Choose a new date for the duplicated event.';
+  return null;
+}
+
 export function validateRsvpInput(input: RsvpInput) {
   if (input.rsvpStatus !== 'Going' && (input.isArrivingLate || input.expectedArrivalTime)) {
     return 'Late arrival is only available when RSVP is Going.';
@@ -235,6 +250,22 @@ export function createDefaultGuestInput(eventId: string): EventGuestInput {
     secondaryPosition: 'None',
     residenceType: residenceTypes[residenceTypes.length - 1],
     gender: genders[genders.length - 1],
+  };
+}
+
+export function eventRecordToInput(event: EventRecord): EventCreateInput {
+  return {
+    title: event.title,
+    eventType: event.event_type,
+    eventDate: event.event_date,
+    startTime: event.start_time.slice(0, 5),
+    location: event.location,
+    rsvpDeadline: event.rsvp_deadline.slice(0, 16),
+    numberOfTeams: event.number_of_teams,
+    notes: event.notes ?? '',
+    enableTeamGeneration: event.enable_team_generation,
+    enableVoting: event.enable_voting,
+    status: event.status,
   };
 }
 

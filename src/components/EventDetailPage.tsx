@@ -1,7 +1,19 @@
 import { type FormEvent, useEffect, useMemo, useState } from 'react';
-import { Link, Navigate, useParams } from 'react-router-dom';
-import type { ActualStatus, EventDetail, EventGuestInput, EventParticipant, RsvpInput, RsvpStatus } from '../lib/events';
-import { actualStatuses, createDefaultGuestInput, formatEventDate, rsvpStatuses, validateEventGuestInput, validateRsvpInput } from '../lib/events';
+import { Link, Navigate, useNavigate, useParams } from 'react-router-dom';
+import type { ActualStatus, EventCreateInput, EventDetail, EventDuplicateInput, EventGuestInput, EventParticipant, EventUpdateInput, RsvpInput, RsvpStatus } from '../lib/events';
+import {
+  actualStatuses,
+  createDefaultGuestInput,
+  eventRecordToInput,
+  eventStatuses,
+  eventTypes,
+  formatEventDate,
+  rsvpStatuses,
+  validateDuplicateInput,
+  validateEventGuestInput,
+  validateEventInput,
+  validateRsvpInput,
+} from '../lib/events';
 import { ageGroups, formatFootballLevel, footballLevelLabels, footballLevels, genders, positions, residenceTypes, type MemberProfile, type SecondaryPosition } from '../lib/member-options';
 import type { Phase1Api } from '../lib/phase1-api';
 
@@ -12,6 +24,7 @@ type EventDetailPageProps = {
 
 export function EventDetailPage({ api, selectedMember }: EventDetailPageProps) {
   const { eventId } = useParams();
+  const navigate = useNavigate();
   const [detail, setDetail] = useState<EventDetail | null>(null);
   const [loadState, setLoadState] = useState<'loading' | 'ready' | 'error'>('loading');
   const [error, setError] = useState<string | null>(null);
@@ -19,7 +32,11 @@ export function EventDetailPage({ api, selectedMember }: EventDetailPageProps) {
   const [isSaving, setIsSaving] = useState(false);
   const [adminBusyId, setAdminBusyId] = useState<string | null>(null);
   const [guestDraft, setGuestDraft] = useState<EventGuestInput>(() => createDefaultGuestInput(eventId ?? ''));
+  const [eventDraft, setEventDraft] = useState<EventCreateInput | null>(null);
+  const [duplicateDraft, setDuplicateDraft] = useState<EventDuplicateInput>({ eventId: eventId ?? '', eventDate: '' });
   const [showGuestForm, setShowGuestForm] = useState(false);
+  const [showEventForm, setShowEventForm] = useState(false);
+  const [showDuplicateForm, setShowDuplicateForm] = useState(false);
   const [draft, setDraft] = useState<RsvpInput>({
     eventId: eventId ?? '',
     rsvpStatus: 'Going',
@@ -36,6 +53,8 @@ export function EventDetailPage({ api, selectedMember }: EventDetailPageProps) {
       expectedArrivalTime: detail.myRsvp?.expected_arrival_time?.slice(0, 5) ?? '',
     });
     setGuestDraft((current) => ({ ...current, eventId }));
+    setDuplicateDraft((current) => ({ ...current, eventId }));
+    setEventDraft(eventRecordToInput(detail.event));
   }, [detail, eventId]);
 
   useEffect(() => {
@@ -69,6 +88,8 @@ export function EventDetailPage({ api, selectedMember }: EventDetailPageProps) {
 
   const validationError = useMemo(() => validateRsvpInput(draft), [draft]);
   const guestErrors = useMemo(() => validateEventGuestInput(guestDraft, detail?.participants ?? []), [guestDraft, detail?.participants]);
+  const eventErrors = useMemo(() => (eventDraft ? validateEventInput(eventDraft) : {}), [eventDraft]);
+  const duplicateError = useMemo(() => (detail ? validateDuplicateInput(duplicateDraft, detail.event.event_date) : null), [detail, duplicateDraft]);
   const saveDisabled = isSaving || Boolean(validationError) || loadState !== 'ready' || detail?.event.status === 'Cancelled';
   const isAdmin = selectedMember.application_role === 'Admin';
 
@@ -158,6 +179,46 @@ export function EventDetailPage({ api, selectedMember }: EventDetailPageProps) {
     }
   }
 
+  async function handleUpdateEvent(event: FormEvent) {
+    event.preventDefault();
+    if (!eventDraft || Object.keys(eventErrors).length > 0 || adminBusyId === 'event-form') return;
+
+    setAdminBusyId('event-form');
+    setError(null);
+    setSuccess(null);
+    try {
+      const input: EventUpdateInput = {
+        ...eventDraft,
+        eventId: draft.eventId,
+        rsvpDeadline: new Date(eventDraft.rsvpDeadline).toISOString(),
+      };
+      await api.updateEvent(input);
+      setShowEventForm(false);
+      await refreshDetail('Event updated.');
+    } catch (eventError) {
+      setError(eventError instanceof Error ? eventError.message : 'Could not update event.');
+    } finally {
+      setAdminBusyId(null);
+    }
+  }
+
+  async function handleDuplicateEvent(event: FormEvent) {
+    event.preventDefault();
+    if (duplicateError || adminBusyId === 'duplicate-form') return;
+
+    setAdminBusyId('duplicate-form');
+    setError(null);
+    setSuccess(null);
+    try {
+      const newEventId = await api.duplicateEvent(duplicateDraft);
+      navigate(`/events/${newEventId}`);
+    } catch (duplicateEventError) {
+      setError(duplicateEventError instanceof Error ? duplicateEventError.message : 'Could not duplicate event.');
+    } finally {
+      setAdminBusyId(null);
+    }
+  }
+
   return (
     <section className="space-y-4">
       <Link to="/events" className="inline-flex min-h-11 items-center rounded-md text-sm font-bold text-footballBlue">
@@ -201,6 +262,45 @@ export function EventDetailPage({ api, selectedMember }: EventDetailPageProps) {
               <Count label="Guests" value={detail.counts.guests} />
             </div>
           </div>
+
+          {isAdmin ? (
+            <div className="rounded-lg border border-navy/10 bg-white p-4">
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <p className="text-sm font-semibold text-footballBlue">Admin</p>
+                  <h3 className="mt-1 text-base font-bold text-navy">Event controls</h3>
+                </div>
+              </div>
+              <div className="mt-4 grid grid-cols-2 gap-2">
+                <button type="button" onClick={() => setShowEventForm((current) => !current)} className="min-h-11 rounded-md border border-footballBlue px-3 text-sm font-bold text-footballBlue">
+                  {showEventForm ? 'Close edit' : 'Edit event'}
+                </button>
+                <button type="button" onClick={() => setShowDuplicateForm((current) => !current)} className="min-h-11 rounded-md border border-footballBlue px-3 text-sm font-bold text-footballBlue">
+                  {showDuplicateForm ? 'Close copy' : 'Duplicate'}
+                </button>
+              </div>
+
+              {showEventForm && eventDraft ? (
+                <form onSubmit={handleUpdateEvent} className="mt-4 space-y-4">
+                  <h4 className="text-sm font-bold text-navy">Edit event</h4>
+                  <EventFields draft={eventDraft} errors={eventErrors} onChange={setEventDraft} />
+                  <button type="submit" disabled={Object.keys(eventErrors).length > 0 || adminBusyId === 'event-form'} className="min-h-12 w-full rounded-md bg-footballBlue px-4 text-base font-bold text-white disabled:bg-navy/40">
+                    {adminBusyId === 'event-form' ? 'Saving...' : 'Save event'}
+                  </button>
+                </form>
+              ) : null}
+
+              {showDuplicateForm ? (
+                <form onSubmit={handleDuplicateEvent} className="mt-4 space-y-4">
+                  <h4 className="text-sm font-bold text-navy">Duplicate event</h4>
+                  <TextInput label="New date" type="date" value={duplicateDraft.eventDate} error={duplicateError ?? undefined} onChange={(eventDate) => setDuplicateDraft((current) => ({ ...current, eventDate }))} />
+                  <button type="submit" disabled={Boolean(duplicateError) || adminBusyId === 'duplicate-form'} className="min-h-12 w-full rounded-md bg-footballBlue px-4 text-base font-bold text-white disabled:bg-navy/40">
+                    {adminBusyId === 'duplicate-form' ? 'Duplicating...' : 'Duplicate event'}
+                  </button>
+                </form>
+              ) : null}
+            </div>
+          ) : null}
 
           {isAdmin ? (
             <div className="rounded-lg border border-navy/10 bg-white p-4">
@@ -389,6 +489,47 @@ function DetailLoading() {
   );
 }
 
+function EventFields({
+  draft,
+  errors,
+  onChange,
+}: {
+  draft: EventCreateInput;
+  errors: Partial<Record<keyof EventCreateInput, string>>;
+  onChange: (draft: EventCreateInput) => void;
+}) {
+  return (
+    <>
+      <TextInput label="Title" value={draft.title} error={errors.title} onChange={(title) => onChange({ ...draft, title })} />
+      <Select label="Event type" value={draft.eventType} options={eventTypes} onChange={(eventType) => onChange({ ...draft, eventType })} />
+      <TextInput label="Date" type="date" value={draft.eventDate} error={errors.eventDate} onChange={(eventDate) => onChange({ ...draft, eventDate })} />
+      <TextInput label="Start time" type="time" value={draft.startTime} error={errors.startTime} onChange={(startTime) => onChange({ ...draft, startTime })} />
+      <TextInput label="Location" value={draft.location} error={errors.location} onChange={(location) => onChange({ ...draft, location })} />
+      <TextInput label="RSVP deadline" type="datetime-local" value={draft.rsvpDeadline} error={errors.rsvpDeadline} onChange={(rsvpDeadline) => onChange({ ...draft, rsvpDeadline })} />
+      <Select
+        label="Number of teams"
+        value={String(draft.numberOfTeams)}
+        options={['2', '3', '4']}
+        error={errors.numberOfTeams}
+        onChange={(numberOfTeams) => onChange({ ...draft, numberOfTeams: Number(numberOfTeams) })}
+      />
+      <Select label="Status" value={draft.status} options={eventStatuses} onChange={(status) => onChange({ ...draft, status })} />
+      <label className="block text-sm font-semibold text-navy">
+        Notes
+        <textarea value={draft.notes} onChange={(event) => onChange({ ...draft, notes: event.target.value })} className="mt-2 min-h-24 w-full rounded-md border border-navy/20 px-3 py-2 text-base" />
+      </label>
+      <label className="flex min-h-12 items-center justify-between gap-3 rounded-md bg-mist px-3 text-sm font-semibold text-navy">
+        <span>Enable team generation</span>
+        <input type="checkbox" checked={draft.enableTeamGeneration} onChange={(event) => onChange({ ...draft, enableTeamGeneration: event.target.checked })} className="h-5 w-5 accent-footballBlue" />
+      </label>
+      <label className="flex min-h-12 items-center justify-between gap-3 rounded-md bg-mist px-3 text-sm font-semibold text-navy">
+        <span>Enable voting</span>
+        <input type="checkbox" checked={draft.enableVoting} onChange={(event) => onChange({ ...draft, enableVoting: event.target.checked })} className="h-5 w-5 accent-footballBlue" />
+      </label>
+    </>
+  );
+}
+
 function rsvpButtonClass(isActive: boolean) {
   return ['min-h-11 rounded-md px-2 text-sm font-bold', isActive ? 'bg-footballBlue text-white' : 'bg-mist text-navy'].join(' ');
 }
@@ -397,11 +538,23 @@ function actualStatusButtonClass(isActive: boolean) {
   return ['min-h-11 rounded-md px-1 text-xs font-bold', isActive ? 'bg-footballBlue text-white' : 'bg-white text-navy'].join(' ');
 }
 
-function TextInput({ label, value, onChange, error }: { label: string; value: string; onChange: (value: string) => void; error?: string }) {
+function TextInput({
+  label,
+  value,
+  onChange,
+  error,
+  type = 'text',
+}: {
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+  error?: string;
+  type?: 'text' | 'date' | 'time' | 'datetime-local';
+}) {
   return (
     <label className="block text-sm font-semibold text-navy">
       {label}
-      <input aria-label={label} value={value} onChange={(event) => onChange(event.target.value)} className="mt-2 min-h-12 w-full rounded-md border border-navy/20 px-3 text-base" />
+      <input aria-label={label} type={type} value={value} onChange={(event) => onChange(event.target.value)} className="mt-2 min-h-12 w-full rounded-md border border-navy/20 px-3 text-base" />
       {error ? <span className="mt-1 block text-sm text-red-700">{error}</span> : null}
     </label>
   );

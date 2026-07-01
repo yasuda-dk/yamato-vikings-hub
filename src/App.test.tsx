@@ -120,6 +120,33 @@ function createApi(initialState: SessionState): Phase1Api {
       guests: guest ? [guest] : [],
     }),
     createEvent: async () => 'event-new',
+    updateEvent: async (input) => {
+      event = {
+        ...event,
+        title: input.title,
+        event_type: input.eventType,
+        event_date: input.eventDate,
+        start_time: input.startTime,
+        location: input.location,
+        rsvp_deadline: input.rsvpDeadline,
+        status: input.status,
+      };
+      return input.eventId;
+    },
+    duplicateEvent: async (input) => {
+      if (input.eventDate === event.event_date) throw new Error('Choose a new date for the duplicated event');
+      event = {
+        ...event,
+        id: 'event-copy',
+        event_date: input.eventDate,
+        my_rsvp_status: null,
+        going_count: 0,
+        maybe_count: 0,
+        not_going_count: 0,
+        late_count: 0,
+      };
+      return event.id;
+    },
     updateRsvp: async (input: RsvpInput) => {
       event = { ...event, my_rsvp_status: input.rsvpStatus };
       rsvp = {
@@ -239,6 +266,27 @@ describe('App shell', () => {
 
     await user.click(screen.getByRole('button', { name: 'Attended' }));
     expect(await screen.findByText('Guest attendance updated.')).toBeInTheDocument();
+  });
+
+  it('lets an admin edit and duplicate an event', async () => {
+    const user = userEvent.setup();
+    render(<App api={createApi({ hasAccess: true, selectedMember: adminTakashi, members: [adminTakashi] })} />);
+
+    await user.click(await screen.findByRole('link', { name: /events/i }));
+    await user.click(await screen.findByRole('link', { name: /Friday Football/i }));
+    await user.click(await screen.findByRole('button', { name: 'Edit event' }));
+    await user.clear(screen.getByLabelText('Title'));
+    await user.type(screen.getByLabelText('Title'), 'Sunday Football');
+    await user.click(screen.getByRole('button', { name: 'Save event' }));
+
+    expect(await screen.findByText('Event updated.')).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: 'Sunday Football' })).toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: 'Duplicate' }));
+    await user.type(screen.getByLabelText('New date'), '2026-07-10');
+    await user.click(screen.getByRole('button', { name: 'Duplicate event' }));
+
+    expect(await screen.findByRole('heading', { name: 'Sunday Football' })).toBeInTheDocument();
   });
 
   it('creates a new member profile after password approval', async () => {
