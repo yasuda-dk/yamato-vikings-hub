@@ -86,7 +86,10 @@ function createApi(initialState: SessionState): Phase1Api {
       isEligibleVoter: Boolean(selectedMember && selectedMember.membership_status === 'Active' && actualStatus === 'Attended' && event.status === 'Voting open'),
       candidates,
       myVotes,
-      results: event.status === 'Completed' ? awards : [],
+      results:
+        event.status === 'Completed'
+          ? awards.filter((award) => award.is_admin_override || !awards.some((override) => override.vote_type === award.vote_type && override.is_admin_override))
+          : [],
     };
   }
 
@@ -387,10 +390,30 @@ function createApi(initialState: SessionState): Phase1Api {
               vote_type: voteType as 'MVP' | 'Worst',
               vote_count,
               is_winner: true,
+              is_admin_override: false,
             };
           });
       });
       event = { ...event, status: 'Completed' };
+      return buildVoting();
+    },
+    overrideAward: async (input) => {
+      if (state.selectedMember?.application_role !== 'Admin') throw new Error('Admin permission is required');
+      if (event.status !== 'Completed') throw new Error('Awards can only be overridden after voting is completed');
+      const voting = buildVoting();
+      const candidate = voting.candidates.find((item) => item.kind === input.candidateKind && item.id === input.candidateId);
+      if (!candidate) throw new Error('Candidate is not eligible');
+      const vote_count = Object.values(votes).filter((vote) => vote.eventId === input.eventId && vote.voteType === input.awardType && vote.candidateKind === input.candidateKind && vote.candidateId === input.candidateId).length;
+      awards = [
+        ...awards.filter((award) => award.vote_type !== input.awardType || !award.is_admin_override),
+        {
+          ...candidate,
+          vote_type: input.awardType,
+          vote_count,
+          is_winner: true,
+          is_admin_override: true,
+        },
+      ];
       return buildVoting();
     },
   };
@@ -663,6 +686,39 @@ describe('App shell', () => {
     expect(screen.getByText('Worst Player')).toBeInTheDocument();
     expect(screen.getAllByText('Ken').length).toBeGreaterThan(0);
     expect(screen.getAllByText('1 vote').length).toBeGreaterThanOrEqual(2);
+  });
+
+  it('lets an admin override a completed award result', async () => {
+    const user = userEvent.setup();
+    render(<App api={createApi({ hasAccess: true, selectedMember: adminTakashi, members: [adminTakashi] })} />);
+
+    await user.click(await screen.findByRole('link', { name: /events/i }));
+    await user.click(await screen.findByRole('link', { name: /Friday Football/i }));
+    await user.click(screen.getByRole('button', { name: 'Add guest' }));
+    await user.type(screen.getByLabelText('Guest first name'), 'Ken');
+    await user.click(screen.getByRole('button', { name: 'Add guest' }));
+    await user.click(screen.getByRole('button', { name: 'Update RSVP' }));
+    await screen.findByText('RSVP updated.');
+    await user.click((await screen.findAllByRole('button', { name: 'Attended' }))[0]);
+    await screen.findByText('Attendance updated.');
+    await user.click((await screen.findAllByRole('button', { name: 'Attended' }))[1]);
+    await screen.findByText('Guest attendance updated.');
+
+    await user.click(screen.getByRole('button', { name: 'Open voting' }));
+    const kenButtons = await screen.findAllByRole('button', { name: /Ken/ });
+    await user.click(kenButtons[0]);
+    await user.click(kenButtons[1]);
+    await user.click(screen.getByRole('button', { name: 'Submit votes' }));
+    await screen.findByText('Votes submitted.');
+    await user.click(screen.getByRole('button', { name: 'Close voting' }));
+    await screen.findByText('Voting closed.');
+
+    await user.click(screen.getAllByRole('button', { name: 'Takashi' })[0]);
+    await user.click(screen.getByRole('button', { name: 'Save MVP override' }));
+
+    expect(await screen.findByText('MVP override saved.')).toBeInTheDocument();
+    expect(screen.getByText('Admin override')).toBeInTheDocument();
+    expect(screen.getAllByText('0 votes').length).toBeGreaterThanOrEqual(1);
   });
 
   it('creates a new member profile after password approval', async () => {

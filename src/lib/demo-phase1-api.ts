@@ -108,6 +108,11 @@ async function buildDemoVotingState(eventId: string): Promise<EventVotingState> 
 
   const myParticipant = detail.participants.find((participant) => participant.kind === 'member' && participant.id === selectedMember?.id);
 
+  const visibleAwards =
+    detail.event.status === 'Completed'
+      ? demoAwards.filter((award) => award.is_admin_override || !demoAwards.some((override) => override.vote_type === award.vote_type && override.is_admin_override))
+      : [];
+
   return {
     eventId,
     status: detail.event.status,
@@ -115,7 +120,7 @@ async function buildDemoVotingState(eventId: string): Promise<EventVotingState> 
     isEligibleVoter: Boolean(selectedMember && selectedMember.membership_status === 'Active' && myParticipant?.actual_status === 'Attended' && detail.event.status === 'Voting open' && detail.event.enable_voting),
     candidates,
     myVotes,
-    results: detail.event.status === 'Completed' ? demoAwards : [],
+    results: visibleAwards,
   };
 }
 
@@ -141,6 +146,7 @@ function calculateDemoAwards(eventId: string, candidates: EventVotingState['cand
         vote_type: voteType,
         vote_count: voteCount,
         is_winner: true,
+        is_admin_override: false,
       });
     }
   }
@@ -556,6 +562,32 @@ export const demoPhase1Api: Phase1Api = {
     const voting = await buildDemoVotingState(input.eventId);
     demoAwards = calculateDemoAwards(input.eventId, voting.candidates);
     demoEvents = demoEvents.map((event) => (event.id === input.eventId ? { ...event, status: 'Completed' } : event));
+    return buildDemoVotingState(input.eventId);
+  },
+
+  async overrideAward(input) {
+    const selectedMember = state.selectedMember;
+    if (selectedMember?.application_role !== 'Admin') throw new Error('Admin permission is required');
+
+    const voting = await buildDemoVotingState(input.eventId);
+    if (voting.status !== 'Completed') throw new Error('Awards can only be overridden after voting is completed');
+
+    const candidate = voting.candidates.find((item) => item.kind === input.candidateKind && item.id === input.candidateId);
+    if (!candidate) throw new Error('Candidate is not eligible');
+
+    const voteCount = Object.values(demoVotes).filter((vote) => vote.eventId === input.eventId && vote.voteType === input.awardType && vote.candidateKind === input.candidateKind && vote.candidateId === input.candidateId).length;
+
+    demoAwards = [
+      ...demoAwards.filter((award) => award.vote_type !== input.awardType || !award.is_admin_override),
+      {
+        ...candidate,
+        vote_type: input.awardType,
+        vote_count: voteCount,
+        is_winner: true,
+        is_admin_override: true,
+      },
+    ];
+
     return buildDemoVotingState(input.eventId);
   },
 };

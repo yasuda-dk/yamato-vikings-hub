@@ -11,6 +11,7 @@ import type {
   EventUpdateInput,
   GenerateTeamsInput,
   GuestAttendanceInput,
+  OverrideAwardInput,
   RsvpInput,
   TeamAdjustmentInput,
   VoteInput,
@@ -46,6 +47,7 @@ export type Phase1Api = {
   getEventVoting: (eventId: string) => Promise<EventVotingState>;
   submitVote: (input: VoteInput) => Promise<EventVotingState>;
   setVotingStatus: (input: VotingStatusInput) => Promise<EventVotingState>;
+  overrideAward: (input: OverrideAwardInput) => Promise<EventVotingState>;
 };
 
 let supabaseClient: ReturnType<typeof createSupabaseBrowserClient> | null = null;
@@ -168,6 +170,11 @@ export const phase1Api: Phase1Api = {
 
   async setVotingStatus(input: VotingStatusInput) {
     const data = await invokeFunction<{ voting: EventVotingState }>('set-voting-status', input);
+    return data.voting;
+  },
+
+  async overrideAward(input: OverrideAwardInput) {
+    const data = await invokeFunction<{ voting: EventVotingState }>('override-award', input);
     return data.voting;
   },
 };
