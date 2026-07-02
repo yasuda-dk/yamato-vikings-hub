@@ -140,6 +140,7 @@ export type VotingResult = VotingCandidate & {
   vote_type: VoteType;
   vote_count: number;
   is_winner: boolean;
+  is_admin_override: boolean;
 };
 
 export type EventVotingState = {
@@ -162,6 +163,13 @@ export type VoteInput = {
 export type VotingStatusInput = {
   eventId: string;
   status: 'Voting open' | 'Completed';
+};
+
+export type OverrideAwardInput = {
+  eventId: string;
+  awardType: VoteType;
+  candidateKind: 'member' | 'guest';
+  candidateId: string;
 };
 
 export type EventDetail = {

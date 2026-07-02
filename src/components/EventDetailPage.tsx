@@ -54,6 +54,7 @@ export function EventDetailPage({ api, selectedMember }: EventDetailPageProps) {
   const [teamNameDrafts, setTeamNameDrafts] = useState<Record<string, string>>({});
   const [swapSelection, setSwapSelection] = useState<{ teamId: string; participant: EventTeam['participants'][number] } | null>(null);
   const [voteDraft, setVoteDraft] = useState<Partial<Record<VoteType, string>>>({});
+  const [awardOverrideDraft, setAwardOverrideDraft] = useState<Partial<Record<VoteType, string>>>({});
   const [guestDraft, setGuestDraft] = useState<EventGuestInput>(() => createDefaultGuestInput(eventId ?? ''));
   const [eventDraft, setEventDraft] = useState<EventCreateInput | null>(null);
   const [duplicateDraft, setDuplicateDraft] = useState<EventDuplicateInput>({ eventId: eventId ?? '', eventDate: '' });
@@ -397,6 +398,36 @@ export function EventDetailPage({ api, selectedMember }: EventDetailPageProps) {
       setError(voteError instanceof Error ? voteError.message : 'Could not submit votes.');
     } finally {
       setIsSaving(false);
+    }
+  }
+
+  async function handleOverrideAward(awardType: VoteType) {
+    if (!detail || adminBusyId === `override-${awardType}`) return;
+    const candidate = parseCandidateKey(awardOverrideDraft[awardType]);
+    if (!candidate) {
+      setError(`Choose a ${awardType === 'MVP' ? 'MVP' : 'Worst Player'} override candidate.`);
+      return;
+    }
+
+    setAdminBusyId(`override-${awardType}`);
+    setVotingLoadState('loading');
+    setError(null);
+    setSuccess(null);
+    try {
+      const nextVoting = await api.overrideAward({
+        eventId: detail.event.id,
+        awardType,
+        candidateKind: candidate.kind,
+        candidateId: candidate.id,
+      });
+      setVoting(nextVoting);
+      setVotingLoadState('ready');
+      setSuccess(`${awardType === 'MVP' ? 'MVP' : 'Worst Player'} override saved.`);
+    } catch (overrideError) {
+      setVotingLoadState('error');
+      setError(overrideError instanceof Error ? overrideError.message : 'Could not save award override.');
+    } finally {
+      setAdminBusyId(null);
     }
   }
 
@@ -755,13 +786,17 @@ export function EventDetailPage({ api, selectedMember }: EventDetailPageProps) {
               isAdmin={isAdmin}
               selectedMemberId={selectedMember.id}
               voteDraft={voteDraft}
+              awardOverrideDraft={awardOverrideDraft}
               isSaving={isSaving}
               isBusy={adminBusyId === 'voting-status'}
+              busyAwardType={adminBusyId?.startsWith('override-') ? (adminBusyId.replace('override-', '') as VoteType) : null}
               loadState={votingLoadState}
               onVoteDraftChange={setVoteDraft}
+              onAwardOverrideDraftChange={setAwardOverrideDraft}
               onSubmitVotes={handleSubmitVotes}
               onOpenVoting={() => handleVotingStatus('Voting open')}
               onCloseVoting={() => handleVotingStatus('Completed')}
+              onOverrideAward={handleOverrideAward}
             />
           ) : null}
 
@@ -874,25 +909,33 @@ function VotingPanel({
   isAdmin,
   selectedMemberId,
   voteDraft,
+  awardOverrideDraft,
   isSaving,
   isBusy,
+  busyAwardType,
   loadState,
   onVoteDraftChange,
+  onAwardOverrideDraftChange,
   onSubmitVotes,
   onOpenVoting,
   onCloseVoting,
+  onOverrideAward,
 }: {
   voting: EventVotingState;
   isAdmin: boolean;
   selectedMemberId: string;
   voteDraft: Partial<Record<VoteType, string>>;
+  awardOverrideDraft: Partial<Record<VoteType, string>>;
   isSaving: boolean;
   isBusy: boolean;
+  busyAwardType: VoteType | null;
   loadState: 'idle' | 'loading' | 'ready' | 'error';
   onVoteDraftChange: (draft: Partial<Record<VoteType, string>>) => void;
+  onAwardOverrideDraftChange: (draft: Partial<Record<VoteType, string>>) => void;
   onSubmitVotes: () => Promise<void>;
   onOpenVoting: () => Promise<void>;
   onCloseVoting: () => Promise<void>;
+  onOverrideAward: (awardType: VoteType) => Promise<void>;
 }) {
   const memberCandidates = voting.candidates.filter((candidate) => !(candidate.kind === 'member' && candidate.id === selectedMemberId));
   const canSubmit = voting.isEligibleVoter && Boolean(voteDraft.MVP) && Boolean(voteDraft.Worst) && !isSaving;
@@ -962,18 +1005,79 @@ function VotingPanel({
                 <div className="mt-2 space-y-2">
                   {results.map((result) => (
                     <div key={`${result.vote_type}-${result.kind}-${result.id}`} className="flex min-h-11 items-center justify-between gap-3 rounded bg-white px-3 py-2">
-                      <p className="min-w-0 break-words text-sm font-bold text-navy">{result.first_name}</p>
+                      <div className="min-w-0">
+                        <p className="break-words text-sm font-bold text-navy">{result.first_name}</p>
+                        {result.is_admin_override ? <p className="mt-1 text-xs font-bold text-footballBlue">Admin override</p> : null}
+                      </div>
                       <span className="shrink-0 rounded bg-mist px-2 py-1 text-xs font-bold text-navy">
                         {result.vote_count} {result.vote_count === 1 ? 'vote' : 'votes'}
                       </span>
                     </div>
                   ))}
                 </div>
+                {isAdmin ? (
+                  <AwardOverrideControl
+                    awardType={voteType}
+                    candidates={voting.candidates}
+                    selectedKey={awardOverrideDraft[voteType]}
+                    isBusy={busyAwardType === voteType}
+                    disabled={loadState === 'loading'}
+                    onSelect={(selectedKey) => onAwardOverrideDraftChange({ ...awardOverrideDraft, [voteType]: selectedKey })}
+                    onOverride={() => onOverrideAward(voteType)}
+                  />
+                ) : null}
               </div>
             );
           })}
         </div>
       ) : null}
+    </div>
+  );
+}
+
+function AwardOverrideControl({
+  awardType,
+  candidates,
+  selectedKey,
+  isBusy,
+  disabled,
+  onSelect,
+  onOverride,
+}: {
+  awardType: VoteType;
+  candidates: VotingCandidate[];
+  selectedKey: string | undefined;
+  isBusy: boolean;
+  disabled: boolean;
+  onSelect: (selectedKey: string) => void;
+  onOverride: () => Promise<void>;
+}) {
+  const label = awardType === 'MVP' ? 'MVP' : 'Worst Player';
+
+  return (
+    <div className="mt-3 border-t border-navy/10 pt-3">
+      <h5 className="text-xs font-bold uppercase text-navy/60">Override {label}</h5>
+      <div className="mt-2 grid gap-2">
+        {candidates.map((candidate) => {
+          const key = candidateKey(candidate.kind, candidate.id);
+          const isSelected = selectedKey === key;
+          return (
+            <button
+              key={`${awardType}-override-${key}`}
+              type="button"
+              disabled={disabled || isBusy}
+              onClick={() => onSelect(key)}
+              className={`min-h-11 rounded-md border px-3 text-left text-sm font-bold disabled:border-navy/10 disabled:text-navy/40 ${isSelected ? 'border-footballBlue bg-white text-footballBlue' : 'border-navy/10 bg-white text-navy'}`}
+            >
+              {candidate.first_name}
+              {candidate.kind === 'guest' ? <span className="ml-2 rounded bg-mist px-2 py-1 text-xs text-footballBlue">GUEST</span> : null}
+            </button>
+          );
+        })}
+      </div>
+      <button type="button" disabled={disabled || isBusy || !selectedKey} onClick={onOverride} className="mt-2 min-h-11 w-full rounded-md border border-footballBlue bg-white px-3 text-sm font-bold text-footballBlue disabled:border-navy/10 disabled:text-navy/40">
+        {isBusy ? 'Saving override...' : `Save ${label} override`}
+      </button>
     </div>
   );
 }
