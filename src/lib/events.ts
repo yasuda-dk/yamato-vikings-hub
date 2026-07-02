@@ -22,11 +22,13 @@ export const eventTypes = ['Football', 'Tournament', 'Social', 'Other'] as const
 export const eventStatuses = ['Draft', 'Open', 'Attendance confirmed', 'Teams confirmed', 'Voting open', 'Completed', 'Cancelled'] as const;
 export const rsvpStatuses = ['Going', 'Maybe', 'Not going'] as const;
 export const actualStatuses = ['Not confirmed', 'Attended', 'Absent'] as const;
+export const voteTypes = ['MVP', 'Worst'] as const;
 
 export type EventType = (typeof eventTypes)[number];
 export type EventStatus = (typeof eventStatuses)[number];
 export type RsvpStatus = (typeof rsvpStatuses)[number];
 export type ActualStatus = (typeof actualStatuses)[number];
+export type VoteType = (typeof voteTypes)[number];
 
 export type EventSummary = {
   id: string;
@@ -126,6 +128,40 @@ export type EventTeam = {
   balance_score: number | null;
   score_breakdown: Record<string, number> | null;
   participants: EventTeamParticipant[];
+};
+
+export type VotingCandidate = {
+  kind: 'member' | 'guest';
+  id: string;
+  first_name: string;
+};
+
+export type VotingResult = VotingCandidate & {
+  vote_type: VoteType;
+  vote_count: number;
+  is_winner: boolean;
+};
+
+export type EventVotingState = {
+  eventId: string;
+  status: EventStatus;
+  enableVoting: boolean;
+  isEligibleVoter: boolean;
+  candidates: VotingCandidate[];
+  myVotes: Partial<Record<VoteType, { candidateKind: 'member' | 'guest'; candidateId: string }>>;
+  results: VotingResult[];
+};
+
+export type VoteInput = {
+  eventId: string;
+  voteType: VoteType;
+  candidateKind: 'member' | 'guest';
+  candidateId: string;
+};
+
+export type VotingStatusInput = {
+  eventId: string;
+  status: 'Voting open' | 'Completed';
 };
 
 export type EventDetail = {

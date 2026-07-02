@@ -1,6 +1,20 @@
 import { type FormEvent, useEffect, useMemo, useState } from 'react';
 import { Link, Navigate, useNavigate, useParams } from 'react-router-dom';
-import type { ActualStatus, EventCreateInput, EventDetail, EventDuplicateInput, EventGuestInput, EventParticipant, EventTeam, EventUpdateInput, RsvpInput, RsvpStatus } from '../lib/events';
+import type {
+  ActualStatus,
+  EventCreateInput,
+  EventDetail,
+  EventDuplicateInput,
+  EventGuestInput,
+  EventParticipant,
+  EventTeam,
+  EventUpdateInput,
+  EventVotingState,
+  RsvpInput,
+  RsvpStatus,
+  VoteType,
+  VotingCandidate,
+} from '../lib/events';
 import {
   actualStatuses,
   createDefaultGuestInput,
@@ -13,6 +27,7 @@ import {
   validateEventGuestInput,
   validateEventInput,
   validateRsvpInput,
+  voteTypes,
 } from '../lib/events';
 import { ageGroups, formatFootballLevel, footballLevelLabels, footballLevels, genders, positions, residenceTypes, type MemberProfile, type SecondaryPosition } from '../lib/member-options';
 import type { Phase1Api } from '../lib/phase1-api';
@@ -27,8 +42,10 @@ export function EventDetailPage({ api, selectedMember }: EventDetailPageProps) {
   const navigate = useNavigate();
   const [detail, setDetail] = useState<EventDetail | null>(null);
   const [teams, setTeams] = useState<EventTeam[]>([]);
+  const [voting, setVoting] = useState<EventVotingState | null>(null);
   const [loadState, setLoadState] = useState<'loading' | 'ready' | 'error'>('loading');
   const [teamsLoadState, setTeamsLoadState] = useState<'idle' | 'loading' | 'ready' | 'error'>('idle');
+  const [votingLoadState, setVotingLoadState] = useState<'idle' | 'loading' | 'ready' | 'error'>('idle');
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
@@ -36,6 +53,7 @@ export function EventDetailPage({ api, selectedMember }: EventDetailPageProps) {
   const [adminBusyId, setAdminBusyId] = useState<string | null>(null);
   const [teamNameDrafts, setTeamNameDrafts] = useState<Record<string, string>>({});
   const [swapSelection, setSwapSelection] = useState<{ teamId: string; participant: EventTeam['participants'][number] } | null>(null);
+  const [voteDraft, setVoteDraft] = useState<Partial<Record<VoteType, string>>>({});
   const [guestDraft, setGuestDraft] = useState<EventGuestInput>(() => createDefaultGuestInput(eventId ?? ''));
   const [eventDraft, setEventDraft] = useState<EventCreateInput | null>(null);
   const [duplicateDraft, setDuplicateDraft] = useState<EventDuplicateInput>({ eventId: eventId ?? '', eventDate: '' });
@@ -73,6 +91,14 @@ export function EventDetailPage({ api, selectedMember }: EventDetailPageProps) {
   }, [teams]);
 
   useEffect(() => {
+    if (!voting) return;
+    setVoteDraft({
+      MVP: voting.myVotes.MVP ? candidateKey(voting.myVotes.MVP.candidateKind, voting.myVotes.MVP.candidateId) : undefined,
+      Worst: voting.myVotes.Worst ? candidateKey(voting.myVotes.Worst.candidateKind, voting.myVotes.Worst.candidateId) : undefined,
+    });
+  }, [voting]);
+
+  useEffect(() => {
     if (!eventId) return;
     const currentEventId = eventId;
     let isMounted = true;
@@ -81,19 +107,23 @@ export function EventDetailPage({ api, selectedMember }: EventDetailPageProps) {
       try {
         setLoadState('loading');
         setTeamsLoadState('loading');
+        setVotingLoadState('loading');
         setError(null);
-        const [nextDetail, nextTeams] = await Promise.all([api.getEventDetail(currentEventId), api.getEventTeams(currentEventId)]);
+        const [nextDetail, nextTeams, nextVoting] = await Promise.all([api.getEventDetail(currentEventId), api.getEventTeams(currentEventId), api.getEventVoting(currentEventId)]);
         if (isMounted) {
           setDetail(nextDetail);
           setTeams(nextTeams);
+          setVoting(nextVoting);
           setLoadState('ready');
           setTeamsLoadState('ready');
+          setVotingLoadState('ready');
         }
       } catch (loadError) {
         if (isMounted) {
           setError(loadError instanceof Error ? loadError.message : 'Could not load event.');
           setLoadState('error');
           setTeamsLoadState('error');
+          setVotingLoadState('error');
         }
       }
     }
@@ -151,9 +181,10 @@ export function EventDetailPage({ api, selectedMember }: EventDetailPageProps) {
   }
 
   async function refreshDetail(message: string) {
-    const [nextDetail, nextTeams] = await Promise.all([api.getEventDetail(draft.eventId), api.getEventTeams(draft.eventId)]);
+    const [nextDetail, nextTeams, nextVoting] = await Promise.all([api.getEventDetail(draft.eventId), api.getEventTeams(draft.eventId), api.getEventVoting(draft.eventId)]);
     setDetail(nextDetail);
     setTeams(nextTeams);
+    setVoting(nextVoting);
     setSuccess(message);
   }
 
@@ -219,8 +250,9 @@ export function EventDetailPage({ api, selectedMember }: EventDetailPageProps) {
       setTeams(nextTeams);
       setSwapSelection(null);
       if (input.action === 'confirm-teams') {
-        const nextDetail = await api.getEventDetail(input.eventId);
+        const [nextDetail, nextVoting] = await Promise.all([api.getEventDetail(input.eventId), api.getEventVoting(input.eventId)]);
         setDetail(nextDetail);
+        setVoting(nextVoting);
       }
       setSuccess(message);
     } catch (teamError) {
@@ -310,6 +342,62 @@ export function EventDetailPage({ api, selectedMember }: EventDetailPageProps) {
   async function handleConfirmTeams() {
     if (!detail) return;
     await adjustTeam({ action: 'confirm-teams', eventId: detail.event.id }, 'Teams confirmed.');
+  }
+
+  async function handleVotingStatus(status: 'Voting open' | 'Completed') {
+    if (!detail || adminBusyId === 'voting-status') return;
+
+    setAdminBusyId('voting-status');
+    setVotingLoadState('loading');
+    setError(null);
+    setSuccess(null);
+    try {
+      const nextVoting = await api.setVotingStatus({ eventId: detail.event.id, status });
+      const nextDetail = await api.getEventDetail(detail.event.id);
+      setVoting(nextVoting);
+      setDetail(nextDetail);
+      setVotingLoadState('ready');
+      setSuccess(status === 'Voting open' ? 'Voting opened.' : 'Voting closed.');
+    } catch (votingError) {
+      setVotingLoadState('error');
+      setError(votingError instanceof Error ? votingError.message : 'Could not update voting.');
+    } finally {
+      setAdminBusyId(null);
+    }
+  }
+
+  async function handleSubmitVotes() {
+    if (!detail || isSaving) return;
+    const mvp = parseCandidateKey(voteDraft.MVP);
+    const worst = parseCandidateKey(voteDraft.Worst);
+    if (!mvp || !worst) {
+      setError('Choose one MVP and one Worst Player.');
+      return;
+    }
+
+    setIsSaving(true);
+    setError(null);
+    setSuccess(null);
+    try {
+      await api.submitVote({
+        eventId: detail.event.id,
+        voteType: 'MVP',
+        candidateKind: mvp.kind,
+        candidateId: mvp.id,
+      });
+      const nextVoting = await api.submitVote({
+        eventId: detail.event.id,
+        voteType: 'Worst',
+        candidateKind: worst.kind,
+        candidateId: worst.id,
+      });
+      setVoting(nextVoting);
+      setSuccess('Votes submitted.');
+    } catch (voteError) {
+      setError(voteError instanceof Error ? voteError.message : 'Could not submit votes.');
+    } finally {
+      setIsSaving(false);
+    }
   }
 
   async function updateMemberAttendance(memberId: string, actualStatus: ActualStatus) {
@@ -661,6 +749,22 @@ export function EventDetailPage({ api, selectedMember }: EventDetailPageProps) {
             </div>
           ) : null}
 
+          {voting ? (
+            <VotingPanel
+              voting={voting}
+              isAdmin={isAdmin}
+              selectedMemberId={selectedMember.id}
+              voteDraft={voteDraft}
+              isSaving={isSaving}
+              isBusy={adminBusyId === 'voting-status'}
+              loadState={votingLoadState}
+              onVoteDraftChange={setVoteDraft}
+              onSubmitVotes={handleSubmitVotes}
+              onOpenVoting={() => handleVotingStatus('Voting open')}
+              onCloseVoting={() => handleVotingStatus('Completed')}
+            />
+          ) : null}
+
           <form onSubmit={handleSubmit} className="rounded-lg border border-navy/10 bg-white p-4">
             <h3 className="text-base font-bold text-navy">Your RSVP</h3>
             {detail.myRsvp?.was_updated_after_deadline ? <p className="mt-2 text-sm font-semibold text-navy">Late response recorded</p> : null}
@@ -749,6 +853,162 @@ function ParticipantRow({
             {status === 'Not confirmed' ? 'Unset' : status}
           </button>
         ))}
+      </div>
+    </div>
+  );
+}
+
+function candidateKey(kind: 'member' | 'guest', id: string) {
+  return `${kind}:${id}`;
+}
+
+function parseCandidateKey(value: string | undefined): { kind: 'member' | 'guest'; id: string } | null {
+  if (!value) return null;
+  const [kind, id] = value.split(':');
+  if ((kind !== 'member' && kind !== 'guest') || !id) return null;
+  return { kind, id };
+}
+
+function VotingPanel({
+  voting,
+  isAdmin,
+  selectedMemberId,
+  voteDraft,
+  isSaving,
+  isBusy,
+  loadState,
+  onVoteDraftChange,
+  onSubmitVotes,
+  onOpenVoting,
+  onCloseVoting,
+}: {
+  voting: EventVotingState;
+  isAdmin: boolean;
+  selectedMemberId: string;
+  voteDraft: Partial<Record<VoteType, string>>;
+  isSaving: boolean;
+  isBusy: boolean;
+  loadState: 'idle' | 'loading' | 'ready' | 'error';
+  onVoteDraftChange: (draft: Partial<Record<VoteType, string>>) => void;
+  onSubmitVotes: () => Promise<void>;
+  onOpenVoting: () => Promise<void>;
+  onCloseVoting: () => Promise<void>;
+}) {
+  const memberCandidates = voting.candidates.filter((candidate) => !(candidate.kind === 'member' && candidate.id === selectedMemberId));
+  const canSubmit = voting.isEligibleVoter && Boolean(voteDraft.MVP) && Boolean(voteDraft.Worst) && !isSaving;
+  const canOpen = isAdmin && voting.enableVoting && voting.status !== 'Voting open' && voting.status !== 'Completed' && voting.candidates.length > 0;
+  const canClose = isAdmin && voting.status === 'Voting open';
+
+  return (
+    <div className="rounded-lg border border-navy/10 bg-white p-4">
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <p className="text-sm font-semibold text-footballBlue">{isAdmin ? 'Admin' : 'Event'}</p>
+          <h3 className="mt-1 text-base font-bold text-navy">Voting</h3>
+          <p className="mt-1 text-sm text-navy/70">{voting.candidates.length} attended candidates.</p>
+        </div>
+        <span className="shrink-0 rounded-md bg-mist px-2 py-1 text-xs font-bold text-navy">{voting.status === 'Voting open' ? 'Open' : voting.status === 'Completed' ? 'Final' : 'Closed'}</span>
+      </div>
+
+      {loadState === 'loading' ? <p className="mt-3 rounded-md bg-mist p-3 text-sm font-semibold text-navy/70">Updating voting...</p> : null}
+      {loadState === 'error' ? <p className="mt-3 rounded-md border border-red-200 p-3 text-sm font-semibold text-red-800">Voting could not update. Try again.</p> : null}
+      {!voting.enableVoting ? <p className="mt-3 rounded-md bg-mist p-3 text-sm font-semibold text-navy/70">Voting is disabled for this event.</p> : null}
+      {voting.enableVoting && voting.candidates.length === 0 ? <p className="mt-3 rounded-md bg-mist p-3 text-sm font-semibold text-navy/70">Confirm attendance before voting.</p> : null}
+
+      {isAdmin && voting.enableVoting ? (
+        <div className="mt-4 grid grid-cols-2 gap-2">
+          <button type="button" disabled={!canOpen || isBusy} onClick={onOpenVoting} className="min-h-11 rounded-md bg-footballBlue px-3 text-sm font-bold text-white disabled:bg-navy/35">
+            {isBusy && canOpen ? 'Opening...' : 'Open voting'}
+          </button>
+          <button type="button" disabled={!canClose || isBusy} onClick={onCloseVoting} className="min-h-11 rounded-md border border-footballBlue px-3 text-sm font-bold text-footballBlue disabled:border-navy/10 disabled:text-navy/40">
+            {isBusy && canClose ? 'Closing...' : 'Close voting'}
+          </button>
+        </div>
+      ) : null}
+
+      {voting.status === 'Voting open' ? (
+        <div className="mt-4 space-y-4">
+          {voting.isEligibleVoter ? (
+            <>
+              {voteTypes.map((voteType) => (
+                <VoteChoiceGroup
+                  key={voteType}
+                  voteType={voteType}
+                  candidates={memberCandidates}
+                  selectedKey={voteDraft[voteType]}
+                  onSelect={(selectedKey) => onVoteDraftChange({ ...voteDraft, [voteType]: selectedKey })}
+                />
+              ))}
+              <button type="button" disabled={!canSubmit} onClick={onSubmitVotes} className="min-h-12 w-full rounded-md bg-footballBlue px-4 text-base font-bold text-white disabled:bg-navy/40">
+                {isSaving ? 'Submitting...' : 'Submit votes'}
+              </button>
+            </>
+          ) : (
+            <p className="rounded-md bg-mist p-3 text-sm font-semibold text-navy/70">Only attended active members can vote.</p>
+          )}
+          <p className="rounded-md bg-mist p-3 text-sm font-semibold text-navy/70">Intermediate results are hidden until voting closes.</p>
+        </div>
+      ) : null}
+
+      {voting.status === 'Completed' ? (
+        <div className="mt-4 space-y-3">
+          {voting.results.length === 0 ? <p className="rounded-md bg-mist p-3 text-sm font-semibold text-navy/70">No votes were submitted.</p> : null}
+          {voteTypes.map((voteType) => {
+            const results = voting.results.filter((result) => result.vote_type === voteType);
+            if (results.length === 0) return null;
+            return (
+              <div key={voteType} className="rounded-md bg-mist p-3">
+                <h4 className="text-sm font-bold text-navy">{voteType === 'MVP' ? 'MVP' : 'Worst Player'}</h4>
+                <div className="mt-2 space-y-2">
+                  {results.map((result) => (
+                    <div key={`${result.vote_type}-${result.kind}-${result.id}`} className="flex min-h-11 items-center justify-between gap-3 rounded bg-white px-3 py-2">
+                      <p className="min-w-0 break-words text-sm font-bold text-navy">{result.first_name}</p>
+                      <span className="shrink-0 rounded bg-mist px-2 py-1 text-xs font-bold text-navy">
+                        {result.vote_count} {result.vote_count === 1 ? 'vote' : 'votes'}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+function VoteChoiceGroup({
+  voteType,
+  candidates,
+  selectedKey,
+  onSelect,
+}: {
+  voteType: VoteType;
+  candidates: VotingCandidate[];
+  selectedKey: string | undefined;
+  onSelect: (selectedKey: string) => void;
+}) {
+  return (
+    <div>
+      <h4 className="text-sm font-bold text-navy">{voteType === 'MVP' ? 'MVP vote' : 'Worst Player vote'}</h4>
+      <div className="mt-2 grid gap-2">
+        {candidates.length === 0 ? <p className="rounded-md bg-mist p-3 text-sm font-semibold text-navy/70">No eligible candidates.</p> : null}
+        {candidates.map((candidate) => {
+          const key = candidateKey(candidate.kind, candidate.id);
+          const isSelected = selectedKey === key;
+          return (
+            <button
+              key={`${voteType}-${key}`}
+              type="button"
+              onClick={() => onSelect(key)}
+              className={`min-h-11 rounded-md border px-3 text-left text-sm font-bold ${isSelected ? 'border-footballBlue bg-footballBlue text-white' : 'border-navy/10 bg-mist text-navy'}`}
+            >
+              {candidate.first_name}
+              {candidate.kind === 'guest' ? <span className="ml-2 rounded bg-white/80 px-2 py-1 text-xs text-footballBlue">GUEST</span> : null}
+            </button>
+          );
+        })}
       </div>
     </div>
   );

@@ -7,11 +7,14 @@ import type {
   EventGuestInput,
   EventSummary,
   EventTeam,
+  EventVotingState,
   EventUpdateInput,
   GenerateTeamsInput,
   GuestAttendanceInput,
   RsvpInput,
   TeamAdjustmentInput,
+  VoteInput,
+  VotingStatusInput,
 } from './events';
 import { createSupabaseBrowserClient } from './supabase';
 import { DEFAULT_TEAM_ID, type MemberProfile, type MemberRegistrationInput } from './member-options';
@@ -40,6 +43,9 @@ export type Phase1Api = {
   getEventTeams: (eventId: string) => Promise<EventTeam[]>;
   generateTeams: (input: GenerateTeamsInput) => Promise<EventTeam[]>;
   adjustTeam: (input: TeamAdjustmentInput) => Promise<EventTeam[]>;
+  getEventVoting: (eventId: string) => Promise<EventVotingState>;
+  submitVote: (input: VoteInput) => Promise<EventVotingState>;
+  setVotingStatus: (input: VotingStatusInput) => Promise<EventVotingState>;
 };
 
 let supabaseClient: ReturnType<typeof createSupabaseBrowserClient> | null = null;
@@ -148,5 +154,20 @@ export const phase1Api: Phase1Api = {
   async adjustTeam(input: TeamAdjustmentInput) {
     const data = await invokeFunction<{ teams: EventTeam[] }>('adjust-team', input);
     return data.teams;
+  },
+
+  async getEventVoting(eventId: string) {
+    const data = await invokeFunction<{ voting: EventVotingState }>('event-voting', { eventId });
+    return data.voting;
+  },
+
+  async submitVote(input: VoteInput) {
+    const data = await invokeFunction<{ voting: EventVotingState }>('submit-vote', input);
+    return data.voting;
+  },
+
+  async setVotingStatus(input: VotingStatusInput) {
+    const data = await invokeFunction<{ voting: EventVotingState }>('set-voting-status', input);
+    return data.voting;
   },
 };
