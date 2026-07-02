@@ -211,6 +211,14 @@ export type TeamAdjustmentInput =
       targetTeamId: string;
     }
   | {
+      action: 'swap-participants';
+      eventId: string;
+      participantKind: 'member' | 'guest';
+      participantId: string;
+      swapParticipantKind: 'member' | 'guest';
+      swapParticipantId: string;
+    }
+  | {
       action: 'toggle-lock';
       eventId: string;
       participantKind: 'member' | 'guest';

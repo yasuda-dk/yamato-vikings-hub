@@ -35,6 +35,7 @@ export function EventDetailPage({ api, selectedMember }: EventDetailPageProps) {
   const [teamAttempt, setTeamAttempt] = useState(1);
   const [adminBusyId, setAdminBusyId] = useState<string | null>(null);
   const [teamNameDrafts, setTeamNameDrafts] = useState<Record<string, string>>({});
+  const [swapSelection, setSwapSelection] = useState<{ teamId: string; participant: EventTeam['participants'][number] } | null>(null);
   const [guestDraft, setGuestDraft] = useState<EventGuestInput>(() => createDefaultGuestInput(eventId ?? ''));
   const [eventDraft, setEventDraft] = useState<EventCreateInput | null>(null);
   const [duplicateDraft, setDuplicateDraft] = useState<EventDuplicateInput>({ eventId: eventId ?? '', eventDate: '' });
@@ -214,6 +215,7 @@ export function EventDetailPage({ api, selectedMember }: EventDetailPageProps) {
     try {
       const nextTeams = await api.adjustTeam(input);
       setTeams(nextTeams);
+      setSwapSelection(null);
       if (input.action === 'confirm-teams') {
         const nextDetail = await api.getEventDetail(input.eventId);
         setDetail(nextDetail);
@@ -236,6 +238,33 @@ export function EventDetailPage({ api, selectedMember }: EventDetailPageProps) {
         targetTeamId,
       },
       'Participant moved.',
+    );
+  }
+
+  async function handleSwapParticipants(team: EventTeam, participant: EventTeam['participants'][number]) {
+    if (!swapSelection) {
+      setSwapSelection({ teamId: team.id, participant });
+      setSuccess(`Selected ${participant.first_name} for swap.`);
+      setError(null);
+      return;
+    }
+
+    if (swapSelection.participant.kind === participant.kind && swapSelection.participant.id === participant.id) {
+      setSwapSelection(null);
+      setSuccess(null);
+      return;
+    }
+
+    await adjustTeam(
+      {
+        action: 'swap-participants',
+        eventId: team.event_id,
+        participantKind: swapSelection.participant.kind,
+        participantId: swapSelection.participant.id,
+        swapParticipantKind: participant.kind,
+        swapParticipantId: participant.id,
+      },
+      'Participants swapped.',
     );
   }
 
@@ -594,8 +623,15 @@ export function EventDetailPage({ api, selectedMember }: EventDetailPageProps) {
                       onRename={handleRenameTeam}
                       onMove={handleMoveParticipant}
                       onToggleLock={handleToggleLock}
+                      swapSelection={swapSelection}
+                      onSwap={handleSwapParticipants}
                     />
                   ))}
+                  {isAdmin && hasDraftTeams && swapSelection ? (
+                    <button type="button" onClick={() => setSwapSelection(null)} className="min-h-11 w-full rounded-md border border-navy/15 bg-white px-3 text-sm font-bold text-navy">
+                      Cancel swap
+                    </button>
+                  ) : null}
                 </div>
               ) : null}
 
@@ -710,6 +746,8 @@ function TeamDraft({
   onRename,
   onMove,
   onToggleLock,
+  swapSelection,
+  onSwap,
 }: {
   team: EventTeam;
   teams: EventTeam[];
@@ -720,6 +758,8 @@ function TeamDraft({
   onRename: (team: EventTeam) => Promise<void>;
   onMove: (team: EventTeam, participant: EventTeam['participants'][number], targetTeamId: string) => Promise<void>;
   onToggleLock: (team: EventTeam, participant: EventTeam['participants'][number]) => Promise<void>;
+  swapSelection: { teamId: string; participant: EventTeam['participants'][number] } | null;
+  onSwap: (team: EventTeam, participant: EventTeam['participants'][number]) => Promise<void>;
 }) {
   const summary = summarizeTeam(team);
   const canEdit = isAdmin && !team.is_confirmed;
@@ -754,6 +794,7 @@ function TeamDraft({
       <div className="mt-3 space-y-2">
         {team.participants.map((participant) => (
           <div key={`${participant.kind}-${participant.id}`} className="rounded bg-white px-3 py-2">
+            {swapSelection?.participant.kind === participant.kind && swapSelection.participant.id === participant.id ? <p className="mb-2 rounded bg-mist px-2 py-1 text-xs font-bold text-footballBlue">Selected for swap</p> : null}
             <div className="flex min-h-11 items-center justify-between gap-3">
               <div className="min-w-0">
                 <p className="break-words text-sm font-bold text-navy">{participant.first_name}</p>
@@ -770,6 +811,14 @@ function TeamDraft({
               <div className="mt-2 grid grid-cols-2 gap-2">
                 <button type="button" disabled={isBusy} onClick={() => onToggleLock(team, participant)} className="min-h-11 rounded-md bg-mist px-2 text-xs font-bold text-navy disabled:text-navy/40">
                   {participant.is_locked ? 'Unlock' : 'Lock'}
+                </button>
+                <button
+                  type="button"
+                  disabled={isBusy || participant.is_locked || (swapSelection !== null && swapSelection.participant.kind === participant.kind && swapSelection.participant.id === participant.id)}
+                  onClick={() => onSwap(team, participant)}
+                  className="min-h-11 rounded-md bg-mist px-2 text-xs font-bold text-navy disabled:text-navy/40"
+                >
+                  {swapSelection ? 'Swap with selected' : 'Select to swap'}
                 </button>
                 {teams
                   .filter((targetTeam) => targetTeam.id !== team.id)

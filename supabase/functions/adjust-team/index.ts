@@ -1,7 +1,7 @@
 import { handleCors, jsonResponse } from '../_shared/cors.ts';
 import { requireUser } from '../_shared/supabase.ts';
 
-const actions = ['move-participant', 'toggle-lock', 'rename-team', 'confirm-teams'];
+const actions = ['move-participant', 'swap-participants', 'toggle-lock', 'rename-team', 'confirm-teams'];
 
 Deno.serve(async (req) => {
   const cors = handleCors(req);
@@ -24,6 +24,8 @@ Deno.serve(async (req) => {
       p_target_team_id: typeof body.targetTeamId === 'string' ? body.targetTeamId : null,
       p_name: typeof body.name === 'string' ? body.name : null,
       p_is_locked: typeof body.isLocked === 'boolean' ? body.isLocked : null,
+      p_swap_participant_kind: typeof body.swapParticipantKind === 'string' ? body.swapParticipantKind : null,
+      p_swap_participant_id: typeof body.swapParticipantId === 'string' ? body.swapParticipantId : null,
     });
 
     if (error) {
