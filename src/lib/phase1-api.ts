@@ -17,6 +17,7 @@ import type {
   VoteInput,
   VotingStatusInput,
 } from './events';
+import type { FineBoxState, ReportFinePaymentInput } from './fines';
 import { createSupabaseBrowserClient } from './supabase';
 import { DEFAULT_TEAM_ID, type MemberProfile, type MemberRegistrationInput } from './member-options';
 
@@ -48,6 +49,8 @@ export type Phase1Api = {
   submitVote: (input: VoteInput) => Promise<EventVotingState>;
   setVotingStatus: (input: VotingStatusInput) => Promise<EventVotingState>;
   overrideAward: (input: OverrideAwardInput) => Promise<EventVotingState>;
+  getFineBox: () => Promise<FineBoxState>;
+  reportFinePayment: (input: ReportFinePaymentInput) => Promise<FineBoxState>;
 };
 
 let supabaseClient: ReturnType<typeof createSupabaseBrowserClient> | null = null;
@@ -176,5 +179,15 @@ export const phase1Api: Phase1Api = {
   async overrideAward(input: OverrideAwardInput) {
     const data = await invokeFunction<{ voting: EventVotingState }>('override-award', input);
     return data.voting;
+  },
+
+  async getFineBox() {
+    const data = await invokeFunction<{ fineBox: FineBoxState }>('fine-box', {});
+    return data.fineBox;
+  },
+
+  async reportFinePayment(input: ReportFinePaymentInput) {
+    const data = await invokeFunction<{ fineBox: FineBoxState }>('report-fine-payment', input);
+    return data.fineBox;
   },
 };

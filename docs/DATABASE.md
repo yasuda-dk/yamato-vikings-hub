@@ -87,3 +87,31 @@ Rules for future phases:
 - Store normalized first names for uniqueness checks.
 - Use controlled profile values for age group, gender, residence type, position, and football level.
 - Never store plaintext team passwords.
+
+## Phase 5 Fine Box Foundation
+
+The first Fine Box slice adds reusable fine records and member payment reporting.
+
+Tables:
+
+- `fine_types`
+- `fines`
+
+Controlled values:
+
+- Payment status: `Unpaid`, `Payment reported`, `Paid`, `Waived`
+
+Server-side functions:
+
+- `list_fine_box`
+- `report_fine_payment`
+
+Rules enforced in this slice:
+
+- Approved devices can read public Fine Box rows through `list_fine_box`.
+- Private Admin notes are not returned by `list_fine_box`.
+- Members can report only their own unpaid member fines as paid.
+- Event Guest fines cannot be reported by regular members.
+- Reporting payment changes status from `Unpaid` to `Payment reported`.
+- Only future Admin functions may confirm `Paid`, waive fines, or manage Guest fine payments.
+- MobilePay box number and URL are read from `team_settings`.

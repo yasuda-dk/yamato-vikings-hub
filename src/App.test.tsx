@@ -3,6 +3,7 @@ import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { App } from './App';
 import type { ActualStatus, EventDetail, EventGuest, EventSummary, EventTeam, EventVotingState, RsvpInput, VoteInput, VotingResult } from './lib/events';
+import type { FineBoxState } from './lib/fines';
 import type { MemberProfile } from './lib/member-options';
 import type { Phase1Api, SessionState } from './lib/phase1-api';
 
@@ -48,6 +49,53 @@ function createApi(initialState: SessionState): Phase1Api {
   let teams: EventTeam[] = [];
   const votes: Record<string, VoteInput> = {};
   let awards: VotingResult[] = [];
+  let fineBox: FineBoxState = {
+    settings: {
+      mobilepay_box_number: '2391JB',
+      mobilepay_url: 'https://qr.mobilepay.dk/box/703316ba-f36a-4335-9a16-f2ffbc1a02f8/pay-in',
+      payment_instructions: 'Use your first name as the payment reference.',
+    },
+    summary: {
+      unpaid_total_dkk: 20,
+      payment_reported_total_dkk: 0,
+      paid_total_dkk: 30,
+      waived_total_dkk: 0,
+    },
+    fines: [
+      {
+        id: 'fine-1',
+        participant_kind: 'member',
+        participant_id: takashi.id,
+        first_name: takashi.first_name,
+        fine_type_name: 'Late arrival',
+        description: 'Late arrival',
+        amount_dkk: 20,
+        payment_status: 'Unpaid',
+        related_event_title: 'Friday Football',
+        related_event_date: '2026-07-03',
+        created_at: '2026-07-03T20:00:00.000Z',
+        payment_reported_at: null,
+        payment_confirmed_at: null,
+        waived_at: null,
+      },
+      {
+        id: 'fine-2',
+        participant_kind: 'member',
+        participant_id: takashi.id,
+        first_name: takashi.first_name,
+        fine_type_name: 'Forgot equipment',
+        description: 'Forgot bibs',
+        amount_dkk: 30,
+        payment_status: 'Paid',
+        related_event_title: 'Friday Football',
+        related_event_date: '2026-06-26',
+        created_at: '2026-06-26T20:00:00.000Z',
+        payment_reported_at: '2026-06-27T08:00:00.000Z',
+        payment_confirmed_at: '2026-06-27T09:00:00.000Z',
+        waived_at: null,
+      },
+    ],
+  };
 
   function buildVoting(): EventVotingState {
     const candidates = [
@@ -416,6 +464,27 @@ function createApi(initialState: SessionState): Phase1Api {
       ];
       return buildVoting();
     },
+    getFineBox: async () => fineBox,
+    reportFinePayment: async (input) => {
+      fineBox = {
+        ...fineBox,
+        summary: {
+          ...fineBox.summary,
+          unpaid_total_dkk: 0,
+          payment_reported_total_dkk: 20,
+        },
+        fines: fineBox.fines.map((fine) =>
+          input.fineIds.includes(fine.id)
+            ? {
+                ...fine,
+                payment_status: 'Payment reported',
+                payment_reported_at: '2026-07-04T08:00:00.000Z',
+              }
+            : fine,
+        ),
+      };
+      return fineBox;
+    },
   };
 }
 
@@ -448,6 +517,26 @@ describe('App shell', () => {
 
     await user.click(screen.getByRole('link', { name: /home/i }));
     expect(screen.getByRole('heading', { name: 'Home' })).toBeInTheDocument();
+  });
+
+  it('lets a member select unpaid fines and report MobilePay payment', async () => {
+    const user = userEvent.setup();
+    render(<App api={createApi({ hasAccess: true, selectedMember: takashi, members: [takashi] })} />);
+
+    await user.click(await screen.findByRole('link', { name: /fines/i }));
+
+    expect(await screen.findByText('Fine Box 2391JB')).toBeInTheDocument();
+    expect(screen.getAllByText('20 DKK').length).toBeGreaterThan(0);
+    expect(screen.getByRole('link', { name: 'Pay with MobilePay' })).toHaveAttribute('href', 'https://qr.mobilepay.dk/box/703316ba-f36a-4335-9a16-f2ffbc1a02f8/pay-in');
+
+    await user.click(screen.getByRole('button', { name: 'Select for payment' }));
+    expect(screen.getByText('Amount due: 20 DKK')).toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: 'I have paid' }));
+
+    expect(await screen.findByText('Payment reported. An Admin will confirm it after checking MobilePay.')).toBeInTheDocument();
+    expect(screen.getByText('Reported')).toBeInTheDocument();
+    expect(screen.getByText('Payment reported')).toBeInTheDocument();
   });
 
   it('falls back for invalid routes after profile selection', async () => {

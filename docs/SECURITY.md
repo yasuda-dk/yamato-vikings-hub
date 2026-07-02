@@ -43,3 +43,14 @@ The event and RSVP slice keeps direct table writes closed to regular frontend co
 - `update-attendance` and `update-guest-attendance` require an Admin profile.
 - Actual attendance confirmation is separated from RSVP and remains server-enforced.
 - Team generation, voting, and fines remain out of scope for this slice.
+
+## Phase 5 Fine Box Controls
+
+The Fine Box foundation keeps payment state changes behind Edge Functions and database functions.
+
+- `fine-box` requires current approved device access and returns only public fine fields.
+- `report-fine-payment` requires a selected Member profile.
+- A Member can report only their own `Unpaid` member fines.
+- Event Guest fines are Admin-managed and cannot be reported by regular members.
+- Regular members cannot confirm `Paid`, waive fines, edit fine amounts, or read private Admin notes.
+- MobilePay details are loaded from `team_settings`; the frontend does not hard-code payment settings.
