@@ -114,6 +114,8 @@ export function EventDetailPage({ api, selectedMember }: EventDetailPageProps) {
   const hasDraftTeams = teams.length > 0 && teams.every((team) => !team.is_confirmed);
   const canGenerateDraft = teams.length === 0 || hasDraftTeams;
   const hasUnlockedDraftParticipants = teams.some((team) => team.participants.some((participant) => !participant.is_locked));
+  const assignedDraftParticipantCount = teams.reduce((count, team) => count + team.participants.length, 0);
+  const isDraftComplete = detail ? assignedDraftParticipantCount === detail.counts.attended : false;
 
   if (!eventId) {
     return <Navigate to="/events" replace />;
@@ -278,6 +280,18 @@ export function EventDetailPage({ api, selectedMember }: EventDetailPageProps) {
         isLocked: !participant.is_locked,
       },
       participant.is_locked ? 'Participant unlocked.' : 'Participant locked.',
+    );
+  }
+
+  async function handleRemoveParticipant(team: EventTeam, participant: EventTeam['participants'][number]) {
+    await adjustTeam(
+      {
+        action: 'remove-participant',
+        eventId: team.event_id,
+        participantKind: participant.kind,
+        participantId: participant.id,
+      },
+      'Participant removed from draft.',
     );
   }
 
@@ -623,6 +637,7 @@ export function EventDetailPage({ api, selectedMember }: EventDetailPageProps) {
                       onRename={handleRenameTeam}
                       onMove={handleMoveParticipant}
                       onToggleLock={handleToggleLock}
+                      onRemove={handleRemoveParticipant}
                       swapSelection={swapSelection}
                       onSwap={handleSwapParticipants}
                     />
@@ -636,9 +651,12 @@ export function EventDetailPage({ api, selectedMember }: EventDetailPageProps) {
               ) : null}
 
               {isAdmin && teams.length > 0 && hasDraftTeams ? (
-                <button type="button" disabled={adminBusyId === 'team-action'} onClick={handleConfirmTeams} className="mt-4 min-h-12 w-full rounded-md bg-footballBlue px-4 text-base font-bold text-white disabled:bg-navy/40">
-                  {adminBusyId === 'team-action' ? 'Saving...' : 'Confirm teams'}
-                </button>
+                <>
+                  {!isDraftComplete ? <p className="mt-3 rounded-md bg-mist p-3 text-sm font-semibold text-navy/70">Draft teams must include every attended participant before confirmation.</p> : null}
+                  <button type="button" disabled={adminBusyId === 'team-action' || !isDraftComplete} onClick={handleConfirmTeams} className="mt-4 min-h-12 w-full rounded-md bg-footballBlue px-4 text-base font-bold text-white disabled:bg-navy/40">
+                    {adminBusyId === 'team-action' ? 'Saving...' : 'Confirm teams'}
+                  </button>
+                </>
               ) : null}
             </div>
           ) : null}
@@ -746,6 +764,7 @@ function TeamDraft({
   onRename,
   onMove,
   onToggleLock,
+  onRemove,
   swapSelection,
   onSwap,
 }: {
@@ -758,6 +777,7 @@ function TeamDraft({
   onRename: (team: EventTeam) => Promise<void>;
   onMove: (team: EventTeam, participant: EventTeam['participants'][number], targetTeamId: string) => Promise<void>;
   onToggleLock: (team: EventTeam, participant: EventTeam['participants'][number]) => Promise<void>;
+  onRemove: (team: EventTeam, participant: EventTeam['participants'][number]) => Promise<void>;
   swapSelection: { teamId: string; participant: EventTeam['participants'][number] } | null;
   onSwap: (team: EventTeam, participant: EventTeam['participants'][number]) => Promise<void>;
 }) {
@@ -819,6 +839,14 @@ function TeamDraft({
                   className="min-h-11 rounded-md bg-mist px-2 text-xs font-bold text-navy disabled:text-navy/40"
                 >
                   {swapSelection ? 'Swap with selected' : 'Select to swap'}
+                </button>
+                <button
+                  type="button"
+                  disabled={isBusy || participant.is_locked}
+                  onClick={() => onRemove(team, participant)}
+                  className="min-h-11 rounded-md border border-red-200 px-2 text-xs font-bold text-red-800 disabled:border-navy/10 disabled:text-navy/40"
+                >
+                  Remove from draft
                 </button>
                 {teams
                   .filter((targetTeam) => targetTeam.id !== team.id)

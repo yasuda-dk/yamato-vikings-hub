@@ -1,7 +1,7 @@
 import { handleCors, jsonResponse } from '../_shared/cors.ts';
 import { requireUser } from '../_shared/supabase.ts';
 
-const actions = ['move-participant', 'swap-participants', 'toggle-lock', 'rename-team', 'confirm-teams'];
+const actions = ['move-participant', 'remove-participant', 'swap-participants', 'toggle-lock', 'rename-team', 'confirm-teams'];
 
 Deno.serve(async (req) => {
   const cors = handleCors(req);

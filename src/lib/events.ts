@@ -211,6 +211,12 @@ export type TeamAdjustmentInput =
       targetTeamId: string;
     }
   | {
+      action: 'remove-participant';
+      eventId: string;
+      participantKind: 'member' | 'guest';
+      participantId: string;
+    }
+  | {
       action: 'swap-participants';
       eventId: string;
       participantKind: 'member' | 'guest';

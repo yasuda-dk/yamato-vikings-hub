@@ -277,6 +277,16 @@ function createApi(initialState: SessionState): Phase1Api {
         });
       }
 
+      if (input.action === 'remove-participant') {
+        const source = teams.find((team) => team.participants.some((participant) => participant.kind === input.participantKind && participant.id === input.participantId));
+        const removed = source?.participants.find((participant) => participant.kind === input.participantKind && participant.id === input.participantId);
+        if (!source || !removed) throw new Error('Draft participant not found');
+        teams = teams.map((team) => ({
+          ...team,
+          participants: team.participants.filter((participant) => !(participant.kind === input.participantKind && participant.id === input.participantId)),
+        }));
+      }
+
       if (input.action === 'swap-participants') {
         const source = teams.find((team) => team.participants.some((participant) => participant.kind === input.participantKind && participant.id === input.participantId));
         const target = teams.find((team) => team.participants.some((participant) => participant.kind === input.swapParticipantKind && participant.id === input.swapParticipantId));
@@ -509,6 +519,34 @@ describe('App shell', () => {
     await user.click(screen.getAllByRole('button', { name: 'Swap with selected' })[1]);
     expect(await screen.findByText('Participants swapped.')).toBeInTheDocument();
     expect(screen.queryByText('Selected for swap')).not.toBeInTheDocument();
+  });
+
+  it('lets an admin remove an unlocked participant from draft teams', async () => {
+    const user = userEvent.setup();
+    render(<App api={createApi({ hasAccess: true, selectedMember: adminTakashi, members: [adminTakashi] })} />);
+
+    await user.click(await screen.findByRole('link', { name: /events/i }));
+    await user.click(await screen.findByRole('link', { name: /Friday Football/i }));
+    await user.click(screen.getByRole('button', { name: 'Add guest' }));
+    await user.type(screen.getByLabelText('Guest first name'), 'Ken');
+    await user.click(screen.getByRole('button', { name: 'Add guest' }));
+    await user.click(screen.getByRole('button', { name: 'Update RSVP' }));
+    await screen.findByText('RSVP updated.');
+    await user.click((await screen.findAllByRole('button', { name: 'Attended' }))[0]);
+    await screen.findByText('Attendance updated.');
+    await user.click((await screen.findAllByRole('button', { name: 'Attended' }))[1]);
+    await screen.findByText('Guest attendance updated.');
+    await user.click(screen.getByRole('button', { name: '2 teams' }));
+    await screen.findByText('Draft teams generated.');
+
+    await user.click(screen.getAllByRole('button', { name: 'Remove from draft' })[0]);
+
+    expect(await screen.findByText('Participant removed from draft.')).toBeInTheDocument();
+    expect(screen.getByText('No players assigned.')).toBeInTheDocument();
+    expect(screen.getByText('2 attended participants available.')).toBeInTheDocument();
+    expect(screen.getByText('Draft teams must include every attended participant before confirmation.')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Confirm teams' })).toBeDisabled();
+    expect(screen.getAllByText('Admin').length).toBeGreaterThan(0);
   });
 
   it('creates a new member profile after password approval', async () => {
