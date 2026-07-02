@@ -22,6 +22,7 @@ import type {
   VotingResult,
   VotingStatusInput,
 } from './events';
+import type { FineBoxState, FineRecord } from './fines';
 import { normalizeFirstName } from './member-options';
 import type { MemberProfile, MemberRegistrationInput } from './member-options';
 import type { Phase1Api, SessionState } from './phase1-api';
@@ -58,6 +59,56 @@ const demoRsvps: Record<string, MyRsvp> = {};
 let demoTeams: EventTeam[] = [];
 const demoVotes: Record<string, VoteInput> = {};
 let demoAwards: VotingResult[] = [];
+let demoFines: FineRecord[] = [
+  {
+    id: 'demo-fine-1',
+    participant_kind: 'member',
+    participant_id: 'demo-member-admin',
+    first_name: 'Admin',
+    fine_type_name: 'Late arrival',
+    description: 'Late arrival',
+    amount_dkk: 20,
+    payment_status: 'Unpaid',
+    related_event_title: 'Friday Football',
+    related_event_date: '2026-07-03',
+    created_at: '2026-07-03T20:00:00.000Z',
+    payment_reported_at: null,
+    payment_confirmed_at: null,
+    waived_at: null,
+  },
+  {
+    id: 'demo-fine-2',
+    participant_kind: 'guest',
+    participant_id: 'demo-guest-1',
+    first_name: 'Ken',
+    fine_type_name: 'Worst Player',
+    description: 'Worst Player',
+    amount_dkk: 50,
+    payment_status: 'Unpaid',
+    related_event_title: 'Friday Football',
+    related_event_date: '2026-07-03',
+    created_at: '2026-07-03T20:05:00.000Z',
+    payment_reported_at: null,
+    payment_confirmed_at: null,
+    waived_at: null,
+  },
+  {
+    id: 'demo-fine-3',
+    participant_kind: 'member',
+    participant_id: 'demo-member-admin',
+    first_name: 'Admin',
+    fine_type_name: 'Forgot equipment',
+    description: 'Forgot bibs',
+    amount_dkk: 30,
+    payment_status: 'Paid',
+    related_event_title: 'Friday Football',
+    related_event_date: '2026-06-26',
+    created_at: '2026-06-26T20:00:00.000Z',
+    payment_reported_at: '2026-06-27T08:00:00.000Z',
+    payment_confirmed_at: '2026-06-27T09:00:00.000Z',
+    waived_at: null,
+  },
+];
 let demoGuests: EventGuest[] = [
   {
     id: 'demo-guest-1',
@@ -154,8 +205,9 @@ function calculateDemoAwards(eventId: string, candidates: EventVotingState['cand
 }
 
 function toMember(input: MemberRegistrationInput): MemberProfile {
+  const memberId = normalizeFirstName(input.firstName) === 'admin' ? 'demo-member-admin' : crypto.randomUUID();
   return {
-    id: crypto.randomUUID(),
+    id: memberId,
     first_name: input.firstName.trim().replace(/\s+/g, ' '),
     age_group: input.ageGroup,
     football_level: input.footballLevel,
@@ -166,6 +218,32 @@ function toMember(input: MemberRegistrationInput): MemberProfile {
     membership_status: 'Active',
     application_role: normalizeFirstName(input.firstName) === 'admin' ? 'Admin' : 'Player',
     created_at: new Date().toISOString(),
+  };
+}
+
+function buildDemoFineBox(): FineBoxState {
+  const totals = {
+    unpaid_total_dkk: 0,
+    payment_reported_total_dkk: 0,
+    paid_total_dkk: 0,
+    waived_total_dkk: 0,
+  };
+
+  for (const fine of demoFines) {
+    if (fine.payment_status === 'Unpaid') totals.unpaid_total_dkk += fine.amount_dkk;
+    if (fine.payment_status === 'Payment reported') totals.payment_reported_total_dkk += fine.amount_dkk;
+    if (fine.payment_status === 'Paid') totals.paid_total_dkk += fine.amount_dkk;
+    if (fine.payment_status === 'Waived') totals.waived_total_dkk += fine.amount_dkk;
+  }
+
+  return {
+    settings: {
+      mobilepay_box_number: '2391JB',
+      mobilepay_url: 'https://qr.mobilepay.dk/box/703316ba-f36a-4335-9a16-f2ffbc1a02f8/pay-in',
+      payment_instructions: 'Use your first name as the payment reference.',
+    },
+    summary: totals,
+    fines: demoFines,
   };
 }
 
@@ -589,5 +667,32 @@ export const demoPhase1Api: Phase1Api = {
     ];
 
     return buildDemoVotingState(input.eventId);
+  },
+
+  async getFineBox() {
+    return buildDemoFineBox();
+  },
+
+  async reportFinePayment(input) {
+    const selectedMember = state.selectedMember;
+    if (!selectedMember) throw new Error('Select a member profile before reporting payment');
+    if (input.fineIds.length === 0) throw new Error('Select at least one fine');
+
+    const invalidFine = demoFines.find(
+      (fine) => input.fineIds.includes(fine.id) && (fine.participant_kind !== 'member' || fine.participant_id !== selectedMember.id || fine.payment_status !== 'Unpaid'),
+    );
+    if (invalidFine) throw new Error('Only your unpaid member fines can be reported');
+
+    demoFines = demoFines.map((fine) =>
+      input.fineIds.includes(fine.id)
+        ? {
+            ...fine,
+            payment_status: 'Payment reported',
+            payment_reported_at: new Date().toISOString(),
+          }
+        : fine,
+    );
+
+    return buildDemoFineBox();
   },
 };

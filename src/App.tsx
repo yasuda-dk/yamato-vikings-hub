@@ -3,6 +3,7 @@ import { HashRouter, Navigate, NavLink, Route, Routes } from 'react-router-dom';
 import { AccessGate } from './components/AccessGate';
 import { EventDetailPage } from './components/EventDetailPage';
 import { EventsPage } from './components/EventsPage';
+import { FinesPage } from './components/FinesPage';
 import { HomePage } from './components/HomePage';
 import { CalendarDays, CircleDollarSign, Home, UsersRound } from './components/icons';
 import { MembersPage } from './components/MembersPage';
@@ -130,7 +131,7 @@ export function App({ api = defaultApi }: AppProps) {
                 <Route path="/" element={<HomePage selectedMember={selectedMember} onSwitchProfile={() => setSessionState((current) => ({ ...current, selectedMember: null }))} />} />
                 <Route path="/events" element={<EventsPage api={api} selectedMember={selectedMember} />} />
                 <Route path="/events/:eventId" element={<EventDetailPage api={api} selectedMember={selectedMember} />} />
-                <Route path="/fines" element={<Page title="Fines" description="Fine Box totals and MobilePay actions begin in Phase 5." configStatus={configStatus} />} />
+                <Route path="/fines" element={<FinesPage api={api} selectedMember={selectedMember} />} />
                 <Route path="/members" element={<MembersPage members={sessionState.members} />} />
                 <Route path="/404" element={<Page title="Not found" description="This screen is not part of the mobile hub." configStatus={configStatus} />} />
                 <Route path="*" element={<Navigate to="/404" replace />} />
