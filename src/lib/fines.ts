@@ -19,6 +19,13 @@ export type FineRecord = {
   waived_at: string | null;
 };
 
+export type FineParticipantOption = {
+  kind: 'member' | 'guest';
+  id: string;
+  first_name: string;
+  context: string | null;
+};
+
 export type FineBoxSettings = {
   mobilepay_box_number: string | null;
   mobilepay_url: string | null;
@@ -36,8 +43,21 @@ export type FineBoxState = {
   settings: FineBoxSettings;
   summary: FineBoxSummary;
   fines: FineRecord[];
+  participants: FineParticipantOption[];
 };
 
 export type ReportFinePaymentInput = {
   fineIds: string[];
+};
+
+export type CreateFineInput = {
+  participantKind: 'member' | 'guest';
+  participantId: string;
+  description: string;
+  amountDkk: number;
+};
+
+export type UpdateFineStatusInput = {
+  fineId: string;
+  action: 'confirm-paid' | 'waive';
 };

@@ -244,6 +244,22 @@ function buildDemoFineBox(): FineBoxState {
     },
     summary: totals,
     fines: demoFines,
+    participants: [
+      ...state.members
+        .filter((member) => member.membership_status === 'Active')
+        .map((member) => ({
+          kind: 'member' as const,
+          id: member.id,
+          first_name: member.first_name,
+          context: null,
+        })),
+      ...demoGuests.map((guest) => ({
+        kind: 'guest' as const,
+        id: guest.id,
+        first_name: guest.first_name,
+        context: demoEvents.find((event) => event.id === guest.event_id)?.title ?? null,
+      })),
+    ],
   };
 }
 
@@ -692,6 +708,62 @@ export const demoPhase1Api: Phase1Api = {
           }
         : fine,
     );
+
+    return buildDemoFineBox();
+  },
+
+  async createFine(input) {
+    const selectedMember = state.selectedMember;
+    if (selectedMember?.application_role !== 'Admin') throw new Error('Admin permission is required');
+    const participant = buildDemoFineBox().participants.find((item) => item.kind === input.participantKind && item.id === input.participantId);
+    if (!participant) throw new Error('Participant is required');
+    if (!input.description.trim()) throw new Error('Description is required');
+    if (input.amountDkk <= 0) throw new Error('Amount must be greater than 0');
+
+    demoFines = [
+      {
+        id: crypto.randomUUID(),
+        participant_kind: input.participantKind,
+        participant_id: input.participantId,
+        first_name: participant.first_name,
+        fine_type_name: null,
+        description: input.description.trim(),
+        amount_dkk: input.amountDkk,
+        payment_status: 'Unpaid',
+        related_event_title: participant.context,
+        related_event_date: participant.kind === 'guest' ? '2026-07-03' : null,
+        created_at: new Date().toISOString(),
+        payment_reported_at: null,
+        payment_confirmed_at: null,
+        waived_at: null,
+      },
+      ...demoFines,
+    ];
+
+    return buildDemoFineBox();
+  },
+
+  async updateFineStatus(input) {
+    const selectedMember = state.selectedMember;
+    if (selectedMember?.application_role !== 'Admin') throw new Error('Admin permission is required');
+
+    const fine = demoFines.find((item) => item.id === input.fineId);
+    if (!fine) throw new Error('Fine is required');
+
+    if (input.action === 'confirm-paid' && fine.payment_status !== 'Payment reported') {
+      throw new Error('Only reported payments can be confirmed');
+    }
+    if (input.action === 'waive' && fine.payment_status !== 'Unpaid' && fine.payment_status !== 'Payment reported') {
+      throw new Error('Only unpaid or reported fines can be waived');
+    }
+
+    demoFines = demoFines.map((item) => {
+      if (item.id !== input.fineId) return item;
+      if (input.action === 'confirm-paid') {
+        return { ...item, payment_status: 'Paid', payment_confirmed_at: new Date().toISOString() };
+      }
+      return { ...item, payment_status: 'Waived', waived_at: new Date().toISOString() };
+    });
 
     return buildDemoFineBox();
   },

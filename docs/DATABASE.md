@@ -105,6 +105,8 @@ Server-side functions:
 
 - `list_fine_box`
 - `report_fine_payment`
+- `create_fine`
+- `update_fine_status`
 
 Rules enforced in this slice:
 
@@ -113,5 +115,7 @@ Rules enforced in this slice:
 - Members can report only their own unpaid member fines as paid.
 - Event Guest fines cannot be reported by regular members.
 - Reporting payment changes status from `Unpaid` to `Payment reported`.
-- Only future Admin functions may confirm `Paid`, waive fines, or manage Guest fine payments.
+- Admins can create member and event Guest fines.
+- Admins can confirm `Payment reported` fines as `Paid`.
+- Admins can waive `Unpaid` or `Payment reported` fines.
 - MobilePay box number and URL are read from `team_settings`.

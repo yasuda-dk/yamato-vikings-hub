@@ -17,7 +17,7 @@ import type {
   VoteInput,
   VotingStatusInput,
 } from './events';
-import type { FineBoxState, ReportFinePaymentInput } from './fines';
+import type { CreateFineInput, FineBoxState, ReportFinePaymentInput, UpdateFineStatusInput } from './fines';
 import { createSupabaseBrowserClient } from './supabase';
 import { DEFAULT_TEAM_ID, type MemberProfile, type MemberRegistrationInput } from './member-options';
 
@@ -51,6 +51,8 @@ export type Phase1Api = {
   overrideAward: (input: OverrideAwardInput) => Promise<EventVotingState>;
   getFineBox: () => Promise<FineBoxState>;
   reportFinePayment: (input: ReportFinePaymentInput) => Promise<FineBoxState>;
+  createFine: (input: CreateFineInput) => Promise<FineBoxState>;
+  updateFineStatus: (input: UpdateFineStatusInput) => Promise<FineBoxState>;
 };
 
 let supabaseClient: ReturnType<typeof createSupabaseBrowserClient> | null = null;
@@ -188,6 +190,16 @@ export const phase1Api: Phase1Api = {
 
   async reportFinePayment(input: ReportFinePaymentInput) {
     const data = await invokeFunction<{ fineBox: FineBoxState }>('report-fine-payment', input);
+    return data.fineBox;
+  },
+
+  async createFine(input: CreateFineInput) {
+    const data = await invokeFunction<{ fineBox: FineBoxState }>('create-fine', input);
+    return data.fineBox;
+  },
+
+  async updateFineStatus(input: UpdateFineStatusInput) {
+    const data = await invokeFunction<{ fineBox: FineBoxState }>('update-fine-status', input);
     return data.fineBox;
   },
 };

@@ -57,7 +57,7 @@ function createApi(initialState: SessionState): Phase1Api {
     },
     summary: {
       unpaid_total_dkk: 20,
-      payment_reported_total_dkk: 0,
+      payment_reported_total_dkk: 15,
       paid_total_dkk: 30,
       waived_total_dkk: 0,
     },
@@ -79,6 +79,22 @@ function createApi(initialState: SessionState): Phase1Api {
         waived_at: null,
       },
       {
+        id: 'fine-reported',
+        participant_kind: 'member',
+        participant_id: takashi.id,
+        first_name: takashi.first_name,
+        fine_type_name: null,
+        description: 'Own goal',
+        amount_dkk: 15,
+        payment_status: 'Payment reported',
+        related_event_title: 'Friday Football',
+        related_event_date: '2026-07-03',
+        created_at: '2026-07-03T20:10:00.000Z',
+        payment_reported_at: '2026-07-04T08:00:00.000Z',
+        payment_confirmed_at: null,
+        waived_at: null,
+      },
+      {
         id: 'fine-2',
         participant_kind: 'member',
         participant_id: takashi.id,
@@ -93,6 +109,20 @@ function createApi(initialState: SessionState): Phase1Api {
         payment_reported_at: '2026-06-27T08:00:00.000Z',
         payment_confirmed_at: '2026-06-27T09:00:00.000Z',
         waived_at: null,
+      },
+    ],
+    participants: [
+      {
+        kind: 'member',
+        id: takashi.id,
+        first_name: takashi.first_name,
+        context: null,
+      },
+      {
+        kind: 'guest',
+        id: 'guest-1',
+        first_name: 'Ken',
+        context: 'Friday Football',
       },
     ],
   };
@@ -485,6 +515,64 @@ function createApi(initialState: SessionState): Phase1Api {
       };
       return fineBox;
     },
+    createFine: async (input) => {
+      if (state.selectedMember?.application_role !== 'Admin') throw new Error('Admin permission is required');
+      const participant = fineBox.participants.find((item) => item.kind === input.participantKind && item.id === input.participantId);
+      if (!participant) throw new Error('Participant is required');
+      fineBox = {
+        ...fineBox,
+        summary: {
+          ...fineBox.summary,
+          unpaid_total_dkk: fineBox.summary.unpaid_total_dkk + input.amountDkk,
+        },
+        fines: [
+          {
+            id: 'fine-new',
+            participant_kind: input.participantKind,
+            participant_id: input.participantId,
+            first_name: participant.first_name,
+            fine_type_name: null,
+            description: input.description,
+            amount_dkk: input.amountDkk,
+            payment_status: 'Unpaid',
+            related_event_title: participant.context,
+            related_event_date: null,
+            created_at: '2026-07-04T10:00:00.000Z',
+            payment_reported_at: null,
+            payment_confirmed_at: null,
+            waived_at: null,
+          },
+          ...fineBox.fines,
+        ],
+      };
+      return fineBox;
+    },
+    updateFineStatus: async (input) => {
+      if (state.selectedMember?.application_role !== 'Admin') throw new Error('Admin permission is required');
+      const fine = fineBox.fines.find((item) => item.id === input.fineId);
+      if (!fine) throw new Error('Fine is required');
+      fineBox = {
+        ...fineBox,
+        summary: {
+          ...fineBox.summary,
+          unpaid_total_dkk: fineBox.summary.unpaid_total_dkk - (input.action === 'waive' && fine.payment_status === 'Unpaid' ? fine.amount_dkk : 0),
+          payment_reported_total_dkk: fineBox.summary.payment_reported_total_dkk - (fine.payment_status === 'Payment reported' ? fine.amount_dkk : 0),
+          paid_total_dkk: fineBox.summary.paid_total_dkk + (input.action === 'confirm-paid' ? fine.amount_dkk : 0),
+          waived_total_dkk: fineBox.summary.waived_total_dkk + (input.action === 'waive' ? fine.amount_dkk : 0),
+        },
+        fines: fineBox.fines.map((item) =>
+          item.id === input.fineId
+            ? {
+                ...item,
+                payment_status: input.action === 'confirm-paid' ? 'Paid' : 'Waived',
+                payment_confirmed_at: input.action === 'confirm-paid' ? '2026-07-04T11:00:00.000Z' : item.payment_confirmed_at,
+                waived_at: input.action === 'waive' ? '2026-07-04T11:00:00.000Z' : item.waived_at,
+              }
+            : item,
+        ),
+      };
+      return fineBox;
+    },
   };
 }
 
@@ -536,7 +624,33 @@ describe('App shell', () => {
 
     expect(await screen.findByText('Payment reported. An Admin will confirm it after checking MobilePay.')).toBeInTheDocument();
     expect(screen.getByText('Reported')).toBeInTheDocument();
-    expect(screen.getByText('Payment reported')).toBeInTheDocument();
+    expect(screen.getAllByText('Payment reported').length).toBeGreaterThan(0);
+  });
+
+  it('lets an admin add, confirm and waive fines', async () => {
+    const user = userEvent.setup();
+    render(<App api={createApi({ hasAccess: true, selectedMember: adminTakashi, members: [adminTakashi] })} />);
+
+    await user.click(await screen.findByRole('link', { name: /fines/i }));
+    await user.click(await screen.findByRole('button', { name: 'Add fine' }));
+    await user.selectOptions(screen.getByLabelText('Participant'), `member:${takashi.id}`);
+    await user.type(screen.getByLabelText('Description'), 'Yellow card');
+    await user.clear(screen.getByLabelText('Amount DKK'));
+    await user.type(screen.getByLabelText('Amount DKK'), '25');
+    await user.click(screen.getByRole('button', { name: 'Add fine' }));
+
+    expect(await screen.findByText('Fine added.')).toBeInTheDocument();
+    expect(screen.getByText('Yellow card')).toBeInTheDocument();
+
+    const confirmButtons = screen.getAllByRole('button', { name: 'Confirm paid' });
+    const enabledConfirmButton = confirmButtons.find((button) => !button.hasAttribute('disabled'));
+    expect(enabledConfirmButton).toBeDefined();
+    await user.click(enabledConfirmButton!);
+    expect(await screen.findByText('Payment confirmed.')).toBeInTheDocument();
+
+    await user.click(screen.getAllByRole('button', { name: 'Waive' })[0]);
+    expect(await screen.findByText('Fine waived.')).toBeInTheDocument();
+    expect(screen.getAllByText('Waived').length).toBeGreaterThan(0);
   });
 
   it('falls back for invalid routes after profile selection', async () => {
