@@ -116,13 +116,14 @@ Admins can adjust draft teams with tap-based controls:
 - Lock or unlock a participant.
 - Move an unlocked participant to another draft team.
 - Swap two unlocked participants.
+- Remove an unlocked participant from draft teams.
 - Regenerate unlocked participants while locked participants remain on their current teams.
 - Confirm draft teams.
 
 Confirmed teams become publicly readable by approved users. Draft edit controls are Admin-only and are hidden after confirmation.
 
-The `adjust-team` Edge Function calls the `adjust_draft_team` RPC. The RPC enforces Admin access, rejects edits to confirmed teams, blocks moves for locked participants, and confirms teams only when the draft includes every eligible participant.
+The `adjust-team` Edge Function calls the `adjust_draft_team` RPC. The RPC enforces Admin access, rejects edits to confirmed teams, blocks moves, swaps, and removals for locked participants, and confirms teams only when the draft includes every eligible participant.
 
 Regeneration uses the existing `generate-teams` Edge Function with `preserveLocked`. The function reads the current draft, keeps locked participants assigned to the same team index, preserves draft team names, and redistributes unlocked attended participants.
 
-This slice does not yet include removing a participant from draft teams or post-confirmation corrections. Those remain in future Phase 3 tasks.
+This slice does not yet include post-confirmation corrections. Those remain in future Phase 3 tasks.

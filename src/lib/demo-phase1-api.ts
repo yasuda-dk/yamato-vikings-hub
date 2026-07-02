@@ -386,6 +386,20 @@ export const demoPhase1Api: Phase1Api = {
       });
     }
 
+    if (input.action === 'remove-participant') {
+      const sourceTeam = demoTeams.find((team) => team.participants.some((participant) => participant.kind === input.participantKind && participant.id === input.participantId));
+      const participant = sourceTeam?.participants.find((item) => item.kind === input.participantKind && item.id === input.participantId);
+      if (!sourceTeam || !participant) throw new Error('Draft participant not found');
+      if (participant.is_locked) throw new Error('Unlock this participant before removing');
+
+      demoTeams = demoTeams.map((team) => ({
+        ...team,
+        balance_score: null,
+        score_breakdown: null,
+        participants: team.participants.filter((item) => !(item.kind === input.participantKind && item.id === input.participantId)),
+      }));
+    }
+
     if (input.action === 'swap-participants') {
       const sourceTeam = demoTeams.find((team) => team.participants.some((participant) => participant.kind === input.participantKind && participant.id === input.participantId));
       const swapTeam = demoTeams.find((team) => team.participants.some((participant) => participant.kind === input.swapParticipantKind && participant.id === input.swapParticipantId));
