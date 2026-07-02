@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import type { FineBoxState, FineRecord } from '../lib/fines';
+import type { CreateFineInput, FineBoxState, FineRecord, UpdateFineStatusInput } from '../lib/fines';
 import type { MemberProfile } from '../lib/member-options';
 import type { Phase1Api } from '../lib/phase1-api';
 
@@ -13,8 +13,17 @@ export function FinesPage({ api, selectedMember }: FinesPageProps) {
   const [selectedFineIds, setSelectedFineIds] = useState<string[]>([]);
   const [loadState, setLoadState] = useState<'loading' | 'ready' | 'error'>('loading');
   const [isReporting, setIsReporting] = useState(false);
+  const [adminBusyId, setAdminBusyId] = useState<string | null>(null);
+  const [showCreateFine, setShowCreateFine] = useState(false);
+  const [fineDraft, setFineDraft] = useState<CreateFineInput>({
+    participantKind: 'member',
+    participantId: '',
+    description: '',
+    amountDkk: 20,
+  });
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+  const isAdmin = selectedMember.application_role === 'Admin';
 
   useEffect(() => {
     let isMounted = true;
@@ -51,6 +60,7 @@ export function FinesPage({ api, selectedMember }: FinesPageProps) {
   const selectedTotal = selectedFines.reduce((total, fine) => total + fine.amount_dkk, 0);
   const canReport = selectedFineIds.length > 0 && !isReporting;
   const mobilePayUrl = fineBox?.settings.mobilepay_url ?? '';
+  const createDisabled = adminBusyId === 'create-fine' || !fineDraft.participantId || !fineDraft.description.trim() || fineDraft.amountDkk <= 0;
 
   function toggleFine(fineId: string) {
     setSelectedFineIds((current) => (current.includes(fineId) ? current.filter((id) => id !== fineId) : [...current, fineId]));
@@ -78,11 +88,55 @@ export function FinesPage({ api, selectedMember }: FinesPageProps) {
     }
   }
 
+  async function createFine() {
+    if (createDisabled) return;
+
+    setAdminBusyId('create-fine');
+    setError(null);
+    setSuccess(null);
+    try {
+      const nextFineBox = await api.createFine(fineDraft);
+      setFineBox(nextFineBox);
+      setFineDraft((current) => ({ ...current, description: '', amountDkk: 20 }));
+      setShowCreateFine(false);
+      setSuccess('Fine added.');
+    } catch (createError) {
+      setError(createError instanceof Error ? createError.message : 'Could not add fine.');
+    } finally {
+      setAdminBusyId(null);
+    }
+  }
+
+  async function updateFineStatus(input: UpdateFineStatusInput) {
+    if (adminBusyId) return;
+
+    setAdminBusyId(`${input.action}-${input.fineId}`);
+    setError(null);
+    setSuccess(null);
+    try {
+      const nextFineBox = await api.updateFineStatus(input);
+      setFineBox(nextFineBox);
+      setSelectedFineIds((current) => current.filter((fineId) => fineId !== input.fineId));
+      setSuccess(input.action === 'confirm-paid' ? 'Payment confirmed.' : 'Fine waived.');
+    } catch (statusError) {
+      setError(statusError instanceof Error ? statusError.message : 'Could not update fine.');
+    } finally {
+      setAdminBusyId(null);
+    }
+  }
+
   return (
     <section className="space-y-4">
       <div className="rounded-lg border border-navy/10 bg-white p-4">
         <p className="text-sm font-semibold text-footballBlue">Fine Box</p>
-        <h2 className="mt-1 text-xl font-bold text-navy">Fines</h2>
+        <div className="mt-1 flex items-start justify-between gap-3">
+          <h2 className="text-xl font-bold text-navy">Fines</h2>
+          {isAdmin ? (
+            <button type="button" onClick={() => setShowCreateFine((current) => !current)} className="min-h-11 rounded-md border border-footballBlue px-3 text-sm font-bold text-footballBlue">
+              {showCreateFine ? 'Close' : 'Add fine'}
+            </button>
+          ) : null}
+        </div>
         <p className="mt-3 text-sm leading-5 text-navy/70">Pay selected unpaid fines with MobilePay, then report the payment for Admin confirmation.</p>
       </div>
 
@@ -103,6 +157,48 @@ export function FinesPage({ api, selectedMember }: FinesPageProps) {
       {loadState === 'ready' && fineBox ? (
         <>
           <FineSummary fineBox={fineBox} />
+
+          {showCreateFine && isAdmin ? (
+            <div className="rounded-lg border border-navy/10 bg-white p-4">
+              <h3 className="text-base font-bold text-navy">Add fine</h3>
+              <div className="mt-4 grid gap-3">
+                <label className="text-sm font-semibold text-navy">
+                  Participant
+                  <select
+                    value={fineDraft.participantId ? `${fineDraft.participantKind}:${fineDraft.participantId}` : ''}
+                    onChange={(event) => {
+                      const participant = fineBox.participants.find((item) => `${item.kind}:${item.id}` === event.target.value);
+                      setFineDraft((current) =>
+                        participant
+                          ? { ...current, participantKind: participant.kind, participantId: participant.id }
+                          : { ...current, participantKind: 'member', participantId: '' },
+                      );
+                    }}
+                    className="mt-2 min-h-11 w-full rounded-md border border-navy/20 bg-white px-3 text-base"
+                  >
+                    <option value="">Select participant</option>
+                    {fineBox.participants.map((participant) => (
+                      <option key={`${participant.kind}:${participant.id}`} value={`${participant.kind}:${participant.id}`}>
+                        {participant.first_name}
+                        {participant.kind === 'guest' ? ` - Guest${participant.context ? `, ${participant.context}` : ''}` : ''}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <label className="text-sm font-semibold text-navy">
+                  Description
+                  <input value={fineDraft.description} onChange={(event) => setFineDraft((current) => ({ ...current, description: event.target.value }))} className="mt-2 min-h-11 w-full rounded-md border border-navy/20 px-3 text-base" />
+                </label>
+                <label className="text-sm font-semibold text-navy">
+                  Amount DKK
+                  <input type="number" min="1" step="1" value={fineDraft.amountDkk} onChange={(event) => setFineDraft((current) => ({ ...current, amountDkk: Number(event.target.value) }))} className="mt-2 min-h-11 w-full rounded-md border border-navy/20 px-3 text-base" />
+                </label>
+              </div>
+              <button type="button" disabled={createDisabled} onClick={createFine} className="mt-4 min-h-12 w-full rounded-md bg-footballBlue px-4 text-base font-bold text-white disabled:bg-navy/40">
+                {adminBusyId === 'create-fine' ? 'Adding...' : 'Add fine'}
+              </button>
+            </div>
+          ) : null}
 
           <div className="rounded-lg border border-navy/10 bg-white p-4">
             <div className="flex items-start justify-between gap-3">
@@ -146,7 +242,16 @@ export function FinesPage({ api, selectedMember }: FinesPageProps) {
           ) : (
             <div className="overflow-hidden rounded-lg border border-navy/10 bg-white">
               {fineBox.fines.map((fine) => (
-                <FineRow key={fine.id} fine={fine} selected={selectedFineIds.includes(fine.id)} canSelect={myUnpaidFines.some((item) => item.id === fine.id)} onToggle={() => toggleFine(fine.id)} />
+                <FineRow
+                  key={fine.id}
+                  fine={fine}
+                  selected={selectedFineIds.includes(fine.id)}
+                  canSelect={myUnpaidFines.some((item) => item.id === fine.id)}
+                  isAdmin={isAdmin}
+                  busyId={adminBusyId}
+                  onToggle={() => toggleFine(fine.id)}
+                  onUpdateStatus={updateFineStatus}
+                />
               ))}
             </div>
           )}
@@ -176,7 +281,26 @@ function SummaryTile({ label, value }: { label: string; value: string }) {
   );
 }
 
-function FineRow({ fine, selected, canSelect, onToggle }: { fine: FineRecord; selected: boolean; canSelect: boolean; onToggle: () => void }) {
+function FineRow({
+  fine,
+  selected,
+  canSelect,
+  isAdmin,
+  busyId,
+  onToggle,
+  onUpdateStatus,
+}: {
+  fine: FineRecord;
+  selected: boolean;
+  canSelect: boolean;
+  isAdmin: boolean;
+  busyId: string | null;
+  onToggle: () => void;
+  onUpdateStatus: (input: UpdateFineStatusInput) => Promise<void>;
+}) {
+  const canConfirm = isAdmin && fine.payment_status === 'Payment reported';
+  const canWaive = isAdmin && (fine.payment_status === 'Unpaid' || fine.payment_status === 'Payment reported');
+
   return (
     <div className="border-b border-navy/10 px-4 py-3 last:border-b-0">
       <div className="flex items-start justify-between gap-3">
@@ -198,6 +322,26 @@ function FineRow({ fine, selected, canSelect, onToggle }: { fine: FineRecord; se
         <button type="button" onClick={onToggle} className={`mt-3 min-h-11 w-full rounded-md border px-3 text-sm font-bold ${selected ? 'border-footballBlue bg-footballBlue text-white' : 'border-footballBlue bg-white text-footballBlue'}`}>
           {selected ? 'Selected for payment' : 'Select for payment'}
         </button>
+      ) : null}
+      {isAdmin && (canConfirm || canWaive) ? (
+        <div className="mt-3 grid grid-cols-2 gap-2">
+          <button
+            type="button"
+            disabled={!canConfirm || busyId !== null}
+            onClick={() => onUpdateStatus({ fineId: fine.id, action: 'confirm-paid' })}
+            className="min-h-11 rounded-md bg-footballBlue px-3 text-sm font-bold text-white disabled:bg-navy/35"
+          >
+            {busyId === `confirm-paid-${fine.id}` ? 'Confirming...' : 'Confirm paid'}
+          </button>
+          <button
+            type="button"
+            disabled={!canWaive || busyId !== null}
+            onClick={() => onUpdateStatus({ fineId: fine.id, action: 'waive' })}
+            className="min-h-11 rounded-md border border-red-200 px-3 text-sm font-bold text-red-800 disabled:border-navy/10 disabled:text-navy/40"
+          >
+            {busyId === `waive-${fine.id}` ? 'Waiving...' : 'Waive'}
+          </button>
+        </div>
       ) : null}
     </div>
   );
