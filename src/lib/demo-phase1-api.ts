@@ -10,12 +10,17 @@ import type {
   EventParticipant,
   EventSummary,
   EventTeam,
+  EventVotingState,
   GenerateTeamsInput,
   EventUpdateInput,
   GuestAttendanceInput,
   MyRsvp,
   RsvpInput,
   TeamAdjustmentInput,
+  VoteInput,
+  VoteType,
+  VotingResult,
+  VotingStatusInput,
 } from './events';
 import { normalizeFirstName } from './member-options';
 import type { MemberProfile, MemberRegistrationInput } from './member-options';
@@ -51,6 +56,8 @@ let demoEvents: EventSummary[] = [
 
 const demoRsvps: Record<string, MyRsvp> = {};
 let demoTeams: EventTeam[] = [];
+const demoVotes: Record<string, VoteInput> = {};
+let demoAwards: VotingResult[] = [];
 let demoGuests: EventGuest[] = [
   {
     id: 'demo-guest-1',
@@ -69,6 +76,76 @@ let demoGuests: EventGuest[] = [
   },
 ];
 const demoActualStatuses: Record<string, ActualStatus> = {};
+
+function voteKey(eventId: string, memberId: string, voteType: VoteType) {
+  return `${eventId}:${memberId}:${voteType}`;
+}
+
+async function buildDemoVotingState(eventId: string): Promise<EventVotingState> {
+  const detail = await demoPhase1Api.getEventDetail(eventId);
+  const selectedMember = state.selectedMember;
+  const candidates = detail.participants
+    .filter((participant) => participant.actual_status === 'Attended')
+    .map((participant) => ({
+      kind: participant.kind,
+      id: participant.id,
+      first_name: participant.first_name,
+    }))
+    .sort((left, right) => left.first_name.localeCompare(right.first_name));
+  const myVotes: EventVotingState['myVotes'] = {};
+
+  if (selectedMember) {
+    for (const voteType of ['MVP', 'Worst'] as const) {
+      const vote = demoVotes[voteKey(eventId, selectedMember.id, voteType)];
+      if (vote) {
+        myVotes[voteType] = {
+          candidateKind: vote.candidateKind,
+          candidateId: vote.candidateId,
+        };
+      }
+    }
+  }
+
+  const myParticipant = detail.participants.find((participant) => participant.kind === 'member' && participant.id === selectedMember?.id);
+
+  return {
+    eventId,
+    status: detail.event.status,
+    enableVoting: detail.event.enable_voting,
+    isEligibleVoter: Boolean(selectedMember && selectedMember.membership_status === 'Active' && myParticipant?.actual_status === 'Attended' && detail.event.status === 'Voting open' && detail.event.enable_voting),
+    candidates,
+    myVotes,
+    results: detail.event.status === 'Completed' ? demoAwards : [],
+  };
+}
+
+function calculateDemoAwards(eventId: string, candidates: EventVotingState['candidates']): VotingResult[] {
+  const awards: VotingResult[] = [];
+  for (const voteType of ['MVP', 'Worst'] as const) {
+    const counts = new Map<string, number>();
+    Object.values(demoVotes)
+      .filter((vote) => vote.eventId === eventId && vote.voteType === voteType)
+      .forEach((vote) => {
+        const key = `${vote.candidateKind}:${vote.candidateId}`;
+        counts.set(key, (counts.get(key) ?? 0) + 1);
+      });
+    const max = Math.max(0, ...counts.values());
+    if (max === 0) continue;
+    for (const [key, voteCount] of counts) {
+      if (voteCount !== max) continue;
+      const [kind, id] = key.split(':') as ['member' | 'guest', string];
+      const candidate = candidates.find((item) => item.kind === kind && item.id === id);
+      if (!candidate) continue;
+      awards.push({
+        ...candidate,
+        vote_type: voteType,
+        vote_count: voteCount,
+        is_winner: true,
+      });
+    }
+  }
+  return awards;
+}
 
 function toMember(input: MemberRegistrationInput): MemberProfile {
   return {
@@ -449,5 +526,36 @@ export const demoPhase1Api: Phase1Api = {
     }
 
     return demoTeams.filter((team) => team.event_id === input.eventId);
+  },
+
+  async getEventVoting(eventId: string) {
+    return buildDemoVotingState(eventId);
+  },
+
+  async submitVote(input: VoteInput) {
+    const voting = await buildDemoVotingState(input.eventId);
+    const selectedMember = state.selectedMember;
+    if (!selectedMember || !voting.isEligibleVoter) throw new Error('Only attended active members can vote');
+    if (input.candidateKind === 'member' && input.candidateId === selectedMember.id) throw new Error('You cannot vote for yourself');
+    if (!voting.candidates.some((candidate) => candidate.kind === input.candidateKind && candidate.id === input.candidateId)) throw new Error('Candidate is not eligible');
+
+    demoVotes[voteKey(input.eventId, selectedMember.id, input.voteType)] = input;
+    return buildDemoVotingState(input.eventId);
+  },
+
+  async setVotingStatus(input: VotingStatusInput) {
+    const selectedMember = state.selectedMember;
+    if (selectedMember?.application_role !== 'Admin') throw new Error('Admin permission is required');
+
+    if (input.status === 'Voting open') {
+      demoEvents = demoEvents.map((event) => (event.id === input.eventId ? { ...event, status: 'Voting open' } : event));
+      demoAwards = [];
+      return buildDemoVotingState(input.eventId);
+    }
+
+    const voting = await buildDemoVotingState(input.eventId);
+    demoAwards = calculateDemoAwards(input.eventId, voting.candidates);
+    demoEvents = demoEvents.map((event) => (event.id === input.eventId ? { ...event, status: 'Completed' } : event));
+    return buildDemoVotingState(input.eventId);
   },
 };

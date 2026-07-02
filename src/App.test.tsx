@@ -2,7 +2,7 @@ import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { App } from './App';
-import type { ActualStatus, EventDetail, EventGuest, EventSummary, EventTeam, RsvpInput } from './lib/events';
+import type { ActualStatus, EventDetail, EventGuest, EventSummary, EventTeam, EventVotingState, RsvpInput, VoteInput, VotingResult } from './lib/events';
 import type { MemberProfile } from './lib/member-options';
 import type { Phase1Api, SessionState } from './lib/phase1-api';
 
@@ -46,6 +46,49 @@ function createApi(initialState: SessionState): Phase1Api {
   let guest: EventGuest | null = null;
   let actualStatus: ActualStatus = 'Not confirmed';
   let teams: EventTeam[] = [];
+  const votes: Record<string, VoteInput> = {};
+  let awards: VotingResult[] = [];
+
+  function buildVoting(): EventVotingState {
+    const candidates = [
+      ...(actualStatus === 'Attended'
+        ? [
+            {
+              kind: 'member' as const,
+              id: takashi.id,
+              first_name: takashi.first_name,
+            },
+          ]
+        : []),
+      ...(guest?.actual_status === 'Attended'
+        ? [
+            {
+              kind: 'guest' as const,
+              id: guest.id,
+              first_name: guest.first_name,
+            },
+          ]
+        : []),
+    ];
+    const selectedMember = state.selectedMember;
+    const myVotes: EventVotingState['myVotes'] = {};
+    if (selectedMember) {
+      for (const voteType of ['MVP', 'Worst'] as const) {
+        const vote = votes[`${event.id}:${selectedMember.id}:${voteType}`];
+        if (vote) myVotes[voteType] = { candidateKind: vote.candidateKind, candidateId: vote.candidateId };
+      }
+    }
+
+    return {
+      eventId: event.id,
+      status: event.status,
+      enableVoting: true,
+      isEligibleVoter: Boolean(selectedMember && selectedMember.membership_status === 'Active' && actualStatus === 'Attended' && event.status === 'Voting open'),
+      candidates,
+      myVotes,
+      results: event.status === 'Completed' ? awards : [],
+    };
+  }
 
   return {
     ensureAnonymousSession: async () => null,
@@ -311,6 +354,45 @@ function createApi(initialState: SessionState): Phase1Api {
 
       return teams;
     },
+    getEventVoting: async () => buildVoting(),
+    submitVote: async (input) => {
+      const selectedMember = state.selectedMember;
+      if (!selectedMember) throw new Error('Select a member profile before voting');
+      if (input.candidateKind === 'member' && input.candidateId === selectedMember.id) throw new Error('You cannot vote for yourself');
+      votes[`${input.eventId}:${selectedMember.id}:${input.voteType}`] = input;
+      return buildVoting();
+    },
+    setVotingStatus: async (input) => {
+      if (state.selectedMember?.application_role !== 'Admin') throw new Error('Admin permission is required');
+      if (input.status === 'Voting open') {
+        event = { ...event, status: 'Voting open' };
+        awards = [];
+        return buildVoting();
+      }
+
+      const voting = buildVoting();
+      awards = ['MVP', 'Worst'].flatMap((voteType) => {
+        const matchingVotes = Object.values(votes).filter((vote) => vote.eventId === input.eventId && vote.voteType === voteType);
+        const counts = new Map<string, number>();
+        matchingVotes.forEach((vote) => counts.set(`${vote.candidateKind}:${vote.candidateId}`, (counts.get(`${vote.candidateKind}:${vote.candidateId}`) ?? 0) + 1));
+        const max = Math.max(0, ...counts.values());
+        return [...counts]
+          .filter(([, count]) => count === max && count > 0)
+          .map(([key, vote_count]) => {
+            const [kind, id] = key.split(':') as ['member' | 'guest', string];
+            const candidate = voting.candidates.find((item) => item.kind === kind && item.id === id);
+            if (!candidate) throw new Error('Candidate not found');
+            return {
+              ...candidate,
+              vote_type: voteType as 'MVP' | 'Worst',
+              vote_count,
+              is_winner: true,
+            };
+          });
+      });
+      event = { ...event, status: 'Completed' };
+      return buildVoting();
+    },
   };
 }
 
@@ -547,6 +629,40 @@ describe('App shell', () => {
     expect(screen.getByText('Draft teams must include every attended participant before confirmation.')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Confirm teams' })).toBeDisabled();
     expect(screen.getAllByText('Admin').length).toBeGreaterThan(0);
+  });
+
+  it('lets an eligible member vote and shows final results after close', async () => {
+    const user = userEvent.setup();
+    render(<App api={createApi({ hasAccess: true, selectedMember: adminTakashi, members: [adminTakashi] })} />);
+
+    await user.click(await screen.findByRole('link', { name: /events/i }));
+    await user.click(await screen.findByRole('link', { name: /Friday Football/i }));
+    await user.click(screen.getByRole('button', { name: 'Add guest' }));
+    await user.type(screen.getByLabelText('Guest first name'), 'Ken');
+    await user.click(screen.getByRole('button', { name: 'Add guest' }));
+    await user.click(screen.getByRole('button', { name: 'Update RSVP' }));
+    await screen.findByText('RSVP updated.');
+    await user.click((await screen.findAllByRole('button', { name: 'Attended' }))[0]);
+    await screen.findByText('Attendance updated.');
+    await user.click((await screen.findAllByRole('button', { name: 'Attended' }))[1]);
+    await screen.findByText('Guest attendance updated.');
+
+    await user.click(screen.getByRole('button', { name: 'Open voting' }));
+    expect(await screen.findByText('Voting opened.')).toBeInTheDocument();
+    expect(screen.getByText('Intermediate results are hidden until voting closes.')).toBeInTheDocument();
+
+    const kenButtons = screen.getAllByRole('button', { name: /Ken/ });
+    await user.click(kenButtons[0]);
+    await user.click(kenButtons[1]);
+    await user.click(screen.getByRole('button', { name: 'Submit votes' }));
+    expect(await screen.findByText('Votes submitted.')).toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: 'Close voting' }));
+    expect(await screen.findByText('Voting closed.')).toBeInTheDocument();
+    expect(screen.getByText('MVP')).toBeInTheDocument();
+    expect(screen.getByText('Worst Player')).toBeInTheDocument();
+    expect(screen.getAllByText('Ken').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('1 vote').length).toBeGreaterThanOrEqual(2);
   });
 
   it('creates a new member profile after password approval', async () => {
