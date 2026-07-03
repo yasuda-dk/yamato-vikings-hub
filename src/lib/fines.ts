@@ -68,6 +68,18 @@ export type CreateFineInput = {
   amountDkk: number;
 };
 
+export type FineParticipantSelection = {
+  kind: 'member' | 'guest';
+  id: string;
+};
+
+export type CreateFinesInput = {
+  participants: FineParticipantSelection[];
+  fineTypeId: string | null;
+  description: string;
+  amountDkk: number;
+};
+
 export type UpdateFineStatusInput = {
   fineId: string;
   action: 'confirm-paid' | 'waive';

@@ -772,6 +772,42 @@ export const demoPhase1Api: Phase1Api = {
     return buildDemoFineBox();
   },
 
+  async createFines(input) {
+    const selectedMember = state.selectedMember;
+    if (selectedMember?.application_role !== 'Admin') throw new Error('Admin permission is required');
+    if (input.participants.length === 0) throw new Error('Select at least one participant');
+    if (!input.description.trim()) throw new Error('Description is required');
+    if (input.amountDkk <= 0) throw new Error('Amount must be greater than 0');
+    const fineType = input.fineTypeId ? demoFineTypes.find((item) => item.id === input.fineTypeId && item.is_active) : null;
+    if (input.fineTypeId && !fineType) throw new Error('Fine type is not active');
+
+    const participantOptions = buildDemoFineBox().participants;
+    const nextFines = input.participants.map((selection) => {
+      const participant = participantOptions.find((item) => item.kind === selection.kind && item.id === selection.id);
+      if (!participant) throw new Error('Participant is required');
+      return {
+        id: crypto.randomUUID(),
+        participant_kind: selection.kind,
+        participant_id: selection.id,
+        first_name: participant.first_name,
+        fine_type_name: fineType?.name ?? null,
+        description: input.description.trim(),
+        amount_dkk: input.amountDkk,
+        payment_status: 'Unpaid' as const,
+        related_event_title: participant.context,
+        related_event_date: participant.kind === 'guest' ? '2026-07-03' : null,
+        created_at: new Date().toISOString(),
+        payment_reported_at: null,
+        payment_confirmed_at: null,
+        waived_at: null,
+      };
+    });
+
+    demoFines = [...nextFines, ...demoFines];
+
+    return buildDemoFineBox();
+  },
+
   async updateFineStatus(input) {
     const selectedMember = state.selectedMember;
     if (selectedMember?.application_role !== 'Admin') throw new Error('Admin permission is required');
