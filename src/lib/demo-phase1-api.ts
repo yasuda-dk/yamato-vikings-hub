@@ -22,7 +22,7 @@ import type {
   VotingResult,
   VotingStatusInput,
 } from './events';
-import type { FineBoxState, FineRecord } from './fines';
+import type { FineBoxState, FineRecord, FineTypeRecord } from './fines';
 import { normalizeFirstName } from './member-options';
 import type { MemberProfile, MemberRegistrationInput } from './member-options';
 import type { Phase1Api, SessionState } from './phase1-api';
@@ -107,6 +107,32 @@ let demoFines: FineRecord[] = [
     payment_reported_at: '2026-06-27T08:00:00.000Z',
     payment_confirmed_at: '2026-06-27T09:00:00.000Z',
     waived_at: null,
+  },
+];
+let demoFineTypes: FineTypeRecord[] = [
+  {
+    id: 'demo-fine-type-late',
+    name: 'Late arrival',
+    default_amount_dkk: 20,
+    is_active: true,
+    created_at: '2026-07-01T00:00:00.000Z',
+    updated_at: '2026-07-01T00:00:00.000Z',
+  },
+  {
+    id: 'demo-fine-type-worst',
+    name: 'Worst Player',
+    default_amount_dkk: 50,
+    is_active: true,
+    created_at: '2026-07-01T00:00:00.000Z',
+    updated_at: '2026-07-01T00:00:00.000Z',
+  },
+  {
+    id: 'demo-fine-type-equipment',
+    name: 'Forgot equipment',
+    default_amount_dkk: 30,
+    is_active: false,
+    created_at: '2026-07-01T00:00:00.000Z',
+    updated_at: '2026-07-01T00:00:00.000Z',
   },
 ];
 let demoGuests: EventGuest[] = [
@@ -244,6 +270,7 @@ function buildDemoFineBox(): FineBoxState {
     },
     summary: totals,
     fines: demoFines,
+    fineTypes: demoFineTypes,
     participants: [
       ...state.members
         .filter((member) => member.membership_status === 'Active')
@@ -719,6 +746,8 @@ export const demoPhase1Api: Phase1Api = {
     if (!participant) throw new Error('Participant is required');
     if (!input.description.trim()) throw new Error('Description is required');
     if (input.amountDkk <= 0) throw new Error('Amount must be greater than 0');
+    const fineType = input.fineTypeId ? demoFineTypes.find((item) => item.id === input.fineTypeId && item.is_active) : null;
+    if (input.fineTypeId && !fineType) throw new Error('Fine type is not active');
 
     demoFines = [
       {
@@ -726,7 +755,7 @@ export const demoPhase1Api: Phase1Api = {
         participant_kind: input.participantKind,
         participant_id: input.participantId,
         first_name: participant.first_name,
-        fine_type_name: null,
+        fine_type_name: fineType?.name ?? null,
         description: input.description.trim(),
         amount_dkk: input.amountDkk,
         payment_status: 'Unpaid',
@@ -764,6 +793,41 @@ export const demoPhase1Api: Phase1Api = {
       }
       return { ...item, payment_status: 'Waived', waived_at: new Date().toISOString() };
     });
+
+    return buildDemoFineBox();
+  },
+
+  async createFineType(input) {
+    const selectedMember = state.selectedMember;
+    if (selectedMember?.application_role !== 'Admin') throw new Error('Admin permission is required');
+    const name = input.name.trim().replace(/\s+/g, ' ');
+    if (!name) throw new Error('Fine type name is required');
+    if (!Number.isInteger(input.defaultAmountDkk) || input.defaultAmountDkk < 0) throw new Error('Default amount must be 0 or more');
+    if (demoFineTypes.some((type) => type.name.toLocaleLowerCase() === name.toLocaleLowerCase())) {
+      throw new Error('This fine type already exists.');
+    }
+
+    demoFineTypes = [
+      ...demoFineTypes,
+      {
+        id: crypto.randomUUID(),
+        name,
+        default_amount_dkk: input.defaultAmountDkk,
+        is_active: true,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      },
+    ];
+
+    return buildDemoFineBox();
+  },
+
+  async updateFineType(input) {
+    const selectedMember = state.selectedMember;
+    if (selectedMember?.application_role !== 'Admin') throw new Error('Admin permission is required');
+    if (!demoFineTypes.some((type) => type.id === input.fineTypeId)) throw new Error('Fine type is required');
+
+    demoFineTypes = demoFineTypes.map((type) => (type.id === input.fineTypeId ? { ...type, is_active: input.isActive, updated_at: new Date().toISOString() } : type));
 
     return buildDemoFineBox();
   },

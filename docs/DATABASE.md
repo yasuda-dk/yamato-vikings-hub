@@ -107,6 +107,8 @@ Server-side functions:
 - `report_fine_payment`
 - `create_fine`
 - `update_fine_status`
+- `create_fine_type`
+- `update_fine_type`
 
 Rules enforced in this slice:
 
@@ -115,6 +117,11 @@ Rules enforced in this slice:
 - Members can report only their own unpaid member fines as paid.
 - Event Guest fines cannot be reported by regular members.
 - Reporting payment changes status from `Unpaid` to `Payment reported`.
+- Active fine types are returned to approved users for selection.
+- Inactive fine types are returned only to Admins for management.
+- Admins can create reusable fine types with default DKK amounts.
+- Admins can activate and deactivate fine types.
+- Inactive fine types cannot be used for new fines.
 - Admins can create member and event Guest fines.
 - Admins can confirm `Payment reported` fines as `Paid`.
 - Admins can waive `Unpaid` or `Payment reported` fines.
