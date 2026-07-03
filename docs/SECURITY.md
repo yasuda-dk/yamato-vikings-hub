@@ -29,6 +29,14 @@ Do not paste the real team password into chat, commit it, or store it in fronten
 
 The `setup-team-password` function is protected by `TEAM_SETUP_TOKEN` and can initialize the password only once. Later password changes must go through authenticated Admin flows.
 
+## Phase 1 Admin Member Controls
+
+- `update-member` requires the selected profile to be an active Admin.
+- Regular Members cannot change protected fields such as first name, football level, member status, or role.
+- Admin member updates are enforced in `admin_update_member`, not only in the UI.
+- The final active Admin cannot remove their own Admin access accidentally.
+- Admin member updates write private audit metadata and public member history without exposing Admin emails.
+
 ## Phase 2 Event And RSVP Controls
 
 The event and RSVP slice keeps direct table writes closed to regular frontend code. The browser calls Edge Functions, and those functions execute database functions with the authenticated Supabase user context.

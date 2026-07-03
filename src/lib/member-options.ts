@@ -44,6 +44,19 @@ export type MemberRegistrationInput = {
   gender: Gender;
 };
 
+export type AdminMemberUpdateInput = {
+  memberId: string;
+  firstName: string;
+  ageGroup: AgeGroup;
+  footballLevel: FootballLevel;
+  primaryPosition: Position;
+  secondaryPosition: SecondaryPosition;
+  residenceType: ResidenceType;
+  gender: Gender;
+  membershipStatus: MemberProfile['membership_status'];
+  applicationRole: MemberProfile['application_role'];
+};
+
 export function normalizeFirstName(value: string) {
   return value.trim().replace(/\s+/g, ' ').toLowerCase();
 }
@@ -93,6 +106,34 @@ export function validateRegistration(input: MemberRegistrationInput, existingMem
   }
   if (!isResidenceType(input.residenceType)) errors.residenceType = 'Select a residence type.';
   if (!isGender(input.gender)) errors.gender = 'Select a gender.';
+
+  return errors;
+}
+
+export function validateAdminMemberUpdate(input: AdminMemberUpdateInput, existingMembers: MemberProfile[]) {
+  const errors: Partial<Record<keyof AdminMemberUpdateInput, string>> = {};
+  const normalizedName = normalizeFirstName(input.firstName);
+
+  if (!input.memberId) errors.memberId = 'Member is required.';
+  if (!normalizedName) {
+    errors.firstName = 'First name is required.';
+  } else if (existingMembers.some((member) => member.id !== input.memberId && normalizeFirstName(member.first_name) === normalizedName)) {
+    errors.firstName = 'This name is already in use. Please choose another name or nickname.';
+  }
+
+  if (!isAgeGroup(input.ageGroup)) errors.ageGroup = 'Select an age group.';
+  if (!isFootballLevel(input.footballLevel)) errors.footballLevel = 'Select a football level.';
+  if (!isPosition(input.primaryPosition)) errors.primaryPosition = 'Select a primary position.';
+  if (input.secondaryPosition !== 'None' && !isPosition(input.secondaryPosition)) {
+    errors.secondaryPosition = 'Select a secondary position.';
+  }
+  if (input.secondaryPosition !== 'None' && input.secondaryPosition === input.primaryPosition) {
+    errors.secondaryPosition = 'Secondary position must be different from primary position.';
+  }
+  if (!isResidenceType(input.residenceType)) errors.residenceType = 'Select a residence type.';
+  if (!isGender(input.gender)) errors.gender = 'Select a gender.';
+  if (input.membershipStatus !== 'Active' && input.membershipStatus !== 'Inactive') errors.membershipStatus = 'Select a member status.';
+  if (input.applicationRole !== 'Player' && input.applicationRole !== 'Admin') errors.applicationRole = 'Select an application role.';
 
   return errors;
 }

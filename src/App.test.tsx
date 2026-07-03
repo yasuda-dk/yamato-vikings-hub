@@ -208,6 +208,30 @@ function createApi(initialState: SessionState): Phase1Api {
       const member = { ...takashi, id: 'member-new', first_name: input.firstName, gender: input.gender };
       state = { hasAccess: true, selectedMember: member, members: [member] };
     },
+    updateMember: async (input) => {
+      if (state.selectedMember?.application_role !== 'Admin') throw new Error('Admin permission is required');
+      const nextMembers = state.members.map((member) =>
+        member.id === input.memberId
+          ? {
+              ...member,
+              first_name: input.firstName,
+              age_group: input.ageGroup,
+              football_level: input.footballLevel,
+              primary_position: input.primaryPosition,
+              secondary_position: input.secondaryPosition === 'None' ? null : input.secondaryPosition,
+              residence_type: input.residenceType,
+              gender: input.gender,
+              membership_status: input.membershipStatus,
+              application_role: input.applicationRole,
+            }
+          : member,
+      );
+      state = {
+        ...state,
+        members: nextMembers,
+        selectedMember: state.selectedMember ? nextMembers.find((member) => member.id === state.selectedMember?.id) ?? state.selectedMember : null,
+      };
+    },
     selectProfile: async (memberId) => {
       state = { ...state, selectedMember: state.members.find((member) => member.id === memberId) ?? null };
     },
@@ -737,6 +761,22 @@ describe('App shell', () => {
     expect(await screen.findByRole('heading', { name: 'Home' })).toBeInTheDocument();
     expect(screen.queryByRole('heading', { name: 'Season overview' })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Export CSV' })).not.toBeInTheDocument();
+  });
+
+  it('lets an admin edit a member football level', async () => {
+    const user = userEvent.setup();
+    render(<App api={createApi({ hasAccess: true, selectedMember: adminTakashi, members: [adminTakashi] })} />);
+
+    expect(await screen.findByRole('heading', { name: 'Home' })).toBeInTheDocument();
+    await user.click(screen.getByRole('link', { name: /members/i }));
+    expect(await screen.findByRole('heading', { name: 'Members' })).toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: 'Edit member' }));
+    await user.selectOptions(screen.getByLabelText('Football level'), '4');
+    await user.click(screen.getByRole('button', { name: 'Save changes' }));
+
+    expect(await screen.findByText('Member updated.')).toBeInTheDocument();
+    expect(screen.getByText(/4 - High level/)).toBeInTheDocument();
   });
 
   it('lets a member select unpaid fines and report MobilePay payment', async () => {

@@ -316,6 +316,38 @@ export const demoPhase1Api: Phase1Api = {
     };
   },
 
+  async updateMember(input) {
+    if (state.selectedMember?.application_role !== 'Admin') throw new Error('Admin permission is required');
+    if (!input.firstName.trim()) throw new Error('First name is required.');
+    if (state.members.some((member) => member.id !== input.memberId && normalizeFirstName(member.first_name) === normalizeFirstName(input.firstName))) {
+      throw new Error('This name is already in use. Please choose another name or nickname.');
+    }
+
+    const nextMembers = state.members.map((member) =>
+      member.id === input.memberId
+        ? {
+            ...member,
+            first_name: input.firstName.trim().replace(/\s+/g, ' '),
+            age_group: input.ageGroup,
+            football_level: input.footballLevel,
+            primary_position: input.primaryPosition,
+            secondary_position: input.secondaryPosition === 'None' ? null : input.secondaryPosition,
+            residence_type: input.residenceType,
+            gender: input.gender,
+            membership_status: input.membershipStatus,
+            application_role: input.applicationRole,
+          }
+        : member,
+    );
+
+    if (nextMembers.every((member) => member.id !== input.memberId)) throw new Error('Member not found');
+    state = {
+      ...state,
+      members: nextMembers,
+      selectedMember: state.selectedMember ? nextMembers.find((member) => member.id === state.selectedMember?.id) ?? state.selectedMember : null,
+    };
+  },
+
   async selectProfile(memberId: string) {
     const selectedMember = state.members.find((member) => member.id === memberId) ?? null;
     if (!selectedMember) throw new Error('Member not found');
