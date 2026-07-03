@@ -49,6 +49,7 @@ The event and RSVP slice keeps direct table writes closed to regular frontend co
 The Fine Box foundation keeps payment state changes behind Edge Functions and database functions.
 
 - `fine-box` requires current approved device access and returns only public fine fields.
+- Fine detail/history UI must not display private Admin notes, internal actor IDs, or security metadata.
 - `report-fine-payment` requires a selected Member profile.
 - `create-fine` and `update-fine-status` require an active Admin profile.
 - `create-fines-batch` requires an active Admin profile and validates every selected participant server-side.

@@ -11,6 +11,7 @@ type FinesPageProps = {
 export function FinesPage({ api, selectedMember }: FinesPageProps) {
   const [fineBox, setFineBox] = useState<FineBoxState | null>(null);
   const [selectedFineIds, setSelectedFineIds] = useState<string[]>([]);
+  const [expandedFineIds, setExpandedFineIds] = useState<string[]>([]);
   const [loadState, setLoadState] = useState<'loading' | 'ready' | 'error'>('loading');
   const [isReporting, setIsReporting] = useState(false);
   const [adminBusyId, setAdminBusyId] = useState<string | null>(null);
@@ -72,6 +73,10 @@ export function FinesPage({ api, selectedMember }: FinesPageProps) {
 
   function toggleFine(fineId: string) {
     setSelectedFineIds((current) => (current.includes(fineId) ? current.filter((id) => id !== fineId) : [...current, fineId]));
+  }
+
+  function toggleFineDetails(fineId: string) {
+    setExpandedFineIds((current) => (current.includes(fineId) ? current.filter((id) => id !== fineId) : [...current, fineId]));
   }
 
   function toggleAll() {
@@ -390,10 +395,12 @@ export function FinesPage({ api, selectedMember }: FinesPageProps) {
                   key={fine.id}
                   fine={fine}
                   selected={selectedFineIds.includes(fine.id)}
+                  expanded={expandedFineIds.includes(fine.id)}
                   canSelect={myUnpaidFines.some((item) => item.id === fine.id)}
                   isAdmin={isAdmin}
                   busyId={adminBusyId}
                   onToggle={() => toggleFine(fine.id)}
+                  onToggleDetails={() => toggleFineDetails(fine.id)}
                   onUpdateStatus={updateFineStatus}
                 />
               ))}
@@ -428,18 +435,22 @@ function SummaryTile({ label, value }: { label: string; value: string }) {
 function FineRow({
   fine,
   selected,
+  expanded,
   canSelect,
   isAdmin,
   busyId,
   onToggle,
+  onToggleDetails,
   onUpdateStatus,
 }: {
   fine: FineRecord;
   selected: boolean;
+  expanded: boolean;
   canSelect: boolean;
   isAdmin: boolean;
   busyId: string | null;
   onToggle: () => void;
+  onToggleDetails: () => void;
   onUpdateStatus: (input: UpdateFineStatusInput) => Promise<void>;
 }) {
   const canConfirm = isAdmin && fine.payment_status === 'Payment reported';
@@ -467,6 +478,10 @@ function FineRow({
           {selected ? 'Selected for payment' : 'Select for payment'}
         </button>
       ) : null}
+      <button type="button" onClick={onToggleDetails} className="mt-3 min-h-11 w-full rounded-md border border-navy/15 bg-white px-3 text-sm font-bold text-navy">
+        {expanded ? 'Hide details' : 'Show details'}
+      </button>
+      {expanded ? <FineDetails fine={fine} /> : null}
       {isAdmin && (canConfirm || canWaive) ? (
         <div className="mt-3 grid grid-cols-2 gap-2">
           <button
@@ -489,6 +504,47 @@ function FineRow({
       ) : null}
     </div>
   );
+}
+
+function FineDetails({ fine }: { fine: FineRecord }) {
+  return (
+    <div className="mt-3 rounded-md bg-mist p-3">
+      <h4 className="text-sm font-bold text-navy">Fine details</h4>
+      <dl className="mt-2 grid gap-2 text-sm">
+        <DetailRow label="Participant" value={`${fine.first_name}${fine.participant_kind === 'guest' ? ' · Guest' : ''}`} />
+        <DetailRow label="Reason" value={fine.fine_type_name ?? 'Custom fine'} />
+        <DetailRow label="Description" value={fine.description} />
+        <DetailRow label="Status" value={fine.payment_status} />
+        <DetailRow label="Created" value={formatFineDate(fine.created_at)} />
+        {fine.related_event_title ? <DetailRow label="Event" value={`${fine.related_event_title}${fine.related_event_date ? ` · ${formatFineDate(fine.related_event_date)}` : ''}`} /> : null}
+        {fine.payment_reported_at ? <DetailRow label="Reported" value={formatFineDate(fine.payment_reported_at)} /> : null}
+        {fine.payment_confirmed_at ? <DetailRow label="Confirmed paid" value={formatFineDate(fine.payment_confirmed_at)} /> : null}
+        {fine.waived_at ? <DetailRow label="Waived" value={formatFineDate(fine.waived_at)} /> : null}
+      </dl>
+    </div>
+  );
+}
+
+function DetailRow({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="grid grid-cols-[6.5rem_minmax(0,1fr)] gap-2">
+      <dt className="font-bold text-navy/60">{label}</dt>
+      <dd className="break-words font-semibold text-navy">{value}</dd>
+    </div>
+  );
+}
+
+function formatFineDate(value: string) {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return value;
+
+  return new Intl.DateTimeFormat('en-GB', {
+    day: '2-digit',
+    month: 'short',
+    year: 'numeric',
+    hour: value.includes('T') ? '2-digit' : undefined,
+    minute: value.includes('T') ? '2-digit' : undefined,
+  }).format(date);
 }
 
 function FinesLoading() {

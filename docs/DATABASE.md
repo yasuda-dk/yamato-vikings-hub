@@ -115,6 +115,7 @@ Rules enforced in this slice:
 
 - Approved devices can read public Fine Box rows through `list_fine_box`.
 - Private Admin notes are not returned by `list_fine_box`.
+- Fine detail views use only public fields returned by `list_fine_box`, including participant name, reason, amount, status, related event, and public payment timestamps.
 - Members can report only their own unpaid member fines as paid.
 - Event Guest fines cannot be reported by regular members.
 - Reporting payment changes status from `Unpaid` to `Payment reported`.

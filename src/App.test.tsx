@@ -716,6 +716,23 @@ describe('App shell', () => {
     expect(screen.getAllByText('Payment reported').length).toBeGreaterThan(0);
   });
 
+  it('shows public fine details and payment history', async () => {
+    const user = userEvent.setup();
+    render(<App api={createApi({ hasAccess: true, selectedMember: takashi, members: [takashi] })} />);
+
+    await user.click(await screen.findByRole('link', { name: /fines/i }));
+    await user.click(await screen.findAllByRole('button', { name: 'Show details' }).then((buttons) => buttons[0]));
+
+    expect(screen.getByRole('heading', { name: 'Fine details' })).toBeInTheDocument();
+    expect(screen.getByText('Participant')).toBeInTheDocument();
+    expect(screen.getByText('Reason')).toBeInTheDocument();
+    expect(screen.getByText('Created')).toBeInTheDocument();
+    expect(screen.getByText(/Friday Football ·/)).toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: 'Hide details' }));
+    expect(screen.queryByRole('heading', { name: 'Fine details' })).not.toBeInTheDocument();
+  });
+
   it('lets an admin add, confirm and waive fines', async () => {
     const user = userEvent.setup();
     render(<App api={createApi({ hasAccess: true, selectedMember: adminTakashi, members: [adminTakashi] })} />);
