@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { downloadSeasonOverviewCsv } from '../lib/analytics-export';
 import type { EventSummary } from '../lib/events';
 import type { FineBoxState } from '../lib/fines';
 import type { AgeGroup, Gender, MemberProfile, Position, ResidenceType } from '../lib/member-options';
@@ -50,6 +51,7 @@ function AnalyticsOverview({ api, members }: { api: Phase1Api; members: MemberPr
   const [fineBox, setFineBox] = useState<FineBoxState | null>(null);
   const [loadState, setLoadState] = useState<'loading' | 'ready' | 'error'>('loading');
   const [error, setError] = useState<string | null>(null);
+  const [exportStatus, setExportStatus] = useState<'idle' | 'success' | 'error'>('idle');
   const seasonYear = new Date().getFullYear();
 
   useEffect(() => {
@@ -108,6 +110,17 @@ function AnalyticsOverview({ api, members }: { api: Phase1Api; members: MemberPr
     };
   }, [events, members]);
 
+  function handleExportCsv() {
+    if (!fineBox) return;
+
+    try {
+      downloadSeasonOverviewCsv({ seasonYear, members, events, fineBox });
+      setExportStatus('success');
+    } catch {
+      setExportStatus('error');
+    }
+  }
+
   return (
     <div className="rounded-lg border border-navy/10 bg-white p-4">
       <p className="text-sm font-semibold text-footballBlue">Admin</p>
@@ -136,6 +149,15 @@ function AnalyticsOverview({ api, members }: { api: Phase1Api; members: MemberPr
 
       {loadState === 'ready' ? (
         <div className="mt-4 grid gap-3">
+          <button type="button" onClick={handleExportCsv} className="min-h-12 w-full rounded-md bg-footballBlue px-4 text-base font-bold text-white">
+            Export CSV
+          </button>
+          {exportStatus === 'success' ? <p className="rounded-md border border-footballBlue/20 bg-white p-3 text-sm font-semibold text-footballBlue">CSV export created.</p> : null}
+          {exportStatus === 'error' ? (
+            <p className="rounded-md border border-red-200 bg-white p-3 text-sm font-semibold text-red-800" role="alert">
+              Could not create CSV export.
+            </p>
+          ) : null}
           <div className="grid grid-cols-2 gap-2">
             <MetricTile label="Active members" value={String(stats.activeMembers)} />
             <MetricTile label="Inactive members" value={String(stats.inactiveMembers)} />

@@ -703,6 +703,7 @@ describe('App shell', () => {
     };
 
     expect(await screen.findByRole('heading', { name: 'Season overview' })).toBeInTheDocument();
+    expect(await screen.findByRole('button', { name: 'Export CSV' })).toBeInTheDocument();
     expectMetricLabel('Active members');
     expectMetricLabel('Average level');
     expectMetricLabel('Open events');
@@ -723,6 +724,7 @@ describe('App shell', () => {
 
     expect(await screen.findByRole('heading', { name: 'Home' })).toBeInTheDocument();
     expect(screen.queryByRole('heading', { name: 'Season overview' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Export CSV' })).not.toBeInTheDocument();
   });
 
   it('lets a member select unpaid fines and report MobilePay payment', async () => {
