@@ -22,7 +22,7 @@ export function HomePage({ api, members, selectedMember, onSwitchProfile }: Home
         <h2 className="mt-2 text-xl font-bold text-navy">Home</h2>
         <div className="mt-4 grid gap-3">
           <ProfileRow label="Age group" value={selectedMember.age_group} />
-          <ProfileRow label="Football level" value={formatFootballLevel(selectedMember.football_level)} />
+          {selectedMember.application_role === 'Admin' ? <ProfileRow label="Football level" value={formatFootballLevel(selectedMember.football_level)} /> : null}
           <ProfileRow label="Primary position" value={selectedMember.primary_position} />
           <ProfileRow label="Secondary position" value={selectedMember.secondary_position ?? 'None'} />
           <ProfileRow label="Residence type" value={selectedMember.residence_type} />

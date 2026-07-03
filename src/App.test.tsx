@@ -1159,5 +1159,21 @@ describe('App shell', () => {
     await user.click(screen.getByRole('button', { name: 'Create profile' }));
 
     expect((await screen.findAllByText('Submitting as Takashi')).length).toBeGreaterThan(0);
+    expect(screen.queryByText('3 - Decent')).not.toBeInTheDocument();
+    expect(screen.queryByText('Football level')).not.toBeInTheDocument();
+  });
+
+  it('hides member football level from regular players', async () => {
+    const user = userEvent.setup();
+    render(<App api={createApi({ hasAccess: true, selectedMember: takashi, members: [takashi] })} />);
+
+    expect(await screen.findByRole('heading', { name: 'Home' })).toBeInTheDocument();
+    expect(screen.queryByText('3 - Decent')).not.toBeInTheDocument();
+    expect(screen.queryByText('Football level')).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole('link', { name: /members/i }));
+
+    expect(await screen.findByRole('heading', { name: 'Members' })).toBeInTheDocument();
+    expect(screen.queryByText('3 - Decent')).not.toBeInTheDocument();
   });
 });
