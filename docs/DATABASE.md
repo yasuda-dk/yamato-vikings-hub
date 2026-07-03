@@ -106,6 +106,7 @@ Server-side functions:
 - `list_fine_box`
 - `report_fine_payment`
 - `create_fine`
+- `create_fines`
 - `update_fine_status`
 - `create_fine_type`
 - `update_fine_type`
@@ -123,6 +124,8 @@ Rules enforced in this slice:
 - Admins can activate and deactivate fine types.
 - Inactive fine types cannot be used for new fines.
 - Admins can create member and event Guest fines.
+- Admins can create the same fine for up to 50 selected participants in one batch.
+- Batch fine creation rejects duplicate participant selections.
 - Admins can confirm `Payment reported` fines as `Paid`.
 - Admins can waive `Unpaid` or `Payment reported` fines.
 - MobilePay box number and URL are read from `team_settings`.

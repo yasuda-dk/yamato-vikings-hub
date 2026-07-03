@@ -574,6 +574,41 @@ function createApi(initialState: SessionState): Phase1Api {
       };
       return fineBox;
     },
+    createFines: async (input) => {
+      if (state.selectedMember?.application_role !== 'Admin') throw new Error('Admin permission is required');
+      const fineType = input.fineTypeId ? fineBox.fineTypes.find((item) => item.id === input.fineTypeId && item.is_active) : null;
+      const newFines = input.participants.map((selection, index) => {
+        const participant = fineBox.participants.find((item) => item.kind === selection.kind && item.id === selection.id);
+        if (!participant) throw new Error('Participant is required');
+
+        return {
+          id: `fine-new-${index}`,
+          participant_kind: selection.kind,
+          participant_id: selection.id,
+          first_name: participant.first_name,
+          fine_type_name: fineType?.name ?? null,
+          description: input.description,
+          amount_dkk: input.amountDkk,
+          payment_status: 'Unpaid' as const,
+          related_event_title: participant.context,
+          related_event_date: null,
+          created_at: '2026-07-04T10:00:00.000Z',
+          payment_reported_at: null,
+          payment_confirmed_at: null,
+          waived_at: null,
+        };
+      });
+
+      fineBox = {
+        ...fineBox,
+        summary: {
+          ...fineBox.summary,
+          unpaid_total_dkk: fineBox.summary.unpaid_total_dkk + input.amountDkk * input.participants.length,
+        },
+        fines: [...newFines, ...fineBox.fines],
+      };
+      return fineBox;
+    },
     updateFineStatus: async (input) => {
       if (state.selectedMember?.application_role !== 'Admin') throw new Error('Admin permission is required');
       const fine = fineBox.fines.find((item) => item.id === input.fineId);
@@ -687,7 +722,7 @@ describe('App shell', () => {
 
     await user.click(await screen.findByRole('link', { name: /fines/i }));
     await user.click(await screen.findByRole('button', { name: 'Add fine' }));
-    await user.selectOptions(screen.getByLabelText('Participant'), `member:${takashi.id}`);
+    await user.click(screen.getByRole('checkbox', { name: takashi.first_name }));
     await user.type(screen.getByLabelText('Description'), 'Yellow card');
     await user.clear(screen.getByLabelText('Amount DKK'));
     await user.type(screen.getByLabelText('Amount DKK'), '25');
@@ -723,7 +758,7 @@ describe('App shell', () => {
     expect(screen.getByText('25 DKK · Active')).toBeInTheDocument();
 
     await user.click(screen.getByRole('button', { name: 'Add fine' }));
-    await user.selectOptions(screen.getByLabelText('Participant'), `member:${takashi.id}`);
+    await user.click(screen.getByRole('checkbox', { name: takashi.first_name }));
     await user.selectOptions(screen.getByLabelText('Fine type'), 'fine-type-new');
 
     expect(screen.getByLabelText('Description')).toHaveValue('Yellow card');
@@ -737,6 +772,26 @@ describe('App shell', () => {
     await user.click(deactivateButtons[deactivateButtons.length - 1]);
     expect(await screen.findByText('Fine type deactivated.')).toBeInTheDocument();
     expect(screen.getByText('25 DKK · Inactive')).toBeInTheDocument();
+  });
+
+  it('lets an admin add the same fine to multiple participants', async () => {
+    const user = userEvent.setup();
+    render(<App api={createApi({ hasAccess: true, selectedMember: adminTakashi, members: [adminTakashi] })} />);
+
+    await user.click(await screen.findByRole('link', { name: /fines/i }));
+    await user.click(await screen.findByRole('button', { name: 'Add fine' }));
+    await user.click(screen.getByRole('checkbox', { name: takashi.first_name }));
+    await user.click(screen.getByRole('checkbox', { name: /Ken/i }));
+    await user.selectOptions(screen.getByLabelText('Fine type'), 'fine-type-worst');
+
+    expect(screen.getByText('2 selected')).toBeInTheDocument();
+    expect(screen.getByLabelText('Description')).toHaveValue('Worst Player');
+    expect(screen.getByLabelText('Amount DKK')).toHaveValue(50);
+
+    await user.click(screen.getByRole('button', { name: 'Add 2 fines' }));
+
+    expect(await screen.findByText('2 fines added.')).toBeInTheDocument();
+    expect(screen.getAllByText('Worst Player').length).toBeGreaterThanOrEqual(3);
   });
 
   it('falls back for invalid routes after profile selection', async () => {

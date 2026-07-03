@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import type { CreateFineInput, FineBoxState, FineRecord, FineTypeRecord, UpdateFineStatusInput } from '../lib/fines';
+import type { CreateFinesInput, FineBoxState, FineRecord, FineTypeRecord, UpdateFineStatusInput } from '../lib/fines';
 import type { MemberProfile } from '../lib/member-options';
 import type { Phase1Api } from '../lib/phase1-api';
 
@@ -16,9 +16,8 @@ export function FinesPage({ api, selectedMember }: FinesPageProps) {
   const [adminBusyId, setAdminBusyId] = useState<string | null>(null);
   const [showCreateFine, setShowCreateFine] = useState(false);
   const [showFineTypeForm, setShowFineTypeForm] = useState(false);
-  const [fineDraft, setFineDraft] = useState<CreateFineInput>({
-    participantKind: 'member',
-    participantId: '',
+  const [fineDraft, setFineDraft] = useState<CreateFinesInput>({
+    participants: [],
     fineTypeId: null,
     description: '',
     amountDkk: 20,
@@ -66,9 +65,10 @@ export function FinesPage({ api, selectedMember }: FinesPageProps) {
   const selectedTotal = selectedFines.reduce((total, fine) => total + fine.amount_dkk, 0);
   const canReport = selectedFineIds.length > 0 && !isReporting;
   const mobilePayUrl = fineBox?.settings.mobilepay_url ?? '';
-  const createDisabled = adminBusyId === 'create-fine' || !fineDraft.participantId || !fineDraft.description.trim() || fineDraft.amountDkk <= 0;
+  const createDisabled = adminBusyId === 'create-fine' || fineDraft.participants.length === 0 || !fineDraft.description.trim() || fineDraft.amountDkk <= 0;
   const createFineTypeDisabled = adminBusyId === 'create-fine-type' || !fineTypeDraft.name.trim() || fineTypeDraft.defaultAmountDkk < 0;
   const activeFineTypes = fineBox?.fineTypes.filter((fineType) => fineType.is_active) ?? [];
+  const createFineButtonLabel = fineDraft.participants.length > 1 ? `Add ${fineDraft.participants.length} fines` : 'Add fine';
 
   function toggleFine(fineId: string) {
     setSelectedFineIds((current) => (current.includes(fineId) ? current.filter((id) => id !== fineId) : [...current, fineId]));
@@ -76,6 +76,16 @@ export function FinesPage({ api, selectedMember }: FinesPageProps) {
 
   function toggleAll() {
     setSelectedFineIds((current) => (current.length === myUnpaidFines.length ? [] : myUnpaidFines.map((fine) => fine.id)));
+  }
+
+  function toggleParticipant(kind: 'member' | 'guest', id: string) {
+    setFineDraft((current) => {
+      const isSelected = current.participants.some((participant) => participant.kind === kind && participant.id === id);
+      return {
+        ...current,
+        participants: isSelected ? current.participants.filter((participant) => participant.kind !== kind || participant.id !== id) : [...current.participants, { kind, id }],
+      };
+    });
   }
 
   async function reportPayment() {
@@ -103,11 +113,12 @@ export function FinesPage({ api, selectedMember }: FinesPageProps) {
     setError(null);
     setSuccess(null);
     try {
-      const nextFineBox = await api.createFine(fineDraft);
+      const createdCount = fineDraft.participants.length;
+      const nextFineBox = await api.createFines(fineDraft);
       setFineBox(nextFineBox);
-      setFineDraft((current) => ({ ...current, fineTypeId: null, description: '', amountDkk: 20 }));
+      setFineDraft((current) => ({ ...current, participants: [], fineTypeId: null, description: '', amountDkk: 20 }));
       setShowCreateFine(false);
-      setSuccess('Fine added.');
+      setSuccess(createdCount > 1 ? `${createdCount} fines added.` : 'Fine added.');
     } catch (createError) {
       setError(createError instanceof Error ? createError.message : 'Could not add fine.');
     } finally {
@@ -270,29 +281,32 @@ export function FinesPage({ api, selectedMember }: FinesPageProps) {
             <div className="rounded-lg border border-navy/10 bg-white p-4">
               <h3 className="text-base font-bold text-navy">Add fine</h3>
               <div className="mt-4 grid gap-3">
-                <label className="text-sm font-semibold text-navy">
-                  Participant
-                  <select
-                    value={fineDraft.participantId ? `${fineDraft.participantKind}:${fineDraft.participantId}` : ''}
-                    onChange={(event) => {
-                      const participant = fineBox.participants.find((item) => `${item.kind}:${item.id}` === event.target.value);
-                      setFineDraft((current) =>
-                        participant
-                          ? { ...current, participantKind: participant.kind, participantId: participant.id }
-                          : { ...current, participantKind: 'member', participantId: '' },
+                <div>
+                  <div className="flex items-center justify-between gap-3">
+                    <p className="text-sm font-semibold text-navy">Participants</p>
+                    <span className="rounded-md bg-mist px-2 py-1 text-xs font-bold text-navy">{fineDraft.participants.length} selected</span>
+                  </div>
+                  <div className="mt-2 overflow-hidden rounded-md border border-navy/10">
+                    {fineBox.participants.map((participant) => {
+                      const participantKey = `${participant.kind}:${participant.id}`;
+                      const isSelected = fineDraft.participants.some((item) => item.kind === participant.kind && item.id === participant.id);
+                      return (
+                        <label key={participantKey} className="flex min-h-12 items-center gap-3 border-b border-navy/10 bg-white px-3 py-2 text-sm font-semibold text-navy last:border-b-0">
+                          <input
+                            type="checkbox"
+                            checked={isSelected}
+                            onChange={() => toggleParticipant(participant.kind, participant.id)}
+                            className="h-5 w-5 shrink-0 accent-footballBlue"
+                          />
+                          <span className="min-w-0 flex-1">
+                            <span className="block break-words">{participant.first_name}</span>
+                            {participant.kind === 'guest' ? <span className="mt-1 block text-xs font-bold text-footballBlue">Guest{participant.context ? ` · ${participant.context}` : ''}</span> : null}
+                          </span>
+                        </label>
                       );
-                    }}
-                    className="mt-2 min-h-11 w-full rounded-md border border-navy/20 bg-white px-3 text-base"
-                  >
-                    <option value="">Select participant</option>
-                    {fineBox.participants.map((participant) => (
-                      <option key={`${participant.kind}:${participant.id}`} value={`${participant.kind}:${participant.id}`}>
-                        {participant.first_name}
-                        {participant.kind === 'guest' ? ` - Guest${participant.context ? `, ${participant.context}` : ''}` : ''}
-                      </option>
-                    ))}
-                  </select>
-                </label>
+                    })}
+                  </div>
+                </div>
                 <label className="text-sm font-semibold text-navy">
                   Fine type
                   <select
@@ -325,7 +339,7 @@ export function FinesPage({ api, selectedMember }: FinesPageProps) {
                 </label>
               </div>
               <button type="button" disabled={createDisabled} onClick={createFine} className="mt-4 min-h-12 w-full rounded-md bg-footballBlue px-4 text-base font-bold text-white disabled:bg-navy/40">
-                {adminBusyId === 'create-fine' ? 'Adding...' : 'Add fine'}
+                {adminBusyId === 'create-fine' ? 'Adding...' : createFineButtonLabel}
               </button>
             </div>
           ) : null}

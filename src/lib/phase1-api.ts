@@ -17,7 +17,7 @@ import type {
   VoteInput,
   VotingStatusInput,
 } from './events';
-import type { CreateFineInput, CreateFineTypeInput, FineBoxState, ReportFinePaymentInput, UpdateFineStatusInput, UpdateFineTypeInput } from './fines';
+import type { CreateFineInput, CreateFinesInput, CreateFineTypeInput, FineBoxState, ReportFinePaymentInput, UpdateFineStatusInput, UpdateFineTypeInput } from './fines';
 import { createSupabaseBrowserClient } from './supabase';
 import { DEFAULT_TEAM_ID, type MemberProfile, type MemberRegistrationInput } from './member-options';
 
@@ -52,6 +52,7 @@ export type Phase1Api = {
   getFineBox: () => Promise<FineBoxState>;
   reportFinePayment: (input: ReportFinePaymentInput) => Promise<FineBoxState>;
   createFine: (input: CreateFineInput) => Promise<FineBoxState>;
+  createFines: (input: CreateFinesInput) => Promise<FineBoxState>;
   updateFineStatus: (input: UpdateFineStatusInput) => Promise<FineBoxState>;
   createFineType: (input: CreateFineTypeInput) => Promise<FineBoxState>;
   updateFineType: (input: UpdateFineTypeInput) => Promise<FineBoxState>;
@@ -197,6 +198,11 @@ export const phase1Api: Phase1Api = {
 
   async createFine(input: CreateFineInput) {
     const data = await invokeFunction<{ fineBox: FineBoxState }>('create-fine', input);
+    return data.fineBox;
+  },
+
+  async createFines(input: CreateFinesInput) {
+    const data = await invokeFunction<{ fineBox: FineBoxState }>('create-fines-batch', input);
     return data.fineBox;
   },
 
