@@ -698,14 +698,24 @@ describe('App shell', () => {
 
   it('shows an admin season overview on Home', async () => {
     render(<App api={createApi({ hasAccess: true, selectedMember: adminTakashi, members: [adminTakashi] })} />);
+    const expectMetricLabel = (label: string) => {
+      expect(screen.getByText((_, element) => element?.textContent?.replace(/\s+/g, ' ').trim() === label)).toBeInTheDocument();
+    };
 
     expect(await screen.findByRole('heading', { name: 'Season overview' })).toBeInTheDocument();
-    expect(screen.getByText('Active members')).toBeInTheDocument();
-    expect(screen.getByText('Average level')).toBeInTheDocument();
-    expect(screen.getByText('Open events')).toBeInTheDocument();
-    expect(screen.getByText('Going responses')).toBeInTheDocument();
-    expect(screen.getByText('Late arrivals')).toBeInTheDocument();
-    expect(screen.getByText('Unpaid fines')).toBeInTheDocument();
+    expectMetricLabel('Active members');
+    expectMetricLabel('Average level');
+    expectMetricLabel('Open events');
+    expectMetricLabel('Going responses');
+    expectMetricLabel('Late arrivals');
+    expectMetricLabel('Unpaid fines');
+    expect(screen.getByRole('heading', { name: 'Members by position' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Members by age group' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Members by residence' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Members by gender' })).toBeInTheDocument();
+    expect(screen.getAllByText('MF').length).toBeGreaterThanOrEqual(2);
+    expect(screen.getAllByText('35–39').length).toBeGreaterThanOrEqual(2);
+    expect(screen.getAllByText('Local resident').length).toBeGreaterThanOrEqual(2);
   });
 
   it('does not show the admin season overview to players', async () => {

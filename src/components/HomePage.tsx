@@ -1,8 +1,8 @@
 import { useEffect, useMemo, useState } from 'react';
 import type { EventSummary } from '../lib/events';
 import type { FineBoxState } from '../lib/fines';
-import type { MemberProfile } from '../lib/member-options';
-import { formatFootballLevel } from '../lib/member-options';
+import type { AgeGroup, Gender, MemberProfile, Position, ResidenceType } from '../lib/member-options';
+import { ageGroups, formatFootballLevel, genders, positions, residenceTypes } from '../lib/member-options';
 import type { Phase1Api } from '../lib/phase1-api';
 
 type HomePageProps = {
@@ -84,6 +84,10 @@ function AnalyticsOverview({ api, members }: { api: Phase1Api; members: MemberPr
     const activeMembers = members.filter((member) => member.membership_status === 'Active');
     const inactiveMembers = members.filter((member) => member.membership_status === 'Inactive');
     const averageLevel = activeMembers.length > 0 ? activeMembers.reduce((total, member) => total + member.football_level, 0) / activeMembers.length : 0;
+    const byAgeGroup = countBy(activeMembers, ageGroups, (member) => member.age_group);
+    const byResidenceType = countBy(activeMembers, residenceTypes, (member) => member.residence_type);
+    const byPosition = countBy(activeMembers, positions, (member) => member.primary_position);
+    const byGender = countBy(activeMembers, genders, (member) => member.gender);
     const openEvents = events.filter((event) => event.status !== 'Completed' && event.status !== 'Cancelled');
     const completedEvents = events.filter((event) => event.status === 'Completed');
     const goingResponses = events.reduce((total, event) => total + event.going_count, 0);
@@ -93,6 +97,10 @@ function AnalyticsOverview({ api, members }: { api: Phase1Api; members: MemberPr
       activeMembers: activeMembers.length,
       inactiveMembers: inactiveMembers.length,
       averageLevel,
+      byAgeGroup,
+      byResidenceType,
+      byPosition,
+      byGender,
       openEvents: openEvents.length,
       completedEvents: completedEvents.length,
       goingResponses,
@@ -138,9 +146,42 @@ function AnalyticsOverview({ api, members }: { api: Phase1Api; members: MemberPr
             <MetricTile label="Late arrivals" value={String(stats.lateArrivals)} />
             <MetricTile label="Unpaid fines" value={`${fineBox?.summary.unpaid_total_dkk ?? 0} DKK`} />
           </div>
+          <BreakdownSection title="Members by position" rows={stats.byPosition} />
+          <BreakdownSection title="Members by age group" rows={stats.byAgeGroup} />
+          <BreakdownSection title="Members by residence" rows={stats.byResidenceType} />
+          <BreakdownSection title="Members by gender" rows={stats.byGender} />
           {events.length === 0 && members.length === 0 ? <p className="text-sm text-navy/70">Analytics will fill in after members and events are created.</p> : null}
         </div>
       ) : null}
+    </div>
+  );
+}
+
+function countBy<T extends string>(members: MemberProfile[], values: readonly T[], getValue: (member: MemberProfile) => T) {
+  return values
+    .map((value) => ({
+      label: value,
+      count: members.filter((member) => getValue(member) === value).length,
+    }))
+    .filter((row) => row.count > 0);
+}
+
+function BreakdownSection({ title, rows }: { title: string; rows: Array<{ label: AgeGroup | ResidenceType | Position | Gender; count: number }> }) {
+  return (
+    <div className="rounded-md bg-mist p-3">
+      <h3 className="text-sm font-bold text-navy">{title}</h3>
+      {rows.length === 0 ? (
+        <p className="mt-2 text-sm text-navy/70">No active member data yet.</p>
+      ) : (
+        <div className="mt-2 divide-y divide-navy/10">
+          {rows.map((row) => (
+            <div key={row.label} className="flex min-h-10 items-center justify-between gap-3 py-2">
+              <span className="break-words text-sm font-semibold text-navy/70">{row.label}</span>
+              <span className="shrink-0 rounded-md bg-white px-2 py-1 text-xs font-bold text-navy">{row.count}</span>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

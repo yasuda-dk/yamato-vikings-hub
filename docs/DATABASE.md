@@ -147,6 +147,10 @@ Initial Admin-only metrics:
 - Active Member count
 - Inactive Member count
 - Average active Member football level
+- Active Members by age group
+- Active Members by residence type
+- Active Members by primary position
+- Active Members by gender
 - Open event count
 - Completed event count
 - Going response count
