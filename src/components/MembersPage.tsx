@@ -1,7 +1,9 @@
 import type { MemberProfile } from '../lib/member-options';
 import { formatFootballLevel } from '../lib/member-options';
 
-export function MembersPage({ members }: { members: MemberProfile[] }) {
+export function MembersPage({ members, selectedMember }: { members: MemberProfile[]; selectedMember: MemberProfile }) {
+  const canViewFootballLevel = selectedMember.application_role === 'Admin';
+
   return (
     <section className="rounded-lg border border-navy/10 bg-white p-4">
       <h2 className="text-xl font-bold text-navy">Members</h2>
@@ -16,7 +18,8 @@ export function MembersPage({ members }: { members: MemberProfile[] }) {
                 <span className="rounded-md bg-white px-2 py-1 text-xs font-bold text-navy">{member.membership_status}</span>
               </div>
               <p className="mt-2 text-sm text-navy/70">
-                {formatFootballLevel(member.football_level)} · {member.primary_position}
+                {canViewFootballLevel ? `${formatFootballLevel(member.football_level)} · ` : ''}
+                {member.primary_position}
                 {member.secondary_position ? ` / ${member.secondary_position}` : ''} · {member.age_group} · {member.gender}
               </p>
             </article>
