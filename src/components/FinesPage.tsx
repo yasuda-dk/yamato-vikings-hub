@@ -8,10 +8,15 @@ type FinesPageProps = {
   selectedMember: MemberProfile;
 };
 
+type FineStatusFilter = 'All' | FineRecord['payment_status'];
+
+const fineStatusFilters: FineStatusFilter[] = ['All', 'Unpaid', 'Payment reported', 'Paid', 'Waived'];
+
 export function FinesPage({ api, selectedMember }: FinesPageProps) {
   const [fineBox, setFineBox] = useState<FineBoxState | null>(null);
   const [selectedFineIds, setSelectedFineIds] = useState<string[]>([]);
   const [expandedFineIds, setExpandedFineIds] = useState<string[]>([]);
+  const [statusFilter, setStatusFilter] = useState<FineStatusFilter>('All');
   const [loadState, setLoadState] = useState<'loading' | 'ready' | 'error'>('loading');
   const [isReporting, setIsReporting] = useState(false);
   const [adminBusyId, setAdminBusyId] = useState<string | null>(null);
@@ -63,6 +68,7 @@ export function FinesPage({ api, selectedMember }: FinesPageProps) {
     [fineBox, selectedMember.id],
   );
   const selectedFines = useMemo(() => fineBox?.fines.filter((fine) => selectedFineIds.includes(fine.id)) ?? [], [fineBox, selectedFineIds]);
+  const visibleFines = useMemo(() => fineBox?.fines.filter((fine) => statusFilter === 'All' || fine.payment_status === statusFilter) ?? [], [fineBox, statusFilter]);
   const selectedTotal = selectedFines.reduce((total, fine) => total + fine.amount_dkk, 0);
   const canReport = selectedFineIds.length > 0 && !isReporting;
   const mobilePayUrl = fineBox?.settings.mobilepay_url ?? '';
@@ -383,14 +389,41 @@ export function FinesPage({ api, selectedMember }: FinesPageProps) {
             </div>
           </div>
 
+          <div className="rounded-lg border border-navy/10 bg-white p-4">
+            <div className="flex items-center justify-between gap-3">
+              <h3 className="text-base font-bold text-navy">Fine history</h3>
+              <span className="shrink-0 rounded-md bg-mist px-2 py-1 text-xs font-bold text-navy">{visibleFines.length} shown</span>
+            </div>
+            <div className="mt-3 grid grid-cols-2 gap-2">
+              {fineStatusFilters.map((filter) => (
+                <button
+                  key={filter}
+                  type="button"
+                  onClick={() => {
+                    setStatusFilter(filter);
+                    setExpandedFineIds([]);
+                  }}
+                  className={`min-h-11 rounded-md border px-3 text-sm font-bold ${statusFilter === filter ? 'border-footballBlue bg-footballBlue text-white' : 'border-navy/15 bg-white text-navy'}`}
+                >
+                  {filter}
+                </button>
+              ))}
+            </div>
+          </div>
+
           {fineBox.fines.length === 0 ? (
             <div className="rounded-lg border border-navy/10 bg-white p-4">
               <h3 className="text-base font-bold text-navy">No fines yet</h3>
               <p className="mt-2 text-sm text-navy/70">Fine history will appear here after an Admin creates fines.</p>
             </div>
+          ) : visibleFines.length === 0 ? (
+            <div className="rounded-lg border border-navy/10 bg-white p-4">
+              <h3 className="text-base font-bold text-navy">No {statusFilter.toLowerCase()} fines</h3>
+              <p className="mt-2 text-sm text-navy/70">Choose another status to see more Fine Box history.</p>
+            </div>
           ) : (
             <div className="overflow-hidden rounded-lg border border-navy/10 bg-white">
-              {fineBox.fines.map((fine) => (
+              {visibleFines.map((fine) => (
                 <FineRow
                   key={fine.id}
                   fine={fine}

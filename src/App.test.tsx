@@ -733,6 +733,27 @@ describe('App shell', () => {
     expect(screen.queryByRole('heading', { name: 'Fine details' })).not.toBeInTheDocument();
   });
 
+  it('filters fine history by payment status', async () => {
+    const user = userEvent.setup();
+    render(<App api={createApi({ hasAccess: true, selectedMember: takashi, members: [takashi] })} />);
+
+    await user.click(await screen.findByRole('link', { name: /fines/i }));
+
+    expect(await screen.findByRole('heading', { name: 'Fine history' })).toBeInTheDocument();
+    expect(screen.getByText('3 shown')).toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: 'Paid' }));
+    expect(screen.getByText('1 shown')).toBeInTheDocument();
+    expect(screen.getByText('Forgot bibs')).toBeInTheDocument();
+    expect(screen.queryByText('Late arrival')).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: 'Waived' }));
+    expect(screen.getByRole('heading', { name: 'No waived fines' })).toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: 'All' }));
+    expect(screen.getByText('3 shown')).toBeInTheDocument();
+  });
+
   it('lets an admin add, confirm and waive fines', async () => {
     const user = userEvent.setup();
     render(<App api={createApi({ hasAccess: true, selectedMember: adminTakashi, members: [adminTakashi] })} />);
