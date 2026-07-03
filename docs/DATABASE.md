@@ -132,9 +132,9 @@ Rules enforced in this slice:
 - Admins can waive `Unpaid` or `Payment reported` fines.
 - MobilePay box number and URL are read from `team_settings`.
 
-## Phase 6 Analytics Overview
+## Phase 6 Analytics Overview And CSV Export
 
-The first analytics slice is frontend-only and does not add database tables or functions.
+The initial analytics and CSV export slices are frontend-only and do not add database tables or functions.
 
 Sources:
 
@@ -157,7 +157,14 @@ Initial Admin-only metrics:
 - Late-arrival count
 - Unpaid fine total
 
+Admin CSV export:
+
+- Available only from the Admin-only Season overview.
+- Exports one CSV file with member, event, and fine rows.
+- Uses only fields already returned through session state, `list_events`, and `list_fine_box`.
+- Does not include internal UUIDs, anonymous Auth IDs, Admin emails, device links, private notes, security logs, or audit metadata.
+
 Rules:
 
 - The overview uses existing public fields and approved Edge Function/RPC responses.
-- CSV export, season switching, and deeper breakdowns remain out of scope for this slice.
+- Season switching and deeper breakdowns remain out of scope for this slice.
