@@ -19,7 +19,7 @@ import type {
 } from './events';
 import type { CreateFineInput, CreateFinesInput, CreateFineTypeInput, FineBoxState, ReportFinePaymentInput, UpdateFineStatusInput, UpdateFineTypeInput } from './fines';
 import { createSupabaseBrowserClient } from './supabase';
-import { DEFAULT_TEAM_ID, type MemberProfile, type MemberRegistrationInput } from './member-options';
+import { DEFAULT_TEAM_ID, type AdminMemberUpdateInput, type MemberProfile, type MemberRegistrationInput } from './member-options';
 
 export type SessionState = {
   hasAccess: boolean;
@@ -32,6 +32,7 @@ export type Phase1Api = {
   getSessionState: () => Promise<SessionState>;
   verifyTeamPassword: (password: string) => Promise<void>;
   registerMember: (input: MemberRegistrationInput) => Promise<void>;
+  updateMember: (input: AdminMemberUpdateInput) => Promise<void>;
   selectProfile: (memberId: string) => Promise<void>;
   listEvents: () => Promise<EventSummary[]>;
   getEventDetail: (eventId: string) => Promise<EventDetail>;
@@ -119,6 +120,10 @@ export const phase1Api: Phase1Api = {
 
   async registerMember(input: MemberRegistrationInput) {
     await invokeFunction('register-member', input);
+  },
+
+  async updateMember(input: AdminMemberUpdateInput) {
+    await invokeFunction('update-member', input);
   },
 
   async selectProfile(memberId: string) {

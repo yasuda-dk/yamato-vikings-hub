@@ -24,11 +24,35 @@ Schema changes must be implemented with migrations under `supabase/migrations`.
 - `select_member_profile`
 - `register_member_profile`
 - `update_own_member_profile`
+- `admin_update_member`
 - `reset_device_access`
 - `change_team_password`
 - `initialize_team_password`
 
 The initial team password is configured through the setup Edge Function and stored only as a salted hash.
+
+## Phase 1 Admin Member Management
+
+Admins can update protected member profile fields through `admin_update_member` via the `update-member` Edge Function.
+
+Admin-editable fields:
+
+- First name
+- Age group
+- Football level
+- Primary position
+- Secondary position
+- Residence type
+- Gender
+- Membership status
+- Application role
+
+Rules:
+
+- Regular Members still cannot update protected fields such as `football_level`, `membership_status`, or `application_role`.
+- First-name normalization and uniqueness remain enforced by the database.
+- The final active Admin cannot remove their own Admin access by changing their own role or status.
+- Admin updates write public member history and private audit log records.
 
 ## Phase 2 Event And RSVP Slice
 
