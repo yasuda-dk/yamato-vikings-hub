@@ -709,7 +709,12 @@ describe('App shell', () => {
     expectMetricLabel('Open events');
     expectMetricLabel('Going responses');
     expectMetricLabel('Late arrivals');
-    expectMetricLabel('Unpaid fines');
+    expectMetricLabel('Fine records');
+    expect(screen.getByRole('heading', { name: 'Fine totals' })).toBeInTheDocument();
+    expect(screen.getByText('Payment reported')).toBeInTheDocument();
+    expect(screen.getByText('15 DKK')).toBeInTheDocument();
+    expect(screen.getByText('Paid')).toBeInTheDocument();
+    expect(screen.getByText('30 DKK')).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: 'Members by position' })).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: 'Members by age group' })).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: 'Members by residence' })).toBeInTheDocument();

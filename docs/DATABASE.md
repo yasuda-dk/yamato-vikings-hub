@@ -155,7 +155,8 @@ Initial Admin-only metrics:
 - Completed event count
 - Going response count
 - Late-arrival count
-- Unpaid fine total
+- Fine record count
+- Fine totals for Unpaid, Payment reported, Paid, and Waived
 
 Admin CSV export:
 
