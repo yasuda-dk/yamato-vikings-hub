@@ -131,3 +131,29 @@ Rules enforced in this slice:
 - Admins can confirm `Payment reported` fines as `Paid`.
 - Admins can waive `Unpaid` or `Payment reported` fines.
 - MobilePay box number and URL are read from `team_settings`.
+
+## Phase 6 Analytics Overview
+
+The first analytics slice is frontend-only and does not add database tables or functions.
+
+Sources:
+
+- `members` from session state
+- `list_events`
+- `list_fine_box`
+
+Initial Admin-only metrics:
+
+- Active Member count
+- Inactive Member count
+- Average active Member football level
+- Open event count
+- Completed event count
+- Going response count
+- Late-arrival count
+- Unpaid fine total
+
+Rules:
+
+- The overview uses existing public fields and approved Edge Function/RPC responses.
+- CSV export, season switching, and deeper breakdowns remain out of scope for this slice.

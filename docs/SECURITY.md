@@ -61,3 +61,9 @@ The Fine Box foundation keeps payment state changes behind Edge Functions and da
 - New fines may reference only active fine types from the same team.
 - Batch fine creation is capped at 50 selected participants and rejects duplicate selections.
 - MobilePay details are loaded from `team_settings`; the frontend does not hard-code payment settings.
+
+## Phase 6 Analytics Controls
+
+- The first Season overview appears only for selected Admin profiles.
+- The overview uses existing approved API responses and does not expose private Admin notes, actor IDs, device links, or security metadata.
+- CSV export and restricted analytics exports remain out of scope for the initial overview slice.

@@ -128,7 +128,7 @@ export function App({ api = defaultApi }: AppProps) {
               />
             ) : (
               <Routes>
-                <Route path="/" element={<HomePage selectedMember={selectedMember} onSwitchProfile={() => setSessionState((current) => ({ ...current, selectedMember: null }))} />} />
+                <Route path="/" element={<HomePage api={api} members={sessionState.members} selectedMember={selectedMember} onSwitchProfile={() => setSessionState((current) => ({ ...current, selectedMember: null }))} />} />
                 <Route path="/events" element={<EventsPage api={api} selectedMember={selectedMember} />} />
                 <Route path="/events/:eventId" element={<EventDetailPage api={api} selectedMember={selectedMember} />} />
                 <Route path="/fines" element={<FinesPage api={api} selectedMember={selectedMember} />} />
