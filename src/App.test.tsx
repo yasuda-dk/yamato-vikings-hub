@@ -696,6 +696,25 @@ describe('App shell', () => {
     expect(screen.getByRole('heading', { name: 'Home' })).toBeInTheDocument();
   });
 
+  it('shows an admin season overview on Home', async () => {
+    render(<App api={createApi({ hasAccess: true, selectedMember: adminTakashi, members: [adminTakashi] })} />);
+
+    expect(await screen.findByRole('heading', { name: 'Season overview' })).toBeInTheDocument();
+    expect(screen.getByText('Active members')).toBeInTheDocument();
+    expect(screen.getByText('Average level')).toBeInTheDocument();
+    expect(screen.getByText('Open events')).toBeInTheDocument();
+    expect(screen.getByText('Going responses')).toBeInTheDocument();
+    expect(screen.getByText('Late arrivals')).toBeInTheDocument();
+    expect(screen.getByText('Unpaid fines')).toBeInTheDocument();
+  });
+
+  it('does not show the admin season overview to players', async () => {
+    render(<App api={createApi({ hasAccess: true, selectedMember: takashi, members: [takashi] })} />);
+
+    expect(await screen.findByRole('heading', { name: 'Home' })).toBeInTheDocument();
+    expect(screen.queryByRole('heading', { name: 'Season overview' })).not.toBeInTheDocument();
+  });
+
   it('lets a member select unpaid fines and report MobilePay payment', async () => {
     const user = userEvent.setup();
     render(<App api={createApi({ hasAccess: true, selectedMember: takashi, members: [takashi] })} />);
