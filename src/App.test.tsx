@@ -111,6 +111,32 @@ function createApi(initialState: SessionState): Phase1Api {
         waived_at: null,
       },
     ],
+    fineTypes: [
+      {
+        id: 'fine-type-late',
+        name: 'Late arrival',
+        default_amount_dkk: 20,
+        is_active: true,
+        created_at: '2026-07-01T00:00:00.000Z',
+        updated_at: '2026-07-01T00:00:00.000Z',
+      },
+      {
+        id: 'fine-type-worst',
+        name: 'Worst Player',
+        default_amount_dkk: 50,
+        is_active: true,
+        created_at: '2026-07-01T00:00:00.000Z',
+        updated_at: '2026-07-01T00:00:00.000Z',
+      },
+      {
+        id: 'fine-type-equipment',
+        name: 'Forgot equipment',
+        default_amount_dkk: 30,
+        is_active: false,
+        created_at: '2026-07-01T00:00:00.000Z',
+        updated_at: '2026-07-01T00:00:00.000Z',
+      },
+    ],
     participants: [
       {
         kind: 'member',
@@ -519,6 +545,7 @@ function createApi(initialState: SessionState): Phase1Api {
       if (state.selectedMember?.application_role !== 'Admin') throw new Error('Admin permission is required');
       const participant = fineBox.participants.find((item) => item.kind === input.participantKind && item.id === input.participantId);
       if (!participant) throw new Error('Participant is required');
+      const fineType = input.fineTypeId ? fineBox.fineTypes.find((item) => item.id === input.fineTypeId && item.is_active) : null;
       fineBox = {
         ...fineBox,
         summary: {
@@ -531,7 +558,7 @@ function createApi(initialState: SessionState): Phase1Api {
             participant_kind: input.participantKind,
             participant_id: input.participantId,
             first_name: participant.first_name,
-            fine_type_name: null,
+            fine_type_name: fineType?.name ?? null,
             description: input.description,
             amount_dkk: input.amountDkk,
             payment_status: 'Unpaid',
@@ -570,6 +597,33 @@ function createApi(initialState: SessionState): Phase1Api {
               }
             : item,
         ),
+      };
+      return fineBox;
+    },
+    createFineType: async (input) => {
+      if (state.selectedMember?.application_role !== 'Admin') throw new Error('Admin permission is required');
+      const name = input.name.trim().replace(/\s+/g, ' ');
+      fineBox = {
+        ...fineBox,
+        fineTypes: [
+          ...fineBox.fineTypes,
+          {
+            id: 'fine-type-new',
+            name,
+            default_amount_dkk: input.defaultAmountDkk,
+            is_active: true,
+            created_at: '2026-07-04T10:00:00.000Z',
+            updated_at: '2026-07-04T10:00:00.000Z',
+          },
+        ],
+      };
+      return fineBox;
+    },
+    updateFineType: async (input) => {
+      if (state.selectedMember?.application_role !== 'Admin') throw new Error('Admin permission is required');
+      fineBox = {
+        ...fineBox,
+        fineTypes: fineBox.fineTypes.map((fineType) => (fineType.id === input.fineTypeId ? { ...fineType, is_active: input.isActive } : fineType)),
       };
       return fineBox;
     },
@@ -651,6 +705,38 @@ describe('App shell', () => {
     await user.click(screen.getAllByRole('button', { name: 'Waive' })[0]);
     expect(await screen.findByText('Fine waived.')).toBeInTheDocument();
     expect(screen.getAllByText('Waived').length).toBeGreaterThan(0);
+  });
+
+  it('lets an admin create, deactivate and use fine types', async () => {
+    const user = userEvent.setup();
+    render(<App api={createApi({ hasAccess: true, selectedMember: adminTakashi, members: [adminTakashi] })} />);
+
+    await user.click(await screen.findByRole('link', { name: /fines/i }));
+    await user.click(await screen.findByRole('button', { name: 'New type' }));
+    await user.type(screen.getByLabelText('Fine type name'), 'Yellow card');
+    await user.clear(screen.getByLabelText('Default amount DKK'));
+    await user.type(screen.getByLabelText('Default amount DKK'), '25');
+    await user.click(screen.getByRole('button', { name: 'Create fine type' }));
+
+    expect(await screen.findByText('Fine type created.')).toBeInTheDocument();
+    expect(screen.getByText('Yellow card')).toBeInTheDocument();
+    expect(screen.getByText('25 DKK · Active')).toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: 'Add fine' }));
+    await user.selectOptions(screen.getByLabelText('Participant'), `member:${takashi.id}`);
+    await user.selectOptions(screen.getByLabelText('Fine type'), 'fine-type-new');
+
+    expect(screen.getByLabelText('Description')).toHaveValue('Yellow card');
+    expect(screen.getByLabelText('Amount DKK')).toHaveValue(25);
+
+    await user.click(screen.getByRole('button', { name: 'Add fine' }));
+    expect(await screen.findByText('Fine added.')).toBeInTheDocument();
+    expect(screen.getAllByText('Yellow card').length).toBeGreaterThan(0);
+
+    const deactivateButtons = screen.getAllByRole('button', { name: 'Deactivate' });
+    await user.click(deactivateButtons[deactivateButtons.length - 1]);
+    expect(await screen.findByText('Fine type deactivated.')).toBeInTheDocument();
+    expect(screen.getByText('25 DKK · Inactive')).toBeInTheDocument();
   });
 
   it('falls back for invalid routes after profile selection', async () => {

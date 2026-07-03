@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import type { CreateFineInput, FineBoxState, FineRecord, UpdateFineStatusInput } from '../lib/fines';
+import type { CreateFineInput, FineBoxState, FineRecord, FineTypeRecord, UpdateFineStatusInput } from '../lib/fines';
 import type { MemberProfile } from '../lib/member-options';
 import type { Phase1Api } from '../lib/phase1-api';
 
@@ -15,11 +15,17 @@ export function FinesPage({ api, selectedMember }: FinesPageProps) {
   const [isReporting, setIsReporting] = useState(false);
   const [adminBusyId, setAdminBusyId] = useState<string | null>(null);
   const [showCreateFine, setShowCreateFine] = useState(false);
+  const [showFineTypeForm, setShowFineTypeForm] = useState(false);
   const [fineDraft, setFineDraft] = useState<CreateFineInput>({
     participantKind: 'member',
     participantId: '',
+    fineTypeId: null,
     description: '',
     amountDkk: 20,
+  });
+  const [fineTypeDraft, setFineTypeDraft] = useState({
+    name: '',
+    defaultAmountDkk: 20,
   });
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
@@ -61,6 +67,8 @@ export function FinesPage({ api, selectedMember }: FinesPageProps) {
   const canReport = selectedFineIds.length > 0 && !isReporting;
   const mobilePayUrl = fineBox?.settings.mobilepay_url ?? '';
   const createDisabled = adminBusyId === 'create-fine' || !fineDraft.participantId || !fineDraft.description.trim() || fineDraft.amountDkk <= 0;
+  const createFineTypeDisabled = adminBusyId === 'create-fine-type' || !fineTypeDraft.name.trim() || fineTypeDraft.defaultAmountDkk < 0;
+  const activeFineTypes = fineBox?.fineTypes.filter((fineType) => fineType.is_active) ?? [];
 
   function toggleFine(fineId: string) {
     setSelectedFineIds((current) => (current.includes(fineId) ? current.filter((id) => id !== fineId) : [...current, fineId]));
@@ -97,11 +105,47 @@ export function FinesPage({ api, selectedMember }: FinesPageProps) {
     try {
       const nextFineBox = await api.createFine(fineDraft);
       setFineBox(nextFineBox);
-      setFineDraft((current) => ({ ...current, description: '', amountDkk: 20 }));
+      setFineDraft((current) => ({ ...current, fineTypeId: null, description: '', amountDkk: 20 }));
       setShowCreateFine(false);
       setSuccess('Fine added.');
     } catch (createError) {
       setError(createError instanceof Error ? createError.message : 'Could not add fine.');
+    } finally {
+      setAdminBusyId(null);
+    }
+  }
+
+  async function createFineType() {
+    if (createFineTypeDisabled) return;
+
+    setAdminBusyId('create-fine-type');
+    setError(null);
+    setSuccess(null);
+    try {
+      const nextFineBox = await api.createFineType(fineTypeDraft);
+      setFineBox(nextFineBox);
+      setFineTypeDraft({ name: '', defaultAmountDkk: 20 });
+      setShowFineTypeForm(false);
+      setSuccess('Fine type created.');
+    } catch (createError) {
+      setError(createError instanceof Error ? createError.message : 'Could not create fine type.');
+    } finally {
+      setAdminBusyId(null);
+    }
+  }
+
+  async function updateFineType(fineType: FineTypeRecord) {
+    if (adminBusyId) return;
+
+    setAdminBusyId(`fine-type-${fineType.id}`);
+    setError(null);
+    setSuccess(null);
+    try {
+      const nextFineBox = await api.updateFineType({ fineTypeId: fineType.id, isActive: !fineType.is_active });
+      setFineBox(nextFineBox);
+      setSuccess(fineType.is_active ? 'Fine type deactivated.' : 'Fine type activated.');
+    } catch (updateError) {
+      setError(updateError instanceof Error ? updateError.message : 'Could not update fine type.');
     } finally {
       setAdminBusyId(null);
     }
@@ -158,6 +202,70 @@ export function FinesPage({ api, selectedMember }: FinesPageProps) {
         <>
           <FineSummary fineBox={fineBox} />
 
+          {isAdmin ? (
+            <div className="rounded-lg border border-navy/10 bg-white p-4">
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <h3 className="text-base font-bold text-navy">Fine types</h3>
+                  <p className="mt-1 text-sm text-navy/70">Reusable reasons and default DKK amounts.</p>
+                </div>
+                <button type="button" onClick={() => setShowFineTypeForm((current) => !current)} className="min-h-11 shrink-0 rounded-md border border-footballBlue px-3 text-sm font-bold text-footballBlue">
+                  {showFineTypeForm ? 'Close' : 'New type'}
+                </button>
+              </div>
+
+              {showFineTypeForm ? (
+                <div className="mt-4 rounded-md bg-mist p-3">
+                  <div className="grid gap-3">
+                    <label className="text-sm font-semibold text-navy">
+                      Fine type name
+                      <input value={fineTypeDraft.name} onChange={(event) => setFineTypeDraft((current) => ({ ...current, name: event.target.value }))} className="mt-2 min-h-11 w-full rounded-md border border-navy/20 bg-white px-3 text-base" />
+                    </label>
+                    <label className="text-sm font-semibold text-navy">
+                      Default amount DKK
+                      <input
+                        type="number"
+                        min="0"
+                        step="1"
+                        value={fineTypeDraft.defaultAmountDkk}
+                        onChange={(event) => setFineTypeDraft((current) => ({ ...current, defaultAmountDkk: Number(event.target.value) }))}
+                        className="mt-2 min-h-11 w-full rounded-md border border-navy/20 bg-white px-3 text-base"
+                      />
+                    </label>
+                  </div>
+                  <button type="button" disabled={createFineTypeDisabled} onClick={createFineType} className="mt-3 min-h-12 w-full rounded-md bg-footballBlue px-4 text-base font-bold text-white disabled:bg-navy/40">
+                    {adminBusyId === 'create-fine-type' ? 'Creating...' : 'Create fine type'}
+                  </button>
+                </div>
+              ) : null}
+
+              {fineBox.fineTypes.length === 0 ? (
+                <p className="mt-4 text-sm text-navy/70">No fine types yet.</p>
+              ) : (
+                <div className="mt-4 divide-y divide-navy/10">
+                  {fineBox.fineTypes.map((fineType) => (
+                    <div key={fineType.id} className="flex items-center justify-between gap-3 py-3 first:pt-0 last:pb-0">
+                      <div className="min-w-0">
+                        <p className="break-words text-sm font-bold text-navy">{fineType.name}</p>
+                        <p className="mt-1 text-xs font-semibold text-navy/60">
+                          {fineType.default_amount_dkk} DKK · {fineType.is_active ? 'Active' : 'Inactive'}
+                        </p>
+                      </div>
+                      <button
+                        type="button"
+                        disabled={adminBusyId !== null}
+                        onClick={() => void updateFineType(fineType)}
+                        className="min-h-11 shrink-0 rounded-md border border-footballBlue px-3 text-sm font-bold text-footballBlue disabled:border-navy/10 disabled:text-navy/40"
+                      >
+                        {adminBusyId === `fine-type-${fineType.id}` ? 'Saving...' : fineType.is_active ? 'Deactivate' : 'Activate'}
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          ) : null}
+
           {showCreateFine && isAdmin ? (
             <div className="rounded-lg border border-navy/10 bg-white p-4">
               <h3 className="text-base font-bold text-navy">Add fine</h3>
@@ -181,6 +289,28 @@ export function FinesPage({ api, selectedMember }: FinesPageProps) {
                       <option key={`${participant.kind}:${participant.id}`} value={`${participant.kind}:${participant.id}`}>
                         {participant.first_name}
                         {participant.kind === 'guest' ? ` - Guest${participant.context ? `, ${participant.context}` : ''}` : ''}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <label className="text-sm font-semibold text-navy">
+                  Fine type
+                  <select
+                    value={fineDraft.fineTypeId ?? ''}
+                    onChange={(event) => {
+                      const fineType = activeFineTypes.find((item) => item.id === event.target.value);
+                      setFineDraft((current) =>
+                        fineType
+                          ? { ...current, fineTypeId: fineType.id, description: fineType.name, amountDkk: fineType.default_amount_dkk }
+                          : { ...current, fineTypeId: null },
+                      );
+                    }}
+                    className="mt-2 min-h-11 w-full rounded-md border border-navy/20 bg-white px-3 text-base"
+                  >
+                    <option value="">Custom fine</option>
+                    {activeFineTypes.map((fineType) => (
+                      <option key={fineType.id} value={fineType.id}>
+                        {fineType.name} - {fineType.default_amount_dkk} DKK
                       </option>
                     ))}
                   </select>

@@ -51,7 +51,10 @@ The Fine Box foundation keeps payment state changes behind Edge Functions and da
 - `fine-box` requires current approved device access and returns only public fine fields.
 - `report-fine-payment` requires a selected Member profile.
 - `create-fine` and `update-fine-status` require an active Admin profile.
+- `create-fine-type` and `update-fine-type` require an active Admin profile.
 - A Member can report only their own `Unpaid` member fines.
 - Event Guest fines are Admin-managed and cannot be reported by regular members.
 - Regular members cannot create fines, confirm `Paid`, waive fines, edit fine amounts, or read private Admin notes.
+- Regular members can see active fine type names through the public Fine Box result, but inactive fine types are Admin-only.
+- New fines may reference only active fine types from the same team.
 - MobilePay details are loaded from `team_settings`; the frontend does not hard-code payment settings.

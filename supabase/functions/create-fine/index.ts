@@ -31,6 +31,7 @@ Deno.serve(async (req) => {
       p_participant_id: body.participantId,
       p_description: body.description,
       p_amount_dkk: body.amountDkk,
+      p_fine_type_id: typeof body.fineTypeId === 'string' ? body.fineTypeId : null,
     });
 
     if (error) {
