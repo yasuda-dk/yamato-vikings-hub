@@ -49,7 +49,15 @@ Local Supabase configuration is in `supabase/config.toml`.
 
 Phase 1 adds the access/profile schema and Edge Functions.
 
-After deploying the Phase 1 migration and functions, set the first shared team password locally without committing it:
+Deploy current Supabase migrations and Edge Functions from a logged-in Supabase CLI:
+
+```bash
+npx supabase db push --linked
+npm run deploy:functions
+npm run deploy:setup-function
+```
+
+After deploying the migration and functions, set the first shared team password locally without committing it:
 
 ```bash
 TEAM_PASSWORD='choose-a-real-team-password' npm run setup:team-password
