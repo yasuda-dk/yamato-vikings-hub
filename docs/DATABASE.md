@@ -153,7 +153,11 @@ Initial Admin-only metrics:
 - Active Members by gender
 - Open event count
 - Completed event count
+- Events by type
+- Events by status
 - Going response count
+- Maybe response count
+- Not-going response count
 - Late-arrival count
 - Fine record count
 - Fine totals for Unpaid, Payment reported, Paid, and Waived

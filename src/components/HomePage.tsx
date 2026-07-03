@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { downloadSeasonOverviewCsv } from '../lib/analytics-export';
 import type { EventSummary } from '../lib/events';
+import { eventStatuses, eventTypes } from '../lib/events';
 import type { FineBoxState } from '../lib/fines';
 import type { AgeGroup, Gender, MemberProfile, Position, ResidenceType } from '../lib/member-options';
 import { ageGroups, formatFootballLevel, genders, positions, residenceTypes } from '../lib/member-options';
@@ -90,9 +91,13 @@ function AnalyticsOverview({ api, members }: { api: Phase1Api; members: MemberPr
     const byResidenceType = countBy(activeMembers, residenceTypes, (member) => member.residence_type);
     const byPosition = countBy(activeMembers, positions, (member) => member.primary_position);
     const byGender = countBy(activeMembers, genders, (member) => member.gender);
+    const byEventType = countValues(events, eventTypes, (event) => event.event_type);
+    const byEventStatus = countValues(events, eventStatuses, (event) => event.status);
     const openEvents = events.filter((event) => event.status !== 'Completed' && event.status !== 'Cancelled');
     const completedEvents = events.filter((event) => event.status === 'Completed');
     const goingResponses = events.reduce((total, event) => total + event.going_count, 0);
+    const maybeResponses = events.reduce((total, event) => total + event.maybe_count, 0);
+    const notGoingResponses = events.reduce((total, event) => total + event.not_going_count, 0);
     const lateArrivals = events.reduce((total, event) => total + event.late_count, 0);
     const fineSummary = fineBox?.summary ?? {
       unpaid_total_dkk: 0,
@@ -109,10 +114,18 @@ function AnalyticsOverview({ api, members }: { api: Phase1Api; members: MemberPr
       byResidenceType,
       byPosition,
       byGender,
+      byEventType,
+      byEventStatus,
       openEvents: openEvents.length,
       completedEvents: completedEvents.length,
       goingResponses,
       lateArrivals,
+      rsvpTotals: [
+        { label: 'Going', count: goingResponses },
+        { label: 'Maybe', count: maybeResponses },
+        { label: 'Not going', count: notGoingResponses },
+        { label: 'Late arrivals', count: lateArrivals },
+      ],
       fineCount: fineBox?.fines.length ?? 0,
       fineTotals: [
         { label: 'Unpaid', count: `${fineSummary.unpaid_total_dkk} DKK` },
@@ -182,6 +195,9 @@ function AnalyticsOverview({ api, members }: { api: Phase1Api; members: MemberPr
             <MetricTile label="Fine records" value={String(stats.fineCount)} />
           </div>
           <BreakdownSection title="Fine totals" rows={stats.fineTotals} />
+          <BreakdownSection title="Events by type" rows={stats.byEventType} />
+          <BreakdownSection title="Events by status" rows={stats.byEventStatus} />
+          <BreakdownSection title="RSVP totals" rows={stats.rsvpTotals} />
           <BreakdownSection title="Members by position" rows={stats.byPosition} />
           <BreakdownSection title="Members by age group" rows={stats.byAgeGroup} />
           <BreakdownSection title="Members by residence" rows={stats.byResidenceType} />
@@ -198,6 +214,15 @@ function countBy<T extends string>(members: MemberProfile[], values: readonly T[
     .map((value) => ({
       label: value,
       count: members.filter((member) => getValue(member) === value).length,
+    }))
+    .filter((row) => row.count > 0);
+}
+
+function countValues<TItem, TValue extends string>(items: TItem[], values: readonly TValue[], getValue: (item: TItem) => TValue) {
+  return values
+    .map((value) => ({
+      label: value,
+      count: items.filter((item) => getValue(item) === value).length,
     }))
     .filter((row) => row.count > 0);
 }

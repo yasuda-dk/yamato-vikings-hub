@@ -699,7 +699,7 @@ describe('App shell', () => {
   it('shows an admin season overview on Home', async () => {
     render(<App api={createApi({ hasAccess: true, selectedMember: adminTakashi, members: [adminTakashi] })} />);
     const expectMetricLabel = (label: string) => {
-      expect(screen.getByText((_, element) => element?.textContent?.replace(/\s+/g, ' ').trim() === label)).toBeInTheDocument();
+      expect(screen.getAllByText((_, element) => element?.textContent?.replace(/\s+/g, ' ').trim() === label).length).toBeGreaterThanOrEqual(1);
     };
 
     expect(await screen.findByRole('heading', { name: 'Season overview' })).toBeInTheDocument();
@@ -715,6 +715,13 @@ describe('App shell', () => {
     expect(screen.getByText('15 DKK')).toBeInTheDocument();
     expect(screen.getByText('Paid')).toBeInTheDocument();
     expect(screen.getByText('30 DKK')).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Events by type' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Events by status' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'RSVP totals' })).toBeInTheDocument();
+    expect(screen.getAllByText('Football').length).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByText('Open').length).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByText('Maybe').length).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByText('Not going').length).toBeGreaterThanOrEqual(1);
     expect(screen.getByRole('heading', { name: 'Members by position' })).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: 'Members by age group' })).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: 'Members by residence' })).toBeInTheDocument();
