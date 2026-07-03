@@ -72,7 +72,7 @@ async function invokeFunction<T>(name: string, body: Record<string, unknown>) {
   });
 
   if (error) {
-    throw new Error(error.message);
+    throw new Error(await getFunctionErrorMessage(error, data));
   }
 
   if (data?.ok === false) {
@@ -80,6 +80,22 @@ async function invokeFunction<T>(name: string, body: Record<string, unknown>) {
   }
 
   return data as T;
+}
+
+async function getFunctionErrorMessage(error: Error, data: { error?: string } | null) {
+  if (data?.error) return data.error;
+
+  const context = 'context' in error ? error.context : null;
+  if (context instanceof Response) {
+    try {
+      const body = (await context.clone().json()) as { error?: unknown };
+      if (typeof body.error === 'string' && body.error.trim()) return body.error;
+    } catch {
+      // Fall back to the Supabase client message below.
+    }
+  }
+
+  return error.message;
 }
 
 export const phase1Api: Phase1Api = {

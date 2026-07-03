@@ -26,7 +26,7 @@ npm run build
 
 `GITHUB_PAGES=true` sets the Vite base path to `/yamato-vikings-hub/`.
 
-## Supabase Phase 1
+## Supabase
 
 Apply migrations:
 
@@ -34,11 +34,16 @@ Apply migrations:
 npx supabase db push --linked
 ```
 
-Deploy Edge Functions:
+Deploy regular authenticated Edge Functions:
 
 ```bash
-npx supabase functions deploy setup-team-password --project-ref fejfeysavvwendbjqywa --no-verify-jwt --use-api
-npx supabase functions deploy verify-team-password register-member select-profile session-state --project-ref fejfeysavvwendbjqywa --use-api
+npm run deploy:functions
+```
+
+Deploy or update the one setup-only Edge Function separately because it intentionally disables JWT verification:
+
+```bash
+npm run deploy:setup-function
 ```
 
 Set or rotate the private setup token:
