@@ -94,6 +94,12 @@ function AnalyticsOverview({ api, members }: { api: Phase1Api; members: MemberPr
     const completedEvents = events.filter((event) => event.status === 'Completed');
     const goingResponses = events.reduce((total, event) => total + event.going_count, 0);
     const lateArrivals = events.reduce((total, event) => total + event.late_count, 0);
+    const fineSummary = fineBox?.summary ?? {
+      unpaid_total_dkk: 0,
+      payment_reported_total_dkk: 0,
+      paid_total_dkk: 0,
+      waived_total_dkk: 0,
+    };
 
     return {
       activeMembers: activeMembers.length,
@@ -107,8 +113,15 @@ function AnalyticsOverview({ api, members }: { api: Phase1Api; members: MemberPr
       completedEvents: completedEvents.length,
       goingResponses,
       lateArrivals,
+      fineCount: fineBox?.fines.length ?? 0,
+      fineTotals: [
+        { label: 'Unpaid', count: `${fineSummary.unpaid_total_dkk} DKK` },
+        { label: 'Payment reported', count: `${fineSummary.payment_reported_total_dkk} DKK` },
+        { label: 'Paid', count: `${fineSummary.paid_total_dkk} DKK` },
+        { label: 'Waived', count: `${fineSummary.waived_total_dkk} DKK` },
+      ],
     };
-  }, [events, members]);
+  }, [events, fineBox, members]);
 
   function handleExportCsv() {
     if (!fineBox) return;
@@ -166,8 +179,9 @@ function AnalyticsOverview({ api, members }: { api: Phase1Api; members: MemberPr
             <MetricTile label="Completed events" value={String(stats.completedEvents)} />
             <MetricTile label="Going responses" value={String(stats.goingResponses)} />
             <MetricTile label="Late arrivals" value={String(stats.lateArrivals)} />
-            <MetricTile label="Unpaid fines" value={`${fineBox?.summary.unpaid_total_dkk ?? 0} DKK`} />
+            <MetricTile label="Fine records" value={String(stats.fineCount)} />
           </div>
+          <BreakdownSection title="Fine totals" rows={stats.fineTotals} />
           <BreakdownSection title="Members by position" rows={stats.byPosition} />
           <BreakdownSection title="Members by age group" rows={stats.byAgeGroup} />
           <BreakdownSection title="Members by residence" rows={stats.byResidenceType} />
@@ -188,7 +202,7 @@ function countBy<T extends string>(members: MemberProfile[], values: readonly T[
     .filter((row) => row.count > 0);
 }
 
-function BreakdownSection({ title, rows }: { title: string; rows: Array<{ label: AgeGroup | ResidenceType | Position | Gender; count: number }> }) {
+function BreakdownSection({ title, rows }: { title: string; rows: Array<{ label: AgeGroup | ResidenceType | Position | Gender | string; count: number | string }> }) {
   return (
     <div className="rounded-md bg-mist p-3">
       <h3 className="text-sm font-bold text-navy">{title}</h3>
