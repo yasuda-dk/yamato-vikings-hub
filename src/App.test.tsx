@@ -986,6 +986,104 @@ describe('App shell', () => {
     expect(await screen.findByText('RSVP updated.')).toBeInTheDocument();
   });
 
+  it('shows participant names grouped by RSVP status', async () => {
+    const user = userEvent.setup();
+    const api = createApi({ hasAccess: true, selectedMember: takashi, members: [takashi] });
+    const getEventDetail = api.getEventDetail;
+    api.getEventDetail = async (eventId) => {
+      const detail = await getEventDetail(eventId);
+      return {
+        ...detail,
+        counts: {
+          ...detail.counts,
+          going: 2,
+          maybe: 1,
+          notGoing: 1,
+          late: 1,
+          guests: 1,
+        },
+        participants: [
+          {
+            kind: 'member',
+            id: 'member-going',
+            first_name: 'Genki',
+            rsvp_status: 'Going',
+            is_arriving_late: false,
+            expected_arrival_time: null,
+            actual_status: 'Not confirmed',
+            football_level: 3,
+            primary_position: 'MF',
+            secondary_position: null,
+            age_group: '30–34',
+          },
+          {
+            kind: 'member',
+            id: 'member-late',
+            first_name: 'Takashi',
+            rsvp_status: 'Going',
+            is_arriving_late: true,
+            expected_arrival_time: '19:30:00',
+            actual_status: 'Not confirmed',
+            football_level: 3,
+            primary_position: 'MF',
+            secondary_position: 'DF',
+            age_group: '35–39',
+          },
+          {
+            kind: 'member',
+            id: 'member-maybe',
+            first_name: 'Ken',
+            rsvp_status: 'Maybe',
+            is_arriving_late: false,
+            expected_arrival_time: null,
+            actual_status: 'Not confirmed',
+            football_level: 2,
+            primary_position: 'DF',
+            secondary_position: null,
+            age_group: '25–29',
+          },
+          {
+            kind: 'member',
+            id: 'member-not-going',
+            first_name: 'Yuki',
+            rsvp_status: 'Not going',
+            is_arriving_late: false,
+            expected_arrival_time: null,
+            actual_status: 'Absent',
+            football_level: 4,
+            primary_position: 'FW',
+            secondary_position: null,
+            age_group: '40–49',
+          },
+          {
+            kind: 'guest',
+            id: 'guest-1',
+            first_name: 'Guest A',
+            rsvp_status: null,
+            is_arriving_late: false,
+            expected_arrival_time: null,
+            actual_status: 'Not confirmed',
+            football_level: 3,
+            primary_position: 'MF',
+            secondary_position: null,
+            age_group: 'Not specified',
+          },
+        ],
+      };
+    };
+
+    render(<App api={api} />);
+
+    await user.click(await screen.findByRole('link', { name: /events/i }));
+    await user.click(await screen.findByRole('link', { name: /Friday Football/i }));
+
+    expect(await screen.findByText('Genki')).toBeInTheDocument();
+    expect(screen.getByText('Takashi · 19:30')).toBeInTheDocument();
+    expect(screen.getByText('Ken')).toBeInTheDocument();
+    expect(screen.getByText('Yuki')).toBeInTheDocument();
+    expect(screen.getByText('Guest A · Guest')).toBeInTheDocument();
+  });
+
   it('lets an admin add a guest and confirm guest attendance', async () => {
     const user = userEvent.setup();
     render(<App api={createApi({ hasAccess: true, selectedMember: adminTakashi, members: [adminTakashi] })} />);
