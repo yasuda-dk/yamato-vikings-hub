@@ -1,5 +1,17 @@
 import { describe, expect, it } from 'vitest';
-import { createDefaultGuestInput, defaultEventSettings, formatEventDate, validateDuplicateInput, validateEventGuestInput, validateEventInput, validateRsvpInput, type EventCreateInput } from './events';
+import {
+  createDefaultGuestInput,
+  defaultEventSettings,
+  filterUpcomingEvents,
+  formatEventDate,
+  isUpcomingEventDate,
+  validateDuplicateInput,
+  validateEventGuestInput,
+  validateEventInput,
+  validateRsvpInput,
+  type EventCreateInput,
+  type EventSummary,
+} from './events';
 
 const validEvent: EventCreateInput = {
   title: 'Friday Football',
@@ -52,6 +64,41 @@ describe('event helpers', () => {
 
   it('formats event date labels for compact mobile display', () => {
     expect(formatEventDate('2026-07-03', '19:00:00')).toContain('Jul');
+  });
+
+  it('keeps today and future events while hiding past events', () => {
+    expect(isUpcomingEventDate('2026-07-03', '2026-07-04')).toBe(false);
+    expect(isUpcomingEventDate('2026-07-04', '2026-07-04')).toBe(true);
+    expect(isUpcomingEventDate('2026-07-09', '2026-07-04')).toBe(true);
+  });
+
+  it('filters event summaries to upcoming dates', () => {
+    const baseEvent: EventSummary = {
+      id: 'event-1',
+      title: 'Practice',
+      event_type: 'Football',
+      event_date: '2026-07-02',
+      start_time: '19:00:00',
+      location: 'Hafnia Hallen',
+      rsvp_deadline: '2026-07-02T18:00:00Z',
+      status: 'Open',
+      my_rsvp_status: null,
+      going_count: 0,
+      maybe_count: 0,
+      not_going_count: 0,
+      late_count: 0,
+    };
+
+    expect(
+      filterUpcomingEvents(
+        [
+          baseEvent,
+          { ...baseEvent, id: 'event-2', event_date: '2026-07-04' },
+          { ...baseEvent, id: 'event-3', event_date: '2026-07-09' },
+        ],
+        '2026-07-04',
+      ).map((event) => event.id),
+    ).toEqual(['event-2', 'event-3']);
   });
 
   it('validates event guest names against current participants', () => {
