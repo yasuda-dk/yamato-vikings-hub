@@ -1,7 +1,7 @@
 import { type FormEvent, useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import type { EventCreateInput, EventSummary, EventType } from '../lib/events';
-import { defaultEventSettings, eventTypes, formatEventDate, validateEventInput } from '../lib/events';
+import { defaultEventSettings, eventTypes, filterUpcomingEvents, formatEventDate, validateEventInput } from '../lib/events';
 import type { MemberProfile } from '../lib/member-options';
 import type { Phase1Api } from '../lib/phase1-api';
 
@@ -46,7 +46,7 @@ export function EventsPage({ api, selectedMember }: EventsPageProps) {
         setError(null);
         const nextEvents = await api.listEvents();
         if (isMounted) {
-          setEvents(nextEvents);
+          setEvents(filterUpcomingEvents(nextEvents));
           setLoadState('ready');
         }
       } catch (loadError) {

@@ -311,6 +311,29 @@ export function validateEventInput(input: EventCreateInput) {
   return errors;
 }
 
+export function getCopenhagenDateString(now = new Date()) {
+  const parts = new Intl.DateTimeFormat('en', {
+    timeZone: 'Europe/Copenhagen',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).formatToParts(now);
+
+  const year = parts.find((part) => part.type === 'year')?.value;
+  const month = parts.find((part) => part.type === 'month')?.value;
+  const day = parts.find((part) => part.type === 'day')?.value;
+
+  return `${year}-${month}-${day}`;
+}
+
+export function isUpcomingEventDate(eventDate: string, today = getCopenhagenDateString()) {
+  return eventDate >= today;
+}
+
+export function filterUpcomingEvents<T extends Pick<EventSummary, 'event_date'>>(events: T[], today = getCopenhagenDateString()) {
+  return events.filter((event) => isUpcomingEventDate(event.event_date, today));
+}
+
 export function validateDuplicateInput(input: EventDuplicateInput, sourceDate: string) {
   if (!input.eventDate) return 'New date is required.';
   if (input.eventDate === sourceDate) return 'Choose a new date for the duplicated event.';
