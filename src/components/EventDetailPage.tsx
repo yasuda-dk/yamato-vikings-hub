@@ -590,6 +590,7 @@ export function EventDetailPage({ api, selectedMember }: EventDetailPageProps) {
               <Count label="Attended" value={detail.counts.attended} />
               <Count label="Guests" value={detail.counts.guests} />
             </div>
+            <ParticipantRsvpLists participants={detail.participants} />
           </div>
 
           {isAdmin ? (
@@ -1262,6 +1263,48 @@ function Count({ label, value }: { label: string; value: number }) {
     <div className="rounded-md bg-mist px-3 py-2">
       <p className="text-xl font-bold text-navy">{value}</p>
       <p className="text-xs font-semibold text-navy/65">{label}</p>
+    </div>
+  );
+}
+
+function ParticipantRsvpLists({ participants }: { participants: EventParticipant[] }) {
+  const going = participants.filter((participant) => participant.kind === 'member' && participant.rsvp_status === 'Going' && !participant.is_arriving_late);
+  const late = participants.filter((participant) => participant.kind === 'member' && participant.rsvp_status === 'Going' && participant.is_arriving_late);
+  const maybe = participants.filter((participant) => participant.kind === 'member' && participant.rsvp_status === 'Maybe');
+  const notGoing = participants.filter((participant) => participant.kind === 'member' && participant.rsvp_status === 'Not going');
+  const guests = participants.filter((participant) => participant.kind === 'guest');
+
+  return (
+    <div className="mt-4 space-y-2">
+      <ParticipantStatusList title="Going" participants={going} />
+      <ParticipantStatusList title="Late" participants={late} />
+      <ParticipantStatusList title="Maybe" participants={maybe} />
+      <ParticipantStatusList title="Not going" participants={notGoing} />
+      <ParticipantStatusList title="Guests" participants={guests} />
+    </div>
+  );
+}
+
+function ParticipantStatusList({ title, participants }: { title: string; participants: EventParticipant[] }) {
+  return (
+    <div className="rounded-md bg-mist px-3 py-2">
+      <div className="flex items-start justify-between gap-3">
+        <p className="text-sm font-bold text-navy">{title}</p>
+        <span className="shrink-0 rounded bg-white px-2 py-1 text-xs font-bold text-navy">{participants.length}</span>
+      </div>
+      {participants.length > 0 ? (
+        <div className="mt-2 flex flex-wrap gap-2">
+          {participants.map((participant) => (
+            <span key={`${title}-${participant.kind}-${participant.id}`} className="rounded bg-white px-2 py-1 text-xs font-bold text-navy">
+              {participant.first_name}
+              {participant.kind === 'guest' ? ' · Guest' : null}
+              {participant.expected_arrival_time ? ` · ${participant.expected_arrival_time.slice(0, 5)}` : null}
+            </span>
+          ))}
+        </div>
+      ) : (
+        <p className="mt-1 text-sm text-navy/60">No one</p>
+      )}
     </div>
   );
 }
