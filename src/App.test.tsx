@@ -930,6 +930,15 @@ describe('App shell', () => {
     expect(document.body.scrollWidth).toBeLessThanOrEqual(320);
   });
 
+  it('keeps primary navigation fixed to the bottom of the viewport', async () => {
+    render(<App api={createApi({ hasAccess: true, selectedMember: takashi, members: [takashi] })} />);
+
+    const nav = await screen.findByRole('navigation', { name: 'Primary' });
+
+    expect(nav).toHaveClass('fixed');
+    expect(nav).toHaveClass('bottom-0');
+  });
+
   it('opens an event and updates RSVP with late arrival', async () => {
     const user = userEvent.setup();
     render(<App api={createApi({ hasAccess: true, selectedMember: takashi, members: [takashi] })} />);

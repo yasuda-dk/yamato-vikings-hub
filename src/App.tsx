@@ -107,7 +107,7 @@ export function App({ api = defaultApi }: AppProps) {
             </p>
           </header>
 
-          <main className="flex-1 px-4 py-4" data-testid="app-main" data-app-mode={appMode}>
+          <main className="flex-1 px-4 pb-24 pt-4" data-testid="app-main" data-app-mode={appMode}>
             {error && appMode !== 'gate' && appMode !== 'profile' ? (
               <div className="mb-4 rounded-md border border-red-200 bg-white p-3 text-sm font-semibold text-red-800" role="alert">
                 {error}
@@ -144,7 +144,7 @@ export function App({ api = defaultApi }: AppProps) {
 
           <nav
             aria-label="Primary"
-            className="grid grid-cols-4 gap-1 border-t border-navy/10 bg-white px-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] pt-2"
+            className="fixed inset-x-0 bottom-0 z-20 mx-auto grid w-full max-w-[430px] grid-cols-4 gap-1 border-t border-navy/10 bg-white px-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] pt-2"
           >
             {navItems.map((item) => {
               const Icon = item.icon;
