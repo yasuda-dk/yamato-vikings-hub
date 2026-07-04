@@ -62,7 +62,7 @@ function AnalyticsOverview({ api, members }: { api: Phase1Api; members: MemberPr
       try {
         setLoadState('loading');
         setError(null);
-        const [nextEvents, nextFineBox] = await Promise.all([api.listEvents(), api.getFineBox()]);
+        const [nextEvents, nextFineBox] = await Promise.all([api.listAnalyticsEvents(seasonYear), api.getFineBox()]);
         if (isMounted) {
           setEvents(nextEvents);
           setFineBox(nextFineBox);
@@ -81,7 +81,7 @@ function AnalyticsOverview({ api, members }: { api: Phase1Api; members: MemberPr
     return () => {
       isMounted = false;
     };
-  }, [api]);
+  }, [api, seasonYear]);
 
   const stats = useMemo(() => {
     const activeMembers = members.filter((member) => member.membership_status === 'Active');

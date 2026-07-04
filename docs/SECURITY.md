@@ -73,5 +73,6 @@ The Fine Box foundation keeps payment state changes behind Edge Functions and da
 ## Phase 6 Analytics Controls
 
 - The first Season overview appears only for selected Admin profiles.
-- The overview uses existing approved API responses and does not expose private Admin notes, actor IDs, device links, or security metadata.
-- CSV export and restricted analytics exports remain out of scope for the initial overview slice.
+- The overview uses approved API responses and does not expose private Admin notes, actor IDs, device links, or security metadata.
+- Season event analytics use `list_admin_season_events`, which requires current device access and Admin role.
+- CSV export is available only from the Admin-only Season overview.

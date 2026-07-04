@@ -236,6 +236,7 @@ function createApi(initialState: SessionState): Phase1Api {
       state = { ...state, selectedMember: state.members.find((member) => member.id === memberId) ?? null };
     },
     listEvents: async () => [event],
+    listAnalyticsEvents: async () => [event],
     getEventDetail: async () => ({
       event: {
         ...event,
@@ -753,6 +754,37 @@ describe('App shell', () => {
     expect(screen.getAllByText('MF').length).toBeGreaterThanOrEqual(2);
     expect(screen.getAllByText('35–39').length).toBeGreaterThanOrEqual(2);
     expect(screen.getAllByText('Local resident').length).toBeGreaterThanOrEqual(2);
+  });
+
+  it('uses admin season events for Home analytics instead of the public upcoming event list', async () => {
+    const api = createApi({ hasAccess: true, selectedMember: adminTakashi, members: [adminTakashi] });
+    api.listEvents = async () => [];
+    api.listAnalyticsEvents = async () => [
+      {
+        id: 'past-event',
+        title: 'Completed Practice',
+        event_type: 'Football',
+        event_date: '2026-01-08',
+        start_time: '19:00:00',
+        location: 'Hafnia Hallen',
+        rsvp_deadline: '2026-01-07T18:00:00.000Z',
+        status: 'Completed',
+        my_rsvp_status: null,
+        going_count: 10,
+        maybe_count: 0,
+        not_going_count: 1,
+        late_count: 2,
+      },
+    ];
+
+    render(<App api={api} />);
+
+    expect(await screen.findByRole('heading', { name: 'Season overview' })).toBeInTheDocument();
+    expect(screen.getByText('Completed events')).toBeInTheDocument();
+    expect(screen.getByText('Going responses')).toBeInTheDocument();
+    expect(screen.getAllByText('Late arrivals').length).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByText('10').length).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByText('2').length).toBeGreaterThanOrEqual(1);
   });
 
   it('does not show the admin season overview to players', async () => {

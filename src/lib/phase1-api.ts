@@ -35,6 +35,7 @@ export type Phase1Api = {
   updateMember: (input: AdminMemberUpdateInput) => Promise<void>;
   selectProfile: (memberId: string) => Promise<void>;
   listEvents: () => Promise<EventSummary[]>;
+  listAnalyticsEvents: (seasonYear: number) => Promise<EventSummary[]>;
   getEventDetail: (eventId: string) => Promise<EventDetail>;
   createEvent: (input: EventCreateInput) => Promise<string>;
   updateEvent: (input: EventUpdateInput) => Promise<string>;
@@ -132,6 +133,11 @@ export const phase1Api: Phase1Api = {
 
   async listEvents() {
     const data = await invokeFunction<{ events: EventSummary[] }>('events-list', {});
+    return data.events;
+  },
+
+  async listAnalyticsEvents(seasonYear: number) {
+    const data = await invokeFunction<{ events: EventSummary[] }>('analytics-events-list', { seasonYear });
     return data.events;
   },
 
