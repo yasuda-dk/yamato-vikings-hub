@@ -361,6 +361,17 @@ export const demoPhase1Api: Phase1Api = {
     }));
   },
 
+  async listAnalyticsEvents(seasonYear: number) {
+    if (state.selectedMember?.application_role !== 'Admin') throw new Error('Admin permission is required');
+
+    return demoEvents
+      .filter((event) => event.event_date.startsWith(`${seasonYear}-`))
+      .map((event) => ({
+        ...event,
+        my_rsvp_status: demoRsvps[event.id]?.rsvp_status ?? null,
+      }));
+  },
+
   async getEventDetail(eventId: string) {
     const summary = demoEvents.find((event) => event.id === eventId);
     if (!summary) throw new Error('Event not found');

@@ -158,13 +158,19 @@ Rules enforced in this slice:
 
 ## Phase 6 Analytics Overview And CSV Export
 
-The initial analytics and CSV export slices are frontend-only and do not add database tables or functions.
+The initial analytics and CSV export slices reuse existing tables and add an Admin-only event listing function for season-wide reporting.
 
 Sources:
 
 - `members` from session state
-- `list_events`
+- `list_admin_season_events`
 - `list_fine_box`
+
+Event list separation:
+
+- `list_events` powers the public Events tab and returns only today/future events.
+- `list_admin_season_events` powers Admin analytics and CSV export, and returns all events in the requested calendar year, including past and completed events.
+- `list_admin_season_events` requires both current device access and Admin role.
 
 Initial Admin-only metrics:
 
@@ -190,7 +196,7 @@ Admin CSV export:
 
 - Available only from the Admin-only Season overview.
 - Exports one CSV file with member, event, and fine rows.
-- Uses only fields already returned through session state, `list_events`, and `list_fine_box`.
+- Uses only fields returned through session state, `list_admin_season_events`, and `list_fine_box`.
 - Does not include internal UUIDs, anonymous Auth IDs, Admin emails, device links, private notes, security logs, or audit metadata.
 
 Rules:
