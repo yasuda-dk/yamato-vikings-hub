@@ -587,6 +587,7 @@ export function EventDetailPage({ api, selectedMember }: EventDetailPageProps) {
               <Count label="Late" value={detail.counts.late} />
               <Count label="Maybe" value={detail.counts.maybe} />
               <Count label="Not going" value={detail.counts.notGoing} />
+              <Count label="No response" value={detail.counts.noResponse} />
               <Count label="Attended" value={detail.counts.attended} />
               <Count label="Guests" value={detail.counts.guests} />
             </div>
@@ -1272,6 +1273,7 @@ function ParticipantRsvpLists({ participants }: { participants: EventParticipant
   const late = participants.filter((participant) => participant.kind === 'member' && participant.rsvp_status === 'Going' && participant.is_arriving_late);
   const maybe = participants.filter((participant) => participant.kind === 'member' && participant.rsvp_status === 'Maybe');
   const notGoing = participants.filter((participant) => participant.kind === 'member' && participant.rsvp_status === 'Not going');
+  const noResponse = participants.filter((participant) => participant.kind === 'member' && participant.rsvp_status === null);
   const guests = participants.filter((participant) => participant.kind === 'guest');
 
   return (
@@ -1280,6 +1282,7 @@ function ParticipantRsvpLists({ participants }: { participants: EventParticipant
       <ParticipantStatusList title="Late" participants={late} />
       <ParticipantStatusList title="Maybe" participants={maybe} />
       <ParticipantStatusList title="Not going" participants={notGoing} />
+      <ParticipantStatusList title="No response" participants={noResponse} />
       <ParticipantStatusList title="Guests" participants={guests} />
     </div>
   );

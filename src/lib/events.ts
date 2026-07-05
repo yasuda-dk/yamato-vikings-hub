@@ -179,6 +179,7 @@ export type EventDetail = {
     going: number;
     maybe: number;
     notGoing: number;
+    noResponse: number;
     late: number;
     attended: number;
     guests: number;

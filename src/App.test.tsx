@@ -255,6 +255,7 @@ function createApi(initialState: SessionState): Phase1Api {
         going: event.going_count,
         maybe: event.maybe_count,
         notGoing: event.not_going_count,
+        noResponse: 0,
         late: event.late_count,
         attended: (actualStatus === 'Attended' ? 1 : 0) + (guest?.actual_status === 'Attended' ? 1 : 0),
         guests: guest ? 1 : 0,
@@ -780,7 +781,7 @@ describe('App shell', () => {
     render(<App api={api} />);
 
     expect(await screen.findByRole('heading', { name: 'Season overview' })).toBeInTheDocument();
-    expect(screen.getByText('Completed events')).toBeInTheDocument();
+    expect(await screen.findByText('Completed events')).toBeInTheDocument();
     expect(screen.getByText('Going responses')).toBeInTheDocument();
     expect(screen.getAllByText('Late arrivals').length).toBeGreaterThanOrEqual(1);
     expect(screen.getAllByText('10').length).toBeGreaterThanOrEqual(1);
@@ -999,6 +1000,7 @@ describe('App shell', () => {
           going: 2,
           maybe: 1,
           notGoing: 1,
+          noResponse: 1,
           late: 1,
           guests: 1,
         },
@@ -1056,6 +1058,19 @@ describe('App shell', () => {
             age_group: '40–49',
           },
           {
+            kind: 'member',
+            id: 'member-no-response',
+            first_name: 'Ryo',
+            rsvp_status: null,
+            is_arriving_late: false,
+            expected_arrival_time: null,
+            actual_status: 'Not confirmed',
+            football_level: 3,
+            primary_position: 'MF',
+            secondary_position: null,
+            age_group: 'Not specified',
+          },
+          {
             kind: 'guest',
             id: 'guest-1',
             first_name: 'Guest A',
@@ -1081,6 +1096,8 @@ describe('App shell', () => {
     expect(screen.getByText('Takashi · 19:30')).toBeInTheDocument();
     expect(screen.getByText('Ken')).toBeInTheDocument();
     expect(screen.getByText('Yuki')).toBeInTheDocument();
+    expect(screen.getByText('Ryo')).toBeInTheDocument();
+    expect(screen.getAllByText('No response').length).toBeGreaterThanOrEqual(1);
     expect(screen.getByText('Guest A · Guest')).toBeInTheDocument();
   });
 
