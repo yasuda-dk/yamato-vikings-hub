@@ -375,22 +375,23 @@ export const demoPhase1Api: Phase1Api = {
   async getEventDetail(eventId: string) {
     const summary = demoEvents.find((event) => event.id === eventId);
     if (!summary) throw new Error('Event not found');
-    const memberParticipants: EventParticipant[] = Object.values(demoRsvps)
-      .filter((rsvp) => rsvp.event_id === eventId)
-      .map((rsvp) => {
-        const member = state.members.find((profile) => profile.id === rsvp.member_id);
+    const eventRsvps = Object.values(demoRsvps).filter((rsvp) => rsvp.event_id === eventId);
+    const activeMembers = state.members.filter((member) => member.membership_status === 'Active');
+    const memberParticipants: EventParticipant[] = activeMembers
+      .map((member) => {
+        const rsvp = eventRsvps.find((item) => item.member_id === member.id) ?? null;
         return {
           kind: 'member',
-          id: rsvp.member_id,
-          first_name: member?.first_name ?? 'Member',
-          rsvp_status: rsvp.rsvp_status,
-          is_arriving_late: rsvp.is_arriving_late,
-          expected_arrival_time: rsvp.expected_arrival_time,
-          actual_status: demoActualStatuses[rsvp.member_id] ?? 'Not confirmed',
-          football_level: member?.football_level ?? 3,
-          primary_position: member?.primary_position ?? 'MF',
-          secondary_position: member?.secondary_position ?? null,
-          age_group: member?.age_group ?? 'Not specified',
+          id: member.id,
+          first_name: member.first_name,
+          rsvp_status: rsvp?.rsvp_status ?? null,
+          is_arriving_late: rsvp?.is_arriving_late ?? false,
+          expected_arrival_time: rsvp?.expected_arrival_time ?? null,
+          actual_status: demoActualStatuses[member.id] ?? 'Not confirmed',
+          football_level: member.football_level,
+          primary_position: member.primary_position,
+          secondary_position: member.secondary_position,
+          age_group: member.age_group,
         };
       });
     const guestParticipants: EventParticipant[] = demoGuests
@@ -425,10 +426,11 @@ export const demoPhase1Api: Phase1Api = {
       },
       myRsvp: demoRsvps[eventId] ?? null,
       counts: {
-        going: summary.going_count,
-        maybe: summary.maybe_count,
-        notGoing: summary.not_going_count,
-        late: summary.late_count,
+        going: memberParticipants.filter((participant) => participant.rsvp_status === 'Going').length,
+        maybe: memberParticipants.filter((participant) => participant.rsvp_status === 'Maybe').length,
+        notGoing: memberParticipants.filter((participant) => participant.rsvp_status === 'Not going').length,
+        noResponse: activeMembers.filter((member) => !eventRsvps.some((rsvp) => rsvp.member_id === member.id)).length,
+        late: memberParticipants.filter((participant) => participant.rsvp_status === 'Going' && participant.is_arriving_late).length,
         attended: participants.filter((participant) => participant.actual_status === 'Attended').length,
         guests: guestParticipants.length,
       },
