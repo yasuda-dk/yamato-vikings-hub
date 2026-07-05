@@ -4,6 +4,8 @@ import {
   defaultEventSettings,
   filterUpcomingEvents,
   formatEventDate,
+  formatRsvpDeadline,
+  isRsvpDeadlinePassed,
   isUpcomingEventDate,
   validateDuplicateInput,
   validateEventGuestInput,
@@ -64,6 +66,12 @@ describe('event helpers', () => {
 
   it('formats event date labels for compact mobile display', () => {
     expect(formatEventDate('2026-07-03', '19:00:00')).toContain('Jul');
+  });
+
+  it('formats and evaluates RSVP deadlines', () => {
+    expect(formatRsvpDeadline('2026-07-02T18:00:00Z')).toContain('Jul');
+    expect(isRsvpDeadlinePassed('2026-07-02T18:00:00Z', new Date('2026-07-03T00:00:00Z'))).toBe(true);
+    expect(isRsvpDeadlinePassed('2026-07-02T18:00:00Z', new Date('2026-07-01T00:00:00Z'))).toBe(false);
   });
 
   it('keeps today and future events while hiding past events', () => {

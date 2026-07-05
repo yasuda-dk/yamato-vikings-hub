@@ -979,6 +979,8 @@ describe('App shell', () => {
     await user.click(await screen.findByRole('link', { name: /events/i }));
     await user.click(await screen.findByRole('link', { name: /Friday Football/i }));
     expect(await screen.findByRole('heading', { name: 'Your RSVP' })).toBeInTheDocument();
+    expect(screen.getByText('RSVP by')).toBeInTheDocument();
+    expect(screen.getByText('Changes before the deadline are recorded as on time.')).toBeInTheDocument();
 
     await user.click(screen.getByLabelText('I’ll be late'));
     await user.type(screen.getByLabelText('Expected arrival time'), '1930');

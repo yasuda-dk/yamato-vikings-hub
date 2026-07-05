@@ -22,6 +22,8 @@ import {
   eventStatuses,
   eventTypes,
   formatEventDate,
+  formatRsvpDeadline,
+  isRsvpDeadlinePassed,
   rsvpStatuses,
   validateDuplicateInput,
   validateEventGuestInput,
@@ -142,6 +144,7 @@ export function EventDetailPage({ api, selectedMember }: EventDetailPageProps) {
   const duplicateError = useMemo(() => (detail ? validateDuplicateInput(duplicateDraft, detail.event.event_date) : null), [detail, duplicateDraft]);
   const saveDisabled = isSaving || Boolean(validationError) || loadState !== 'ready' || detail?.event.status === 'Cancelled';
   const isAdmin = selectedMember.application_role === 'Admin';
+  const isPastRsvpDeadline = detail ? isRsvpDeadlinePassed(detail.event.rsvp_deadline) : false;
   const hasDraftTeams = teams.length > 0 && teams.every((team) => !team.is_confirmed);
   const canGenerateDraft = teams.length === 0 || hasDraftTeams;
   const hasUnlockedDraftParticipants = teams.some((team) => team.participants.some((participant) => !participant.is_locked));
@@ -568,6 +571,7 @@ export function EventDetailPage({ api, selectedMember }: EventDetailPageProps) {
             <div className="mt-4 grid gap-2">
               <InfoRow label="When" value={formatEventDate(detail.event.event_date, detail.event.start_time)} />
               <InfoRow label="Where" value={detail.event.location} />
+              <InfoRow label="RSVP by" value={formatRsvpDeadline(detail.event.rsvp_deadline)} />
               <InfoRow label="Submitting as" value={selectedMember.first_name} />
             </div>
             {detail.event.notes ? <p className="mt-4 rounded-md bg-mist p-3 text-sm leading-5 text-navy/75">{detail.event.notes}</p> : null}
@@ -804,6 +808,9 @@ export function EventDetailPage({ api, selectedMember }: EventDetailPageProps) {
 
           <form onSubmit={handleSubmit} className="rounded-lg border border-navy/10 bg-white p-4">
             <h3 className="text-base font-bold text-navy">Your RSVP</h3>
+            <p className="mt-2 text-sm text-navy/70">
+              {isPastRsvpDeadline ? 'Deadline passed. Changes are recorded as late responses.' : 'Changes before the deadline are recorded as on time.'}
+            </p>
             {detail.myRsvp?.was_updated_after_deadline ? <p className="mt-2 text-sm font-semibold text-navy">Late response recorded</p> : null}
 
             <div className="mt-4 grid grid-cols-3 gap-2">

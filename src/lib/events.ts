@@ -418,3 +418,17 @@ export function formatEventDate(date: string, startTime: string) {
     minute: '2-digit',
   }).format(eventDate);
 }
+
+export function formatRsvpDeadline(deadline: string) {
+  return new Intl.DateTimeFormat('en', {
+    weekday: 'short',
+    month: 'short',
+    day: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  }).format(new Date(deadline));
+}
+
+export function isRsvpDeadlinePassed(deadline: string, now = new Date()) {
+  return new Date(deadline).getTime() < now.getTime();
+}
