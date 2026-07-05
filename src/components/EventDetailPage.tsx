@@ -1302,6 +1302,7 @@ function ParticipantStatusList({ title, participants }: { title: string; partici
               {participant.first_name}
               {participant.kind === 'guest' ? ' · Guest' : null}
               {participant.expected_arrival_time ? ` · ${participant.expected_arrival_time.slice(0, 5)}` : null}
+              {participant.was_updated_after_deadline ? ' · Late response' : null}
             </span>
           ))}
         </div>

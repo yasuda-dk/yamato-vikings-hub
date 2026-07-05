@@ -101,6 +101,7 @@ export type EventParticipant = {
   rsvp_status: RsvpStatus | null;
   is_arriving_late: boolean;
   expected_arrival_time: string | null;
+  was_updated_after_deadline?: boolean;
   actual_status: ActualStatus;
   football_level: FootballLevel;
   primary_position: Position;

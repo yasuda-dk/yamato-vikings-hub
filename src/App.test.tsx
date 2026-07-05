@@ -1038,6 +1038,7 @@ describe('App shell', () => {
             rsvp_status: 'Maybe',
             is_arriving_late: false,
             expected_arrival_time: null,
+            was_updated_after_deadline: true,
             actual_status: 'Not confirmed',
             football_level: 2,
             primary_position: 'DF',
@@ -1094,7 +1095,7 @@ describe('App shell', () => {
 
     expect(await screen.findByText('Genki')).toBeInTheDocument();
     expect(screen.getByText('Takashi · 19:30')).toBeInTheDocument();
-    expect(screen.getByText('Ken')).toBeInTheDocument();
+    expect(screen.getByText('Ken · Late response')).toBeInTheDocument();
     expect(screen.getByText('Yuki')).toBeInTheDocument();
     expect(screen.getByText('Ryo')).toBeInTheDocument();
     expect(screen.getAllByText('No response').length).toBeGreaterThanOrEqual(1);
