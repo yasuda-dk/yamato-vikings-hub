@@ -1,7 +1,7 @@
 import { type FormEvent, useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import type { EventCreateInput, EventSummary, EventType } from '../lib/events';
-import { defaultEventSettings, eventTypes, filterUpcomingEvents, formatEventDate, validateEventInput } from '../lib/events';
+import { defaultEventSettings, eventTypes, filterUpcomingEvents, formatEventDate, formatRsvpDeadline, isRsvpDeadlinePassed, validateEventInput } from '../lib/events';
 import type { MemberProfile } from '../lib/member-options';
 import type { Phase1Api } from '../lib/phase1-api';
 
@@ -182,6 +182,8 @@ export function EventsPage({ api, selectedMember }: EventsPageProps) {
 }
 
 function EventRow({ event }: { event: EventSummary }) {
+  const isPastRsvpDeadline = isRsvpDeadlinePassed(event.rsvp_deadline);
+
   return (
     <Link to={`/events/${event.id}`} className="block border-b border-navy/10 px-4 py-3 last:border-b-0 focus:outline-none focus:ring-2 focus:ring-footballBlue">
       <div className="flex items-start justify-between gap-3">
@@ -189,6 +191,7 @@ function EventRow({ event }: { event: EventSummary }) {
           <h3 className="break-words text-base font-bold text-navy">{event.title}</h3>
           <p className="mt-1 text-sm font-semibold text-navy/70">{formatEventDate(event.event_date, event.start_time)}</p>
           <p className="mt-1 text-sm text-navy/60">{event.location}</p>
+          <p className="mt-1 text-sm text-navy/60">RSVP {formatRsvpDeadline(event.rsvp_deadline)}</p>
         </div>
         <span className="shrink-0 rounded-md bg-mist px-2 py-1 text-xs font-bold text-navy">{event.status}</span>
       </div>
@@ -196,6 +199,7 @@ function EventRow({ event }: { event: EventSummary }) {
         <span className="rounded-md bg-footballBlue/10 px-2 py-1 text-footballBlue">{event.going_count} going</span>
         <span className="rounded-md bg-mist px-2 py-1 text-navy">{event.late_count} late</span>
         <span className="rounded-md bg-mist px-2 py-1 text-navy">{event.my_rsvp_status ? `You: ${event.my_rsvp_status}` : 'No RSVP yet'}</span>
+        {isPastRsvpDeadline ? <span className="rounded-md bg-mist px-2 py-1 text-navy">Late responses recorded</span> : null}
       </div>
     </Link>
   );
