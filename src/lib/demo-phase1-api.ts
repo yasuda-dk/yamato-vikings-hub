@@ -581,10 +581,13 @@ export const demoPhase1Api: Phase1Api = {
         });
     }
 
+    const teamParticipants = detail.participants.filter((participant) => participant.kind === 'guest' || participant.rsvp_status === 'Going');
+
     const result = generateBalancedTeams({
-      participants: detail.participants.map(
+      participants: teamParticipants.map(
         (participant): TeamGenerationParticipant => ({
           ...participant,
+          actual_status: 'Attended',
           membership_status: 'Active',
         }),
       ),

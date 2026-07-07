@@ -6,15 +6,15 @@ Phase 3 starts with a pure TypeScript team-generation algorithm in `src/lib/team
 
 The generator accepts:
 
-- Attended Members
-- Attended event Guests
+- Active Members with RSVP `Going`
+- Event Guests
 - Team count: `2`, `3`, or `4`
 - Seed string, normally `event_id + generation_attempt_number`
 - Optional locked assignments keyed by participant kind and id
 
 Participants are excluded when:
 
-- `actual_status` is not `Attended`
+- Member RSVP is not `Going`
 - `membership_status` is `Inactive`
 
 ## Determinism
@@ -106,7 +106,7 @@ Draft team generation is saved server-side through Supabase Edge Functions and P
 - `event_teams` stores the team name, display order, confirmation state, balance score, and score breakdown.
 - `event_team_participants` stores exactly one Member or Event Guest per row.
 
-Draft teams are Admin-only. Confirmed teams are readable by approved users. The save RPC deletes the previous unconfirmed draft for the event before inserting the new draft, and it validates that every submitted participant is either an attended active Member or an attended event Guest for that same event.
+Draft teams are Admin-only. Confirmed teams are readable by approved users. The save RPC deletes the previous unconfirmed draft for the event before inserting the new draft, and it validates that every submitted participant is either an active Member with RSVP `Going` or an Event Guest for that same event.
 
 ## Manual Draft Adjustments
 
@@ -124,6 +124,6 @@ Confirmed teams become publicly readable by approved users. Draft edit controls 
 
 The `adjust-team` Edge Function calls the `adjust_draft_team` RPC. The RPC enforces Admin access, rejects edits to confirmed teams, blocks moves, swaps, and removals for locked participants, and confirms teams only when the draft includes every eligible participant.
 
-Regeneration uses the existing `generate-teams` Edge Function with `preserveLocked`. The function reads the current draft, keeps locked participants assigned to the same team index, preserves draft team names, and redistributes unlocked attended participants.
+Regeneration uses the existing `generate-teams` Edge Function with `preserveLocked`. The function reads the current draft, keeps locked participants assigned to the same team index, preserves draft team names, and redistributes unlocked eligible participants.
 
 This slice does not yet include post-confirmation corrections. Those remain in future Phase 3 tasks.
