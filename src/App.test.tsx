@@ -712,6 +712,8 @@ describe('App shell', () => {
     await user.click(screen.getByRole('link', { name: /events/i }));
     expect(await screen.findByRole('heading', { name: 'Events' })).toBeInTheDocument();
     expect(screen.getByText(/RSVP Wed, Jul 8/)).toBeInTheDocument();
+    expect(screen.getByText('2 maybe')).toBeInTheDocument();
+    expect(screen.getByText('1 not going')).toBeInTheDocument();
     expect(screen.getByText('No RSVP yet')).toBeInTheDocument();
 
     await user.click(screen.getByRole('link', { name: /fines/i }));
