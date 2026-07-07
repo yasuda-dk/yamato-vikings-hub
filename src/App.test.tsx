@@ -154,8 +154,9 @@ function createApi(initialState: SessionState): Phase1Api {
   };
 
   function buildVoting(): EventVotingState {
+    const memberIsGoing = rsvp?.rsvp_status === 'Going' || actualStatus === 'Attended';
     const candidates = [
-      ...(actualStatus === 'Attended'
+      ...(memberIsGoing
         ? [
             {
               kind: 'member' as const,
@@ -164,7 +165,7 @@ function createApi(initialState: SessionState): Phase1Api {
             },
           ]
         : []),
-      ...(guest?.actual_status === 'Attended'
+      ...(guest
         ? [
             {
               kind: 'guest' as const,
@@ -187,7 +188,7 @@ function createApi(initialState: SessionState): Phase1Api {
       eventId: event.id,
       status: event.status,
       enableVoting: true,
-      isEligibleVoter: Boolean(selectedMember && selectedMember.membership_status === 'Active' && actualStatus === 'Attended' && event.status === 'Voting open'),
+      isEligibleVoter: Boolean(selectedMember && selectedMember.membership_status === 'Active' && memberIsGoing && event.status === 'Voting open'),
       candidates,
       myVotes,
       results:
@@ -1108,13 +1109,13 @@ describe('App shell', () => {
     expect(screen.getByText('Guest A · Guest')).toBeInTheDocument();
   });
 
-  it('lets an admin add a guest and confirm guest attendance', async () => {
+  it('lets an admin add a guest for team generation', async () => {
     const user = userEvent.setup();
     render(<App api={createApi({ hasAccess: true, selectedMember: adminTakashi, members: [adminTakashi] })} />);
 
     await user.click(await screen.findByRole('link', { name: /events/i }));
     await user.click(await screen.findByRole('link', { name: /Friday Football/i }));
-    expect(await screen.findByRole('heading', { name: 'Attendance' })).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: 'Guests' })).toBeInTheDocument();
 
     await user.click(screen.getByRole('button', { name: 'Add guest' }));
     await user.type(screen.getByLabelText('Guest first name'), 'Ken');
@@ -1122,9 +1123,7 @@ describe('App shell', () => {
 
     expect(await screen.findByText('Guest added.')).toBeInTheDocument();
     expect(screen.getByText('GUEST')).toBeInTheDocument();
-
-    await user.click(screen.getByRole('button', { name: 'Attended' }));
-    expect(await screen.findByText('Guest attendance updated.')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Attended' })).not.toBeInTheDocument();
   });
 
   it('lets an admin edit and duplicate an event', async () => {
@@ -1161,7 +1160,7 @@ describe('App shell', () => {
     expect(screen.getByRole('button', { name: 'Update RSVP' })).toBeDisabled();
   });
 
-  it('lets an admin generate draft teams from attended participants', async () => {
+  it('lets an admin generate draft teams from Going members and guests', async () => {
     const user = userEvent.setup();
     render(<App api={createApi({ hasAccess: true, selectedMember: adminTakashi, members: [adminTakashi] })} />);
 
@@ -1172,10 +1171,6 @@ describe('App shell', () => {
     await user.click(screen.getByRole('button', { name: 'Add guest' }));
     await user.click(screen.getByRole('button', { name: 'Update RSVP' }));
     await screen.findByText('RSVP updated.');
-    await user.click((await screen.findAllByRole('button', { name: 'Attended' }))[0]);
-    await screen.findByText('Attendance updated.');
-    await user.click((await screen.findAllByRole('button', { name: 'Attended' }))[1]);
-    await screen.findByText('Guest attendance updated.');
 
     await user.click(screen.getByRole('button', { name: '2 teams' }));
 
@@ -1195,10 +1190,6 @@ describe('App shell', () => {
     await user.click(screen.getByRole('button', { name: 'Add guest' }));
     await user.click(screen.getByRole('button', { name: 'Update RSVP' }));
     await screen.findByText('RSVP updated.');
-    await user.click((await screen.findAllByRole('button', { name: 'Attended' }))[0]);
-    await screen.findByText('Attendance updated.');
-    await user.click((await screen.findAllByRole('button', { name: 'Attended' }))[1]);
-    await screen.findByText('Guest attendance updated.');
     await user.click(screen.getByRole('button', { name: '2 teams' }));
     await screen.findByText('Draft teams generated.');
 
@@ -1238,10 +1229,6 @@ describe('App shell', () => {
     await user.click(screen.getByRole('button', { name: 'Add guest' }));
     await user.click(screen.getByRole('button', { name: 'Update RSVP' }));
     await screen.findByText('RSVP updated.');
-    await user.click((await screen.findAllByRole('button', { name: 'Attended' }))[0]);
-    await screen.findByText('Attendance updated.');
-    await user.click((await screen.findAllByRole('button', { name: 'Attended' }))[1]);
-    await screen.findByText('Guest attendance updated.');
     await user.click(screen.getByRole('button', { name: '2 teams' }));
     await screen.findByText('Draft teams generated.');
 
@@ -1265,10 +1252,6 @@ describe('App shell', () => {
     await user.click(screen.getByRole('button', { name: 'Add guest' }));
     await user.click(screen.getByRole('button', { name: 'Update RSVP' }));
     await screen.findByText('RSVP updated.');
-    await user.click((await screen.findAllByRole('button', { name: 'Attended' }))[0]);
-    await screen.findByText('Attendance updated.');
-    await user.click((await screen.findAllByRole('button', { name: 'Attended' }))[1]);
-    await screen.findByText('Guest attendance updated.');
     await user.click(screen.getByRole('button', { name: '2 teams' }));
     await screen.findByText('Draft teams generated.');
 
@@ -1276,27 +1259,26 @@ describe('App shell', () => {
 
     expect(await screen.findByText('Participant removed from draft.')).toBeInTheDocument();
     expect(screen.getByText('No players assigned.')).toBeInTheDocument();
-    expect(screen.getByText('2 attended participants available.')).toBeInTheDocument();
-    expect(screen.getByText('Draft teams must include every attended participant before confirmation.')).toBeInTheDocument();
+    expect(screen.getByText('2 team participants available.')).toBeInTheDocument();
+    expect(screen.getByText('Draft teams must include every team participant before confirmation.')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Confirm teams' })).toBeDisabled();
     expect(screen.getAllByText('Admin').length).toBeGreaterThan(0);
   });
 
   it('lets an eligible member vote and shows final results after close', async () => {
     const user = userEvent.setup();
-    render(<App api={createApi({ hasAccess: true, selectedMember: adminTakashi, members: [adminTakashi] })} />);
+    const api = createApi({ hasAccess: true, selectedMember: adminTakashi, members: [adminTakashi] });
+    render(<App api={api} />);
 
     await user.click(await screen.findByRole('link', { name: /events/i }));
     await user.click(await screen.findByRole('link', { name: /Friday Football/i }));
     await user.click(screen.getByRole('button', { name: 'Add guest' }));
     await user.type(screen.getByLabelText('Guest first name'), 'Ken');
     await user.click(screen.getByRole('button', { name: 'Add guest' }));
+    await api.updateAttendance({ eventId: 'event-1', memberId: adminTakashi.id, actualStatus: 'Attended' });
+    await api.updateGuestAttendance({ eventGuestId: 'guest-1', actualStatus: 'Attended' });
     await user.click(screen.getByRole('button', { name: 'Update RSVP' }));
     await screen.findByText('RSVP updated.');
-    await user.click((await screen.findAllByRole('button', { name: 'Attended' }))[0]);
-    await screen.findByText('Attendance updated.');
-    await user.click((await screen.findAllByRole('button', { name: 'Attended' }))[1]);
-    await screen.findByText('Guest attendance updated.');
 
     await user.click(screen.getByRole('button', { name: 'Open voting' }));
     expect(await screen.findByText('Voting opened.')).toBeInTheDocument();
@@ -1318,19 +1300,18 @@ describe('App shell', () => {
 
   it('lets an admin override a completed award result', async () => {
     const user = userEvent.setup();
-    render(<App api={createApi({ hasAccess: true, selectedMember: adminTakashi, members: [adminTakashi] })} />);
+    const api = createApi({ hasAccess: true, selectedMember: adminTakashi, members: [adminTakashi] });
+    render(<App api={api} />);
 
     await user.click(await screen.findByRole('link', { name: /events/i }));
     await user.click(await screen.findByRole('link', { name: /Friday Football/i }));
     await user.click(screen.getByRole('button', { name: 'Add guest' }));
     await user.type(screen.getByLabelText('Guest first name'), 'Ken');
     await user.click(screen.getByRole('button', { name: 'Add guest' }));
+    await api.updateAttendance({ eventId: 'event-1', memberId: adminTakashi.id, actualStatus: 'Attended' });
+    await api.updateGuestAttendance({ eventGuestId: 'guest-1', actualStatus: 'Attended' });
     await user.click(screen.getByRole('button', { name: 'Update RSVP' }));
     await screen.findByText('RSVP updated.');
-    await user.click((await screen.findAllByRole('button', { name: 'Attended' }))[0]);
-    await screen.findByText('Attendance updated.');
-    await user.click((await screen.findAllByRole('button', { name: 'Attended' }))[1]);
-    await screen.findByText('Guest attendance updated.');
 
     await user.click(screen.getByRole('button', { name: 'Open voting' }));
     const kenButtons = await screen.findAllByRole('button', { name: /Ken/ });

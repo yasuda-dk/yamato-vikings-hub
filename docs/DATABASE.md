@@ -93,6 +93,7 @@ Rules enforced in this slice:
 - A linked Member can update only their own RSVP through `upsert_my_rsvp`.
 - Late arrival is valid only when RSVP is `Going`.
 - Expected arrival time requires late arrival.
+- Team generation uses active Members with RSVP `Going` plus Event Guests; it does not require Admin attendance confirmation.
 - Changing RSVP away from `Going` clears late-arrival data.
 - RSVP updates after the deadline are marked as late responses.
 - Cancelled events reject RSVP changes.

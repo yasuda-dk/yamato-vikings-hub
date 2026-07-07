@@ -1,7 +1,6 @@
 import { type FormEvent, useEffect, useMemo, useState } from 'react';
 import { Link, Navigate, useNavigate, useParams } from 'react-router-dom';
 import type {
-  ActualStatus,
   EventCreateInput,
   EventDetail,
   EventDuplicateInput,
@@ -16,7 +15,6 @@ import type {
   VotingCandidate,
 } from '../lib/events';
 import {
-  actualStatuses,
   createDefaultGuestInput,
   eventRecordToInput,
   eventStatuses,
@@ -145,11 +143,12 @@ export function EventDetailPage({ api, selectedMember }: EventDetailPageProps) {
   const saveDisabled = isSaving || Boolean(validationError) || loadState !== 'ready' || detail?.event.status === 'Cancelled';
   const isAdmin = selectedMember.application_role === 'Admin';
   const isPastRsvpDeadline = detail ? isRsvpDeadlinePassed(detail.event.rsvp_deadline) : false;
+  const teamParticipantCount = detail ? detail.participants.filter(isTeamParticipant).length : 0;
   const hasDraftTeams = teams.length > 0 && teams.every((team) => !team.is_confirmed);
   const canGenerateDraft = teams.length === 0 || hasDraftTeams;
   const hasUnlockedDraftParticipants = teams.some((team) => team.participants.some((participant) => !participant.is_locked));
   const assignedDraftParticipantCount = teams.reduce((count, team) => count + team.participants.length, 0);
-  const isDraftComplete = detail ? assignedDraftParticipantCount === detail.counts.attended : false;
+  const isDraftComplete = detail ? assignedDraftParticipantCount === teamParticipantCount : false;
 
   if (!eventId) {
     return <Navigate to="/events" replace />;
@@ -434,34 +433,6 @@ export function EventDetailPage({ api, selectedMember }: EventDetailPageProps) {
     }
   }
 
-  async function updateMemberAttendance(memberId: string, actualStatus: ActualStatus) {
-    setAdminBusyId(memberId);
-    setError(null);
-    setSuccess(null);
-    try {
-      await api.updateAttendance({ eventId: draft.eventId, memberId, actualStatus });
-      await refreshDetail('Attendance updated.');
-    } catch (attendanceError) {
-      setError(attendanceError instanceof Error ? attendanceError.message : 'Could not update attendance.');
-    } finally {
-      setAdminBusyId(null);
-    }
-  }
-
-  async function updateGuestAttendance(eventGuestId: string, actualStatus: ActualStatus) {
-    setAdminBusyId(eventGuestId);
-    setError(null);
-    setSuccess(null);
-    try {
-      await api.updateGuestAttendance({ eventGuestId, actualStatus });
-      await refreshDetail('Guest attendance updated.');
-    } catch (attendanceError) {
-      setError(attendanceError instanceof Error ? attendanceError.message : 'Could not update guest attendance.');
-    } finally {
-      setAdminBusyId(null);
-    }
-  }
-
   async function handleCreateGuest(event: FormEvent) {
     event.preventDefault();
     if (Object.keys(guestErrors).length > 0 || adminBusyId === 'guest-form') return;
@@ -650,7 +621,8 @@ export function EventDetailPage({ api, selectedMember }: EventDetailPageProps) {
               <div className="flex items-start justify-between gap-3">
                 <div>
                   <p className="text-sm font-semibold text-footballBlue">Admin</p>
-                  <h3 className="mt-1 text-base font-bold text-navy">Attendance</h3>
+                  <h3 className="mt-1 text-base font-bold text-navy">Guests</h3>
+                  <p className="mt-1 text-sm text-navy/70">Going members and guests are used for team generation.</p>
                 </div>
                 <button
                   type="button"
@@ -689,15 +661,17 @@ export function EventDetailPage({ api, selectedMember }: EventDetailPageProps) {
               ) : null}
 
               <div className="mt-4 space-y-2">
-                {detail.participants.length === 0 ? <p className="rounded-md bg-mist p-3 text-sm text-navy/70">No participants yet.</p> : null}
-                {detail.participants.map((participant) => (
-                  <ParticipantRow
-                    key={`${participant.kind}-${participant.id}`}
-                    participant={participant}
-                    busy={adminBusyId === participant.id}
-                    onMemberAttendance={updateMemberAttendance}
-                    onGuestAttendance={updateGuestAttendance}
-                  />
+                {detail.guests.length === 0 ? <p className="rounded-md bg-mist p-3 text-sm text-navy/70">No guests added.</p> : null}
+                {detail.guests.map((guest) => (
+                  <div key={guest.id} className="rounded-md bg-mist p-3">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <p className="break-words text-sm font-bold text-navy">{guest.first_name}</p>
+                      <span className="rounded bg-white px-2 py-1 text-xs font-bold text-footballBlue">GUEST</span>
+                    </div>
+                    <p className="mt-1 text-xs font-semibold text-navy/65">
+                      {guest.primary_position} · Level {guest.football_level}
+                    </p>
+                  </div>
                 ))}
               </div>
             </div>
@@ -709,7 +683,7 @@ export function EventDetailPage({ api, selectedMember }: EventDetailPageProps) {
                 <div className="min-w-0">
                   <p className="text-sm font-semibold text-footballBlue">{isAdmin ? 'Admin' : 'Teams'}</p>
                   <h3 className="mt-1 text-base font-bold text-navy">Teams</h3>
-                  <p className="mt-1 text-sm text-navy/70">{detail.counts.attended} attended participants available.</p>
+                  <p className="mt-1 text-sm text-navy/70">{teamParticipantCount} team participants available.</p>
                 </div>
                 <span className="shrink-0 rounded-md bg-mist px-2 py-1 text-xs font-bold text-navy">{teams.some((team) => team.is_confirmed) ? 'Confirmed' : 'Draft'}</span>
               </div>
@@ -722,7 +696,7 @@ export function EventDetailPage({ api, selectedMember }: EventDetailPageProps) {
                     <button
                       key={teamCount}
                       type="button"
-                      disabled={!detail.event.enable_team_generation || detail.counts.attended < teamCount || adminBusyId === `generate-teams-${teamCount}`}
+                      disabled={!detail.event.enable_team_generation || teamParticipantCount < teamCount || adminBusyId === `generate-teams-${teamCount}`}
                       onClick={() => handleGenerateTeams(teamCount as 2 | 3 | 4)}
                       className="min-h-11 rounded-md bg-footballBlue px-2 text-sm font-bold text-white disabled:bg-navy/35"
                     >
@@ -743,7 +717,7 @@ export function EventDetailPage({ api, selectedMember }: EventDetailPageProps) {
                 </button>
               ) : null}
 
-              {isAdmin && detail.counts.attended < 2 ? <p className="mt-3 rounded-md bg-mist p-3 text-sm text-navy/70">Confirm at least two attendees before generating teams.</p> : null}
+              {isAdmin && teamParticipantCount < 2 ? <p className="mt-3 rounded-md bg-mist p-3 text-sm text-navy/70">Add at least two Going members or guests before generating teams.</p> : null}
               {teamsLoadState === 'loading' ? <p className="mt-3 rounded-md bg-mist p-3 text-sm font-semibold text-navy/70">Loading teams...</p> : null}
               {teamsLoadState === 'error' ? <p className="mt-3 rounded-md border border-red-200 p-3 text-sm font-semibold text-red-800">Teams could not load. Try again.</p> : null}
               {isAdmin && teamsLoadState === 'ready' && teams.length === 0 ? <p className="mt-3 rounded-md bg-mist p-3 text-sm text-navy/70">No draft teams yet.</p> : null}
@@ -777,7 +751,7 @@ export function EventDetailPage({ api, selectedMember }: EventDetailPageProps) {
 
               {isAdmin && teams.length > 0 && hasDraftTeams ? (
                 <>
-                  {!isDraftComplete ? <p className="mt-3 rounded-md bg-mist p-3 text-sm font-semibold text-navy/70">Draft teams must include every attended participant before confirmation.</p> : null}
+                  {!isDraftComplete ? <p className="mt-3 rounded-md bg-mist p-3 text-sm font-semibold text-navy/70">Draft teams must include every team participant before confirmation.</p> : null}
                   <button type="button" disabled={adminBusyId === 'team-action' || !isDraftComplete} onClick={handleConfirmTeams} className="mt-4 min-h-12 w-full rounded-md bg-footballBlue px-4 text-base font-bold text-white disabled:bg-navy/40">
                     {adminBusyId === 'team-action' ? 'Saving...' : 'Confirm teams'}
                   </button>
@@ -857,49 +831,8 @@ export function EventDetailPage({ api, selectedMember }: EventDetailPageProps) {
   );
 }
 
-function ParticipantRow({
-  participant,
-  busy,
-  onMemberAttendance,
-  onGuestAttendance,
-}: {
-  participant: EventParticipant;
-  busy: boolean;
-  onMemberAttendance: (memberId: string, actualStatus: ActualStatus) => Promise<void>;
-  onGuestAttendance: (eventGuestId: string, actualStatus: ActualStatus) => Promise<void>;
-}) {
-  async function updateStatus(actualStatus: ActualStatus) {
-    if (participant.kind === 'member') {
-      await onMemberAttendance(participant.id, actualStatus);
-      return;
-    }
-
-    await onGuestAttendance(participant.id, actualStatus);
-  }
-
-  return (
-    <div className="rounded-md bg-mist p-3">
-      <div className="flex items-start justify-between gap-3">
-        <div className="min-w-0">
-          <div className="flex flex-wrap items-center gap-2">
-            <p className="break-words text-sm font-bold text-navy">{participant.first_name}</p>
-            {participant.kind === 'guest' ? <span className="rounded bg-white px-2 py-1 text-xs font-bold text-footballBlue">GUEST</span> : null}
-          </div>
-          <p className="mt-1 text-xs font-semibold text-navy/65">
-            {participant.rsvp_status ?? 'Guest'} · {participant.primary_position} · Level {participant.football_level}
-          </p>
-        </div>
-        <span className="shrink-0 rounded bg-white px-2 py-1 text-xs font-bold text-navy">{participant.actual_status}</span>
-      </div>
-      <div className="mt-3 grid grid-cols-3 gap-2">
-        {actualStatuses.map((status) => (
-          <button key={status} type="button" disabled={busy} onClick={() => updateStatus(status)} className={actualStatusButtonClass(participant.actual_status === status)}>
-            {status === 'Not confirmed' ? 'Unset' : status}
-          </button>
-        ))}
-      </div>
-    </div>
-  );
+function isTeamParticipant(participant: EventParticipant) {
+  return participant.kind === 'guest' || participant.rsvp_status === 'Going';
 }
 
 function candidateKey(kind: 'member' | 'guest', id: string) {
@@ -1375,10 +1308,6 @@ function EventFields({
 
 function rsvpButtonClass(isActive: boolean) {
   return ['min-h-11 rounded-md px-2 text-sm font-bold', isActive ? 'bg-footballBlue text-white' : 'bg-mist text-navy'].join(' ');
-}
-
-function actualStatusButtonClass(isActive: boolean) {
-  return ['min-h-11 rounded-md px-1 text-xs font-bold', isActive ? 'bg-footballBlue text-white' : 'bg-white text-navy'].join(' ');
 }
 
 function TextInput({
