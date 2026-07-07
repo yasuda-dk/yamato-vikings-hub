@@ -198,6 +198,8 @@ function EventRow({ event }: { event: EventSummary }) {
       <div className="mt-3 flex flex-wrap gap-2 text-xs font-bold">
         <span className="rounded-md bg-footballBlue/10 px-2 py-1 text-footballBlue">{event.going_count} going</span>
         <span className="rounded-md bg-mist px-2 py-1 text-navy">{event.late_count} late</span>
+        <span className="rounded-md bg-mist px-2 py-1 text-navy">{event.maybe_count} maybe</span>
+        <span className="rounded-md bg-mist px-2 py-1 text-navy">{event.not_going_count} not going</span>
         <span className="rounded-md bg-mist px-2 py-1 text-navy">{event.my_rsvp_status ? `You: ${event.my_rsvp_status}` : 'No RSVP yet'}</span>
         {isPastRsvpDeadline ? <span className="rounded-md bg-mist px-2 py-1 text-navy">Late responses recorded</span> : null}
       </div>
