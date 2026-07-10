@@ -157,6 +157,34 @@ Rules enforced in this slice:
 - Admins can waive `Unpaid` or `Payment reported` fines.
 - MobilePay box number and URL are read from `team_settings`.
 
+## Practice Payment Tracking
+
+Practice attendance payments are tracked separately from Fine Box penalties because they are a weekly participation fee, not a fine.
+
+Tables:
+
+- `practice_payments`
+
+Server-side functions:
+
+- `practice_payment_amount`
+- `current_practice_event`
+- `get_practice_payment_state`
+- `mark_practice_payment_paid`
+
+Rules enforced in this slice:
+
+- `Under 18` is a controlled age-group value.
+- Active Members with RSVP `Going` for the current `Practice` event are payment targets.
+- Guests are not included in the member Home payment button because Guests do not use the app.
+- Normal Practice amount is 80 DKK.
+- Members with age group `Under 18` or residence type `Student` pay 20 DKK.
+- The payment window stays open through the day after Practice in the Europe/Copenhagen timezone.
+- A Member can mark only their own current Practice payment as `Paid`.
+- Marking paid writes `paid_at` immediately; there is no Admin confirmation step for this Practice payment flow.
+- Admins can see the current Practice payment tracking list and totals.
+- Regular Members can see only their own payment state and amount.
+
 ## Phase 6 Analytics Overview And CSV Export
 
 The initial analytics and CSV export slices reuse existing tables and add an Admin-only event listing function for season-wide reporting.

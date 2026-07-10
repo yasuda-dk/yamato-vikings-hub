@@ -6,6 +6,7 @@ import type { ActualStatus, EventDetail, EventGuest, EventSummary, EventTeam, Ev
 import type { FineBoxState } from './lib/fines';
 import type { MemberProfile } from './lib/member-options';
 import type { Phase1Api, SessionState } from './lib/phase1-api';
+import type { PracticePaymentState } from './lib/practice-payments';
 
 const takashi: MemberProfile = {
   id: 'member-1',
@@ -32,10 +33,10 @@ function createApi(initialState: SessionState): Phase1Api {
     id: 'event-1',
     title: 'Friday Football',
     event_type: 'Football',
-    event_date: '2026-07-09',
+    event_date: '2026-07-16',
     start_time: '19:00:00',
     location: 'Yamato Pitch',
-    rsvp_deadline: '2026-07-08T18:00:00.000Z',
+    rsvp_deadline: '2026-07-15T18:00:00.000Z',
     status: 'Open',
     my_rsvp_status: null,
     going_count: 8,
@@ -49,6 +50,7 @@ function createApi(initialState: SessionState): Phase1Api {
   let teams: EventTeam[] = [];
   const votes: Record<string, VoteInput> = {};
   let awards: VotingResult[] = [];
+  let practicePaidAt: string | null = null;
   let fineBox: FineBoxState = {
     settings: {
       mobilepay_box_number: '2391JB',
@@ -195,6 +197,64 @@ function createApi(initialState: SessionState): Phase1Api {
         event.status === 'Completed'
           ? awards.filter((award) => award.is_admin_override || !awards.some((override) => override.vote_type === award.vote_type && override.is_admin_override))
           : [],
+    };
+  }
+
+  function getPracticeAmount(member: MemberProfile) {
+    return member.age_group === 'Under 18' || member.residence_type === 'Student' ? 20 : 80;
+  }
+
+  function buildPracticePayment(): PracticePaymentState {
+    const selectedMember = state.selectedMember;
+    const selectedRsvp = rsvp && selectedMember?.id === rsvp.member_id ? rsvp : null;
+    const goingMembers = state.members.filter((member) => member.membership_status === 'Active' && rsvp?.member_id === member.id && rsvp.rsvp_status === 'Going');
+    const adminPayments = goingMembers.map((member) => ({
+      member_id: member.id,
+      first_name: member.first_name,
+      amount_dkk: getPracticeAmount(member),
+      rsvp_status: 'Going' as const,
+      is_paid: Boolean(practicePaidAt && selectedMember?.id === member.id),
+      paid_at: practicePaidAt && selectedMember?.id === member.id ? practicePaidAt : null,
+    }));
+    const expectedTotal = adminPayments.reduce((total, payment) => total + payment.amount_dkk, 0);
+    const paidTotal = adminPayments.filter((payment) => payment.is_paid).reduce((total, payment) => total + payment.amount_dkk, 0);
+
+    return {
+      event: {
+        id: event.id,
+        title: event.title,
+        event_date: event.event_date,
+        start_time: event.start_time,
+        location: event.location,
+        payment_deadline_date: '2026-07-17',
+      },
+      myPayment: selectedMember
+        ? {
+            member_id: selectedMember.id,
+            first_name: selectedMember.first_name,
+            amount_dkk: getPracticeAmount(selectedMember),
+            rsvp_status: selectedRsvp?.rsvp_status ?? null,
+            is_paid: Boolean(practicePaidAt),
+            paid_at: practicePaidAt,
+          }
+        : null,
+      adminPayments: selectedMember?.application_role === 'Admin' ? adminPayments : [],
+      totals:
+        selectedMember?.application_role === 'Admin'
+          ? {
+              expected_total_dkk: expectedTotal,
+              paid_total_dkk: paidTotal,
+              unpaid_total_dkk: expectedTotal - paidTotal,
+              paid_count: adminPayments.filter((payment) => payment.is_paid).length,
+              unpaid_count: adminPayments.filter((payment) => !payment.is_paid).length,
+            }
+          : {
+              expected_total_dkk: 0,
+              paid_total_dkk: 0,
+              unpaid_total_dkk: 0,
+              paid_count: 0,
+              unpaid_count: 0,
+            },
     };
   }
 
@@ -689,6 +749,16 @@ function createApi(initialState: SessionState): Phase1Api {
       };
       return fineBox;
     },
+    getPracticePayment: async () => buildPracticePayment(),
+    markPracticePaymentPaid: async (eventId) => {
+      if (!state.selectedMember) throw new Error('Select a member profile before reporting payment');
+      if (eventId !== event.id) throw new Error('Practice event not found');
+      if (!rsvp || rsvp.member_id !== state.selectedMember.id || rsvp.rsvp_status !== 'Going') {
+        throw new Error('Only Going members can mark practice payment paid.');
+      }
+      practicePaidAt = '2026-07-10T10:00:00.000Z';
+      return buildPracticePayment();
+    },
   };
 }
 
@@ -712,7 +782,7 @@ describe('App shell', () => {
 
     await user.click(screen.getByRole('link', { name: /events/i }));
     expect(await screen.findByRole('heading', { name: 'Events' })).toBeInTheDocument();
-    expect(screen.getByText(/RSVP Wed, Jul 8/)).toBeInTheDocument();
+    expect(screen.getByText(/RSVP Wed, Jul 15/)).toBeInTheDocument();
     expect(screen.getByText('2 maybe')).toBeInTheDocument();
     expect(screen.getByText('1 not going')).toBeInTheDocument();
     expect(screen.getByText('No RSVP yet')).toBeInTheDocument();
@@ -757,9 +827,9 @@ describe('App shell', () => {
     expect(screen.getByRole('heading', { name: 'Members by age group' })).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: 'Members by residence' })).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: 'Members by gender' })).toBeInTheDocument();
-    expect(screen.getAllByText('MF').length).toBeGreaterThanOrEqual(2);
-    expect(screen.getAllByText('35–39').length).toBeGreaterThanOrEqual(2);
-    expect(screen.getAllByText('Local resident').length).toBeGreaterThanOrEqual(2);
+    expect(screen.getAllByText('MF').length).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByText('35–39').length).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByText('Local resident').length).toBeGreaterThanOrEqual(1);
   });
 
   it('uses admin season events for Home analytics instead of the public upcoming event list', async () => {
@@ -799,6 +869,58 @@ describe('App shell', () => {
     expect(await screen.findByRole('heading', { name: 'Home' })).toBeInTheDocument();
     expect(screen.queryByRole('heading', { name: 'Season overview' })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Export CSV' })).not.toBeInTheDocument();
+  });
+
+  it('shows club contact details on Home without personal profile fields', async () => {
+    render(<App api={createApi({ hasAccess: true, selectedMember: takashi, members: [takashi] })} />);
+
+    expect(await screen.findByRole('heading', { name: 'Home' })).toBeInTheDocument();
+    expect(screen.getByText('Genki +4521282316')).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: /instagram open yamato vikings/i })).toHaveAttribute(
+      'href',
+      'https://www.instagram.com/yamato_vikings?igsh=YTE0Y3J4enpubmNu&utm_source=qr',
+    );
+    expect(screen.queryByText('Age group')).not.toBeInTheDocument();
+    expect(screen.queryByText('Primary position')).not.toBeInTheDocument();
+    expect(screen.queryByText('Football level')).not.toBeInTheDocument();
+  });
+
+  it('lets a Going member mark the current practice payment paid from Home', async () => {
+    const user = userEvent.setup();
+    render(<App api={createApi({ hasAccess: true, selectedMember: takashi, members: [takashi] })} />);
+
+    expect(await screen.findByRole('button', { name: 'Mark as paid' })).toBeDisabled();
+    expect(screen.getByText('RSVP Going first')).toBeInTheDocument();
+
+    await user.click(screen.getByRole('link', { name: /events/i }));
+    await user.click(await screen.findByRole('link', { name: /Friday Football/i }));
+    await user.click(screen.getByRole('button', { name: 'Update RSVP' }));
+    expect(await screen.findByText('RSVP updated.')).toBeInTheDocument();
+
+    await user.click(screen.getByRole('link', { name: /home/i }));
+    await user.click(await screen.findByRole('button', { name: 'Mark as paid' }));
+
+    expect(await screen.findByText('Practice payment marked as paid.')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Paid' })).toBeDisabled();
+  });
+
+  it('uses the 20 kr practice price for students and under 18 members', async () => {
+    const studentTakashi: MemberProfile = {
+      ...takashi,
+      residence_type: 'Student',
+    };
+    const under18Takashi: MemberProfile = {
+      ...takashi,
+      id: 'member-under-18',
+      first_name: 'Junior',
+      age_group: 'Under 18',
+    };
+
+    const { rerender } = render(<App api={createApi({ hasAccess: true, selectedMember: studentTakashi, members: [studentTakashi] })} />);
+    expect(await screen.findByText('20 kr')).toBeInTheDocument();
+
+    rerender(<App api={createApi({ hasAccess: true, selectedMember: under18Takashi, members: [under18Takashi] })} />);
+    expect(await screen.findByText('20 kr')).toBeInTheDocument();
   });
 
   it('lets an admin edit a member football level', async () => {

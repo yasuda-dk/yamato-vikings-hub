@@ -26,6 +26,7 @@ import type { FineBoxState, FineRecord, FineTypeRecord } from './fines';
 import { normalizeFirstName } from './member-options';
 import type { MemberProfile, MemberRegistrationInput } from './member-options';
 import type { Phase1Api, SessionState } from './phase1-api';
+import type { PracticePaymentMember, PracticePaymentState } from './practice-payments';
 import { generateTeams as generateBalancedTeams, type TeamGenerationParticipant } from './team-generation';
 
 const demoSession = { access_token: 'demo' } as Session;
@@ -42,10 +43,10 @@ let demoEvents: EventSummary[] = [
     id: demoEventId,
     title: 'Friday Football',
     event_type: 'Football',
-    event_date: '2026-07-09',
+    event_date: '2026-07-16',
     start_time: '19:00:00',
     location: 'Yamato Pitch',
-    rsvp_deadline: '2026-07-08T18:00:00.000Z',
+    rsvp_deadline: '2026-07-15T18:00:00.000Z',
     status: 'Open',
     my_rsvp_status: null,
     going_count: 8,
@@ -59,6 +60,7 @@ const demoRsvps: Record<string, MyRsvp> = {};
 let demoTeams: EventTeam[] = [];
 const demoVotes: Record<string, VoteInput> = {};
 let demoAwards: VotingResult[] = [];
+const demoPracticePaidAt: Record<string, string> = {};
 let demoFines: FineRecord[] = [
   {
     id: 'demo-fine-1',
@@ -287,6 +289,76 @@ function buildDemoFineBox(): FineBoxState {
         context: demoEvents.find((event) => event.id === guest.event_id)?.title ?? null,
       })),
     ],
+  };
+}
+
+function getPracticeAmount(member: Pick<MemberProfile, 'age_group' | 'residence_type'>) {
+  return member.age_group === 'Under 18' || member.residence_type === 'Student' ? 20 : 80;
+}
+
+function buildDemoPracticePayment(): PracticePaymentState {
+  const event = demoEvents.find((item) => item.title === 'Practice') ?? demoEvents[0] ?? null;
+  if (!event) {
+    return {
+      event: null,
+      myPayment: null,
+      adminPayments: [],
+      totals: {
+        expected_total_dkk: 0,
+        paid_total_dkk: 0,
+        unpaid_total_dkk: 0,
+        paid_count: 0,
+        unpaid_count: 0,
+      },
+    };
+  }
+
+  const goingMembers = state.members.filter((member) => member.membership_status === 'Active' && demoRsvps[event.id]?.member_id === member.id && demoRsvps[event.id]?.rsvp_status === 'Going');
+  const adminPayments: PracticePaymentMember[] = goingMembers.map((member) => {
+    const paidAt = demoPracticePaidAt[`${event.id}:${member.id}`] ?? null;
+    return {
+      member_id: member.id,
+      first_name: member.first_name,
+      amount_dkk: getPracticeAmount(member),
+      rsvp_status: 'Going',
+      is_paid: Boolean(paidAt),
+      paid_at: paidAt,
+    };
+  });
+  const selectedMember = state.selectedMember;
+  const selectedRsvp = demoRsvps[event.id]?.member_id === selectedMember?.id ? demoRsvps[event.id] : null;
+  const selectedPaidAt = selectedMember ? (demoPracticePaidAt[`${event.id}:${selectedMember.id}`] ?? null) : null;
+  const myPayment = selectedMember
+    ? {
+        member_id: selectedMember.id,
+        first_name: selectedMember.first_name,
+        amount_dkk: getPracticeAmount(selectedMember),
+        rsvp_status: selectedRsvp?.rsvp_status ?? null,
+        is_paid: Boolean(selectedPaidAt),
+        paid_at: selectedPaidAt,
+      }
+    : null;
+  const expectedTotal = adminPayments.reduce((total, payment) => total + payment.amount_dkk, 0);
+  const paidTotal = adminPayments.filter((payment) => payment.is_paid).reduce((total, payment) => total + payment.amount_dkk, 0);
+
+  return {
+    event: {
+      id: event.id,
+      title: event.title,
+      event_date: event.event_date,
+      start_time: event.start_time,
+      location: event.location,
+      payment_deadline_date: '2026-07-17',
+    },
+    myPayment,
+    adminPayments: selectedMember?.application_role === 'Admin' ? adminPayments : [],
+    totals: {
+      expected_total_dkk: selectedMember?.application_role === 'Admin' ? expectedTotal : 0,
+      paid_total_dkk: selectedMember?.application_role === 'Admin' ? paidTotal : 0,
+      unpaid_total_dkk: selectedMember?.application_role === 'Admin' ? expectedTotal - paidTotal : 0,
+      paid_count: selectedMember?.application_role === 'Admin' ? adminPayments.filter((payment) => payment.is_paid).length : 0,
+      unpaid_count: selectedMember?.application_role === 'Admin' ? adminPayments.filter((payment) => !payment.is_paid).length : 0,
+    },
   };
 }
 
@@ -916,5 +988,20 @@ export const demoPhase1Api: Phase1Api = {
     demoFineTypes = demoFineTypes.map((type) => (type.id === input.fineTypeId ? { ...type, is_active: input.isActive, updated_at: new Date().toISOString() } : type));
 
     return buildDemoFineBox();
+  },
+
+  async getPracticePayment() {
+    return buildDemoPracticePayment();
+  },
+
+  async markPracticePaymentPaid(eventId: string) {
+    const selectedMember = state.selectedMember;
+    if (!selectedMember) throw new Error('Select a member profile before reporting payment');
+    const rsvp = demoRsvps[eventId];
+    if (!rsvp || rsvp.member_id !== selectedMember.id || rsvp.rsvp_status !== 'Going') {
+      throw new Error('Only Going members can mark practice payment paid.');
+    }
+    demoPracticePaidAt[`${eventId}:${selectedMember.id}`] = new Date().toISOString();
+    return buildDemoPracticePayment();
   },
 };

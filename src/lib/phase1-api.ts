@@ -20,6 +20,7 @@ import type {
 import type { CreateFineInput, CreateFinesInput, CreateFineTypeInput, FineBoxState, ReportFinePaymentInput, UpdateFineStatusInput, UpdateFineTypeInput } from './fines';
 import { createSupabaseBrowserClient } from './supabase';
 import { DEFAULT_TEAM_ID, type AdminMemberUpdateInput, type MemberProfile, type MemberRegistrationInput } from './member-options';
+import type { PracticePaymentState } from './practice-payments';
 
 export type SessionState = {
   hasAccess: boolean;
@@ -58,6 +59,8 @@ export type Phase1Api = {
   updateFineStatus: (input: UpdateFineStatusInput) => Promise<FineBoxState>;
   createFineType: (input: CreateFineTypeInput) => Promise<FineBoxState>;
   updateFineType: (input: UpdateFineTypeInput) => Promise<FineBoxState>;
+  getPracticePayment: () => Promise<PracticePaymentState>;
+  markPracticePaymentPaid: (eventId: string) => Promise<PracticePaymentState>;
 };
 
 let supabaseClient: ReturnType<typeof createSupabaseBrowserClient> | null = null;
@@ -246,5 +249,15 @@ export const phase1Api: Phase1Api = {
   async updateFineType(input: UpdateFineTypeInput) {
     const data = await invokeFunction<{ fineBox: FineBoxState }>('update-fine-type', input);
     return data.fineBox;
+  },
+
+  async getPracticePayment() {
+    const data = await invokeFunction<{ practicePayment: PracticePaymentState }>('practice-payment-state', {});
+    return data.practicePayment;
+  },
+
+  async markPracticePaymentPaid(eventId: string) {
+    const data = await invokeFunction<{ practicePayment: PracticePaymentState }>('mark-practice-payment-paid', { eventId });
+    return data.practicePayment;
   },
 };

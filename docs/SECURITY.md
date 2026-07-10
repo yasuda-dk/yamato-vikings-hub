@@ -70,6 +70,20 @@ The Fine Box foundation keeps payment state changes behind Edge Functions and da
 - Batch fine creation is capped at 50 selected participants and rejects duplicate selections.
 - MobilePay details are loaded from `team_settings`; the frontend does not hard-code payment settings.
 
+## Practice Payment Controls
+
+Practice payment tracking is server-enforced through Edge Functions and database functions.
+
+- `practice-payment-state` requires current approved device access and a selected Member profile.
+- `mark-practice-payment-paid` requires current approved device access and an active selected Member profile.
+- Only Members with RSVP `Going` for the target Practice can mark payment as paid.
+- Members can mark only their own Practice payment as paid.
+- Practice payments close after the day following the Practice date in the Europe/Copenhagen timezone.
+- Admin payment totals and member-by-member tracking are returned only to selected Admin profiles.
+- Regular Members receive only their own payment amount and status.
+- Guest Practice payments are not exposed to regular users because Guests do not authenticate.
+- The Home screen displays Genki's MobilePay number for manual payment, but no MobilePay deep link or automatic payment verification is implemented.
+
 ## Phase 6 Analytics Controls
 
 - The first Season overview appears only for selected Admin profiles.

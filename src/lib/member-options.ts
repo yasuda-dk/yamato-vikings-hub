@@ -1,6 +1,6 @@
 export const DEFAULT_TEAM_ID = '00000000-0000-0000-0000-000000000001';
 
-export const ageGroups = ['Under 25', '25–29', '30–34', '35–39', '40–49', '50+', 'Not specified'] as const;
+export const ageGroups = ['Under 18', 'Under 25', '25–29', '30–34', '35–39', '40–49', '50+', 'Not specified'] as const;
 export const residenceTypes = ['Local resident', 'Expat', 'Student', 'Working holiday', 'Other', 'Not specified'] as const;
 export const positions = ['FW', 'MF', 'DF'] as const;
 export const footballLevels = [1, 2, 3, 4, 5] as const;
