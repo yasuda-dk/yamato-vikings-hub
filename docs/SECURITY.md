@@ -78,6 +78,10 @@ Practice payment tracking is server-enforced through Edge Functions and database
 - `mark-practice-payment-paid` requires current approved device access and an active selected Member profile.
 - Only Members with RSVP `Going` for the target Practice can mark payment as paid.
 - Members can mark only their own Practice payment as paid.
+- Admin-only member editing controls `Default`, `Exempt`, and `Custom` Practice payment rules.
+- Regular Members cannot change their own Practice payment rule or custom amount.
+- Exempt Members cannot create Practice payment records.
+- Custom Practice payment amounts must be above 0 DKK.
 - Practice payments close after the day following the Practice date in the Europe/Copenhagen timezone.
 - Admin payment totals and member-by-member tracking are returned only to selected Admin profiles.
 - Regular Members receive only their own payment amount and status.

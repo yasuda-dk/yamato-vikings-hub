@@ -6,6 +6,7 @@ import {
   formatFootballLevel,
   genders,
   positions,
+  practicePaymentRules,
   residenceTypes,
   validateAdminMemberUpdate,
   type AdminMemberUpdateInput,
@@ -106,6 +107,33 @@ function MemberEditor({
       <Select label="Gender" value={draft.gender} options={genders} onChange={(gender) => setDraft((current) => ({ ...current, gender }))} error={errors.gender} />
       <Select label="Member status" value={draft.membershipStatus} options={['Active', 'Inactive']} onChange={(membershipStatus) => setDraft((current) => ({ ...current, membershipStatus }))} error={errors.membershipStatus} />
       <Select label="Application role" value={draft.applicationRole} options={['Player', 'Admin']} onChange={(applicationRole) => setDraft((current) => ({ ...current, applicationRole }))} error={errors.applicationRole} />
+      <div className="rounded-md bg-mist p-3">
+        <p className="text-sm font-bold text-navy">Practice payment</p>
+        <div className="mt-3 grid gap-3">
+          <Select
+            label="Payment rule"
+            value={draft.practicePaymentRule}
+            options={practicePaymentRules}
+            getOptionLabel={(rule) => (rule === 'Default' ? 'Default price' : rule === 'Custom' ? 'Custom amount' : 'Exempt')}
+            onChange={(practicePaymentRule) =>
+              setDraft((current) => ({
+                ...current,
+                practicePaymentRule,
+                practicePaymentCustomAmountDkk: practicePaymentRule === 'Custom' ? (current.practicePaymentCustomAmountDkk ?? 80) : null,
+              }))
+            }
+            error={errors.practicePaymentRule}
+          />
+          {draft.practicePaymentRule === 'Custom' ? (
+            <NumberInput
+              label="Custom amount DKK"
+              value={draft.practicePaymentCustomAmountDkk ?? 0}
+              error={errors.practicePaymentCustomAmountDkk}
+              onChange={(practicePaymentCustomAmountDkk) => setDraft((current) => ({ ...current, practicePaymentCustomAmountDkk }))}
+            />
+          ) : null}
+        </div>
+      </div>
       <div className="grid grid-cols-2 gap-2">
         <button type="button" onClick={onCancel} className="min-h-11 rounded-md border border-navy/20 bg-white px-3 text-sm font-bold text-navy">
           Cancel
@@ -130,6 +158,8 @@ function memberToDraft(member: MemberProfile): AdminMemberUpdateInput {
     gender: member.gender,
     membershipStatus: member.membership_status,
     applicationRole: member.application_role,
+    practicePaymentRule: member.practice_payment_rule,
+    practicePaymentCustomAmountDkk: member.practice_payment_custom_amount_dkk,
   };
 }
 
@@ -138,6 +168,25 @@ function TextInput({ label, value, onChange, error }: { label: string; value: st
     <label className="block text-sm font-semibold text-navy">
       {label}
       <input aria-label={label} value={value} onChange={(event) => onChange(event.target.value)} className="mt-2 min-h-12 w-full rounded-md border border-navy/20 px-3 text-base" />
+      {error ? <span className="mt-1 block text-sm text-red-700">{error}</span> : null}
+    </label>
+  );
+}
+
+function NumberInput({ label, value, onChange, error }: { label: string; value: number; onChange: (value: number) => void; error?: string }) {
+  return (
+    <label className="block text-sm font-semibold text-navy">
+      {label}
+      <input
+        aria-label={label}
+        type="number"
+        inputMode="numeric"
+        min={0}
+        step={1}
+        value={value}
+        onChange={(event) => onChange(Number(event.target.value))}
+        className="mt-2 min-h-12 w-full rounded-md border border-navy/20 px-3 text-base"
+      />
       {error ? <span className="mt-1 block text-sm text-red-700">{error}</span> : null}
     </label>
   );

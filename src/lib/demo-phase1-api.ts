@@ -243,6 +243,8 @@ function toMember(input: MemberRegistrationInput): MemberProfile {
     secondary_position: input.secondaryPosition === 'None' ? null : input.secondaryPosition,
     residence_type: input.residenceType,
     gender: input.gender,
+    practice_payment_rule: 'Default',
+    practice_payment_custom_amount_dkk: null,
     membership_status: 'Active',
     application_role: normalizeFirstName(input.firstName) === 'admin' ? 'Admin' : 'Player',
     created_at: new Date().toISOString(),
@@ -292,7 +294,9 @@ function buildDemoFineBox(): FineBoxState {
   };
 }
 
-function getPracticeAmount(member: Pick<MemberProfile, 'age_group' | 'residence_type'>) {
+function getPracticeAmount(member: Pick<MemberProfile, 'age_group' | 'residence_type' | 'practice_payment_rule' | 'practice_payment_custom_amount_dkk'>) {
+  if (member.practice_payment_rule === 'Exempt') return 0;
+  if (member.practice_payment_rule === 'Custom') return member.practice_payment_custom_amount_dkk ?? 0;
   return member.age_group === 'Under 18' || member.residence_type === 'Student' ? 20 : 80;
 }
 
@@ -309,6 +313,7 @@ function buildDemoPracticePayment(): PracticePaymentState {
         unpaid_total_dkk: 0,
         paid_count: 0,
         unpaid_count: 0,
+        exempt_count: 0,
       },
     };
   }
@@ -320,6 +325,8 @@ function buildDemoPracticePayment(): PracticePaymentState {
       member_id: member.id,
       first_name: member.first_name,
       amount_dkk: getPracticeAmount(member),
+      payment_rule: member.practice_payment_rule,
+      is_exempt: member.practice_payment_rule === 'Exempt',
       rsvp_status: 'Going',
       is_paid: Boolean(paidAt),
       paid_at: paidAt,
@@ -333,6 +340,8 @@ function buildDemoPracticePayment(): PracticePaymentState {
         member_id: selectedMember.id,
         first_name: selectedMember.first_name,
         amount_dkk: getPracticeAmount(selectedMember),
+        payment_rule: selectedMember.practice_payment_rule,
+        is_exempt: selectedMember.practice_payment_rule === 'Exempt',
         rsvp_status: selectedRsvp?.rsvp_status ?? null,
         is_paid: Boolean(selectedPaidAt),
         paid_at: selectedPaidAt,
@@ -357,7 +366,8 @@ function buildDemoPracticePayment(): PracticePaymentState {
       paid_total_dkk: selectedMember?.application_role === 'Admin' ? paidTotal : 0,
       unpaid_total_dkk: selectedMember?.application_role === 'Admin' ? expectedTotal - paidTotal : 0,
       paid_count: selectedMember?.application_role === 'Admin' ? adminPayments.filter((payment) => payment.is_paid).length : 0,
-      unpaid_count: selectedMember?.application_role === 'Admin' ? adminPayments.filter((payment) => !payment.is_paid).length : 0,
+      unpaid_count: selectedMember?.application_role === 'Admin' ? adminPayments.filter((payment) => !payment.is_paid && !payment.is_exempt).length : 0,
+      exempt_count: selectedMember?.application_role === 'Admin' ? adminPayments.filter((payment) => payment.is_exempt).length : 0,
     },
   };
 }
@@ -406,6 +416,8 @@ export const demoPhase1Api: Phase1Api = {
             secondary_position: input.secondaryPosition === 'None' ? null : input.secondaryPosition,
             residence_type: input.residenceType,
             gender: input.gender,
+            practice_payment_rule: input.practicePaymentRule,
+            practice_payment_custom_amount_dkk: input.practicePaymentCustomAmountDkk,
             membership_status: input.membershipStatus,
             application_role: input.applicationRole,
           }
@@ -997,6 +1009,7 @@ export const demoPhase1Api: Phase1Api = {
   async markPracticePaymentPaid(eventId: string) {
     const selectedMember = state.selectedMember;
     if (!selectedMember) throw new Error('Select a member profile before reporting payment');
+    if (selectedMember.practice_payment_rule === 'Exempt') throw new Error('This member is exempt from Practice payment.');
     const rsvp = demoRsvps[eventId];
     if (!rsvp || rsvp.member_id !== selectedMember.id || rsvp.rsvp_status !== 'Going') {
       throw new Error('Only Going members can mark practice payment paid.');

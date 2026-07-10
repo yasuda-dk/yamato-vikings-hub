@@ -5,6 +5,7 @@ export const residenceTypes = ['Local resident', 'Expat', 'Student', 'Working ho
 export const positions = ['FW', 'MF', 'DF'] as const;
 export const footballLevels = [1, 2, 3, 4, 5] as const;
 export const genders = ['Male', 'Female', 'Non-binary', 'Other', 'Not specified'] as const;
+export const practicePaymentRules = ['Default', 'Exempt', 'Custom'] as const;
 export const footballLevelLabels: Record<FootballLevel, string> = {
   1: 'No experience',
   2: 'A bit',
@@ -19,6 +20,7 @@ export type Position = (typeof positions)[number];
 export type FootballLevel = (typeof footballLevels)[number];
 export type SecondaryPosition = Position | 'None';
 export type Gender = (typeof genders)[number];
+export type PracticePaymentRule = (typeof practicePaymentRules)[number];
 
 export type MemberProfile = {
   id: string;
@@ -29,6 +31,8 @@ export type MemberProfile = {
   secondary_position: Position | null;
   residence_type: ResidenceType;
   gender: Gender;
+  practice_payment_rule: PracticePaymentRule;
+  practice_payment_custom_amount_dkk: number | null;
   membership_status: 'Active' | 'Inactive';
   application_role: 'Player' | 'Admin';
   created_at: string;
@@ -55,6 +59,8 @@ export type AdminMemberUpdateInput = {
   gender: Gender;
   membershipStatus: MemberProfile['membership_status'];
   applicationRole: MemberProfile['application_role'];
+  practicePaymentRule: PracticePaymentRule;
+  practicePaymentCustomAmountDkk: number | null;
 };
 
 export function normalizeFirstName(value: string) {
@@ -79,6 +85,10 @@ export function isFootballLevel(value: number): value is FootballLevel {
 
 export function isGender(value: string): value is Gender {
   return genders.includes(value as Gender);
+}
+
+export function isPracticePaymentRule(value: string): value is PracticePaymentRule {
+  return practicePaymentRules.includes(value as PracticePaymentRule);
 }
 
 export function formatFootballLevel(level: FootballLevel) {
@@ -134,6 +144,13 @@ export function validateAdminMemberUpdate(input: AdminMemberUpdateInput, existin
   if (!isGender(input.gender)) errors.gender = 'Select a gender.';
   if (input.membershipStatus !== 'Active' && input.membershipStatus !== 'Inactive') errors.membershipStatus = 'Select a member status.';
   if (input.applicationRole !== 'Player' && input.applicationRole !== 'Admin') errors.applicationRole = 'Select an application role.';
+  if (!isPracticePaymentRule(input.practicePaymentRule)) errors.practicePaymentRule = 'Select a payment rule.';
+  if (input.practicePaymentRule === 'Custom' && (!Number.isInteger(input.practicePaymentCustomAmountDkk) || input.practicePaymentCustomAmountDkk === null || input.practicePaymentCustomAmountDkk <= 0)) {
+    errors.practicePaymentCustomAmountDkk = 'Enter a custom amount above 0 DKK.';
+  }
+  if (input.practicePaymentRule !== 'Custom' && input.practicePaymentCustomAmountDkk !== null) {
+    errors.practicePaymentCustomAmountDkk = 'Custom amount is only used with Custom amount.';
+  }
 
   return errors;
 }
