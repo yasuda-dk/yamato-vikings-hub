@@ -124,7 +124,9 @@ function PracticePaymentPanel({
   onMarkPaid: () => Promise<void>;
 }) {
   const myPayment = state?.myPayment ?? null;
-  const canMarkPaid = Boolean(state?.event && myPayment?.rsvp_status === 'Going' && !myPayment.is_paid && !isMarkingPaid);
+  const canMarkPaid = Boolean(state?.event && myPayment?.rsvp_status === 'Going' && !myPayment.is_paid && !myPayment.is_exempt && !isMarkingPaid);
+  const amountLabel = myPayment?.is_exempt ? 'Exempt' : myPayment ? `${myPayment.amount_dkk} kr` : '-';
+  const statusLabel = myPayment?.is_exempt ? 'Exempt' : myPayment?.is_paid ? 'Paid' : myPayment?.rsvp_status === 'Going' ? 'Not paid' : 'RSVP Going first';
 
   return (
     <div className="rounded-lg border border-navy/10 bg-white p-4">
@@ -151,20 +153,26 @@ function PracticePaymentPanel({
           <div className="grid gap-2">
             <ProfileRow label="Practice" value={formatPracticeDate(state.event.event_date, state.event.start_time)} />
             <ProfileRow label="Deadline" value={formatPracticeDeadline(state.event.payment_deadline_date)} />
-            <ProfileRow label="Amount" value={myPayment ? `${myPayment.amount_dkk} kr` : '-'} />
-            <ProfileRow label="Status" value={myPayment?.is_paid ? 'Paid' : myPayment?.rsvp_status === 'Going' ? 'Not paid' : 'RSVP Going first'} />
+            <ProfileRow label="Amount" value={amountLabel} />
+            <ProfileRow label="Status" value={statusLabel} />
           </div>
-          <p className="rounded-md bg-mist p-3 text-sm leading-5 text-navy/70">Pay Genki by MobilePay at {GENKI_MOBILEPAY_NUMBER}, then tap the button below.</p>
+          {myPayment?.is_exempt ? (
+            <p className="rounded-md bg-mist p-3 text-sm leading-5 text-navy/70">No Practice payment is required for this profile.</p>
+          ) : (
+            <p className="rounded-md bg-mist p-3 text-sm leading-5 text-navy/70">Pay Genki by MobilePay at {GENKI_MOBILEPAY_NUMBER}, then tap the button below.</p>
+          )}
           {success ? <p className="rounded-md border border-footballBlue/20 bg-white p-3 text-sm font-semibold text-footballBlue">{success}</p> : null}
           {error ? (
             <p className="rounded-md border border-red-200 bg-white p-3 text-sm font-semibold text-red-800" role="alert">
               {error}
             </p>
           ) : null}
-          <button type="button" disabled={!canMarkPaid} onClick={() => void onMarkPaid()} className="min-h-12 w-full rounded-md bg-footballBlue px-4 text-base font-bold text-white disabled:bg-navy/40">
-            {myPayment?.is_paid ? 'Paid' : isMarkingPaid ? 'Saving...' : 'Mark as paid'}
-          </button>
-          {!myPayment?.is_paid && myPayment?.rsvp_status !== 'Going' ? <p className="text-sm font-semibold text-navy/70">This button is available after your RSVP is Going.</p> : null}
+          {myPayment?.is_exempt ? null : (
+            <button type="button" disabled={!canMarkPaid} onClick={() => void onMarkPaid()} className="min-h-12 w-full rounded-md bg-footballBlue px-4 text-base font-bold text-white disabled:bg-navy/40">
+              {myPayment?.is_paid ? 'Paid' : isMarkingPaid ? 'Saving...' : 'Mark as paid'}
+            </button>
+          )}
+          {!myPayment?.is_exempt && !myPayment?.is_paid && myPayment?.rsvp_status !== 'Going' ? <p className="text-sm font-semibold text-navy/70">This button is available after your RSVP is Going.</p> : null}
           {isAdmin ? <AdminPracticePayments state={state} /> : null}
         </div>
       ) : null}
@@ -179,7 +187,7 @@ function AdminPracticePayments({ state }: { state: PracticePaymentState }) {
         <div>
           <p className="text-sm font-bold text-navy">Admin tracking</p>
           <p className="mt-1 text-xs font-semibold text-navy/60">
-            {state.totals.paid_count} paid · {state.totals.unpaid_count} not paid
+            {state.totals.paid_count} paid · {state.totals.unpaid_count} not paid · {state.totals.exempt_count} exempt
           </p>
         </div>
         <span className="shrink-0 rounded bg-white px-2 py-1 text-xs font-bold text-navy">{state.totals.paid_total_dkk}/{state.totals.expected_total_dkk} kr</span>
@@ -192,9 +200,9 @@ function AdminPracticePayments({ state }: { state: PracticePaymentState }) {
             <div key={payment.member_id} className="flex min-h-11 items-center justify-between gap-3 py-2">
               <div className="min-w-0">
                 <p className="break-words text-sm font-bold text-navy">{payment.first_name}</p>
-                <p className="text-xs font-semibold text-navy/60">{payment.amount_dkk} kr</p>
+                <p className="text-xs font-semibold text-navy/60">{payment.is_exempt ? 'Exempt' : `${payment.amount_dkk} kr${payment.payment_rule === 'Custom' ? ' · Custom' : ''}`}</p>
               </div>
-              <span className="shrink-0 rounded bg-white px-2 py-1 text-xs font-bold text-navy">{payment.is_paid ? 'Paid' : 'Not paid'}</span>
+              <span className="shrink-0 rounded bg-white px-2 py-1 text-xs font-bold text-navy">{payment.is_exempt ? 'Exempt' : payment.is_paid ? 'Paid' : 'Not paid'}</span>
             </div>
           ))}
         </div>

@@ -4,6 +4,7 @@ import { requireUser } from '../_shared/supabase.ts';
 const footballLevels = [1, 2, 3, 4, 5];
 const membershipStatuses = ['Active', 'Inactive'];
 const applicationRoles = ['Player', 'Admin'];
+const practicePaymentRules = ['Default', 'Exempt', 'Custom'];
 
 Deno.serve(async (req) => {
   const cors = handleCors(req);
@@ -37,6 +38,14 @@ Deno.serve(async (req) => {
       return jsonResponse({ ok: false, error: 'Select an application role.' }, 400);
     }
 
+    if (!practicePaymentRules.includes(body.practicePaymentRule)) {
+      return jsonResponse({ ok: false, error: 'Select a payment rule.' }, 400);
+    }
+
+    if (body.practicePaymentRule === 'Custom' && (!Number.isInteger(body.practicePaymentCustomAmountDkk) || body.practicePaymentCustomAmountDkk <= 0)) {
+      return jsonResponse({ ok: false, error: 'Enter a custom amount above 0 DKK.' }, 400);
+    }
+
     const { data, error } = await supabase.rpc('admin_update_member', {
       target_team_id: body.teamId,
       p_member_id: body.memberId,
@@ -49,6 +58,8 @@ Deno.serve(async (req) => {
       p_gender: body.gender,
       p_membership_status: body.membershipStatus,
       p_application_role: body.applicationRole,
+      p_practice_payment_rule: body.practicePaymentRule,
+      p_practice_payment_custom_amount_dkk: body.practicePaymentRule === 'Custom' ? body.practicePaymentCustomAmountDkk : null,
     });
 
     if (error) {

@@ -13,6 +13,8 @@ const member: MemberProfile = {
   secondary_position: 'DF',
   residence_type: 'Local resident',
   gender: 'Male',
+  practice_payment_rule: 'Default',
+  practice_payment_custom_amount_dkk: null,
   membership_status: 'Active',
   application_role: 'Admin',
   created_at: '2026-01-02T00:00:00Z',

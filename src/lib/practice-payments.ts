@@ -11,6 +11,8 @@ export type PracticePaymentMember = {
   member_id: string;
   first_name: string;
   amount_dkk: number;
+  payment_rule: 'Default' | 'Exempt' | 'Custom';
+  is_exempt: boolean;
   rsvp_status: 'Going' | 'Maybe' | 'Not going' | null;
   is_paid: boolean;
   paid_at: string | null;
@@ -26,5 +28,6 @@ export type PracticePaymentState = {
     unpaid_total_dkk: number;
     paid_count: number;
     unpaid_count: number;
+    exempt_count: number;
   };
 };

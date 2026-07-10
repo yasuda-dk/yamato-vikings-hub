@@ -17,6 +17,8 @@ const takashi: MemberProfile = {
   secondary_position: 'DF',
   residence_type: 'Local resident',
   gender: 'Male',
+  practice_payment_rule: 'Default',
+  practice_payment_custom_amount_dkk: null,
   membership_status: 'Active',
   application_role: 'Player',
   created_at: '2026-01-01T00:00:00.000Z',
@@ -201,6 +203,8 @@ function createApi(initialState: SessionState): Phase1Api {
   }
 
   function getPracticeAmount(member: MemberProfile) {
+    if (member.practice_payment_rule === 'Exempt') return 0;
+    if (member.practice_payment_rule === 'Custom') return member.practice_payment_custom_amount_dkk ?? 0;
     return member.age_group === 'Under 18' || member.residence_type === 'Student' ? 20 : 80;
   }
 
@@ -212,6 +216,8 @@ function createApi(initialState: SessionState): Phase1Api {
       member_id: member.id,
       first_name: member.first_name,
       amount_dkk: getPracticeAmount(member),
+      payment_rule: member.practice_payment_rule,
+      is_exempt: member.practice_payment_rule === 'Exempt',
       rsvp_status: 'Going' as const,
       is_paid: Boolean(practicePaidAt && selectedMember?.id === member.id),
       paid_at: practicePaidAt && selectedMember?.id === member.id ? practicePaidAt : null,
@@ -233,6 +239,8 @@ function createApi(initialState: SessionState): Phase1Api {
             member_id: selectedMember.id,
             first_name: selectedMember.first_name,
             amount_dkk: getPracticeAmount(selectedMember),
+            payment_rule: selectedMember.practice_payment_rule,
+            is_exempt: selectedMember.practice_payment_rule === 'Exempt',
             rsvp_status: selectedRsvp?.rsvp_status ?? null,
             is_paid: Boolean(practicePaidAt),
             paid_at: practicePaidAt,
@@ -246,7 +254,8 @@ function createApi(initialState: SessionState): Phase1Api {
               paid_total_dkk: paidTotal,
               unpaid_total_dkk: expectedTotal - paidTotal,
               paid_count: adminPayments.filter((payment) => payment.is_paid).length,
-              unpaid_count: adminPayments.filter((payment) => !payment.is_paid).length,
+              unpaid_count: adminPayments.filter((payment) => !payment.is_paid && !payment.is_exempt).length,
+              exempt_count: adminPayments.filter((payment) => payment.is_exempt).length,
             }
           : {
               expected_total_dkk: 0,
@@ -254,6 +263,7 @@ function createApi(initialState: SessionState): Phase1Api {
               unpaid_total_dkk: 0,
               paid_count: 0,
               unpaid_count: 0,
+              exempt_count: 0,
             },
     };
   }
@@ -266,7 +276,7 @@ function createApi(initialState: SessionState): Phase1Api {
       state = { ...state, hasAccess: true };
     },
     registerMember: async (input) => {
-      const member = { ...takashi, id: 'member-new', first_name: input.firstName, gender: input.gender };
+      const member = { ...takashi, id: 'member-new', first_name: input.firstName, gender: input.gender, practice_payment_rule: 'Default' as const, practice_payment_custom_amount_dkk: null };
       state = { hasAccess: true, selectedMember: member, members: [member] };
     },
     updateMember: async (input) => {
@@ -282,6 +292,8 @@ function createApi(initialState: SessionState): Phase1Api {
               secondary_position: input.secondaryPosition === 'None' ? null : input.secondaryPosition,
               residence_type: input.residenceType,
               gender: input.gender,
+              practice_payment_rule: input.practicePaymentRule,
+              practice_payment_custom_amount_dkk: input.practicePaymentCustomAmountDkk,
               membership_status: input.membershipStatus,
               application_role: input.applicationRole,
             }
@@ -753,6 +765,7 @@ function createApi(initialState: SessionState): Phase1Api {
     markPracticePaymentPaid: async (eventId) => {
       if (!state.selectedMember) throw new Error('Select a member profile before reporting payment');
       if (eventId !== event.id) throw new Error('Practice event not found');
+      if (state.selectedMember.practice_payment_rule === 'Exempt') throw new Error('This member is exempt from Practice payment.');
       if (!rsvp || rsvp.member_id !== state.selectedMember.id || rsvp.rsvp_status !== 'Going') {
         throw new Error('Only Going members can mark practice payment paid.');
       }
@@ -937,6 +950,37 @@ describe('App shell', () => {
 
     expect(await screen.findByText('Member updated.')).toBeInTheDocument();
     expect(screen.getByText(/4 - High level/)).toBeInTheDocument();
+  });
+
+  it('lets an admin set a custom Practice payment amount', async () => {
+    const user = userEvent.setup();
+    render(<App api={createApi({ hasAccess: true, selectedMember: adminTakashi, members: [adminTakashi] })} />);
+
+    expect(await screen.findByRole('heading', { name: 'Home' })).toBeInTheDocument();
+    await user.click(screen.getByRole('link', { name: /members/i }));
+    await user.click(await screen.findByRole('button', { name: 'Edit member' }));
+
+    await user.selectOptions(screen.getByLabelText('Payment rule'), 'Custom');
+    await user.clear(screen.getByLabelText('Custom amount DKK'));
+    await user.type(screen.getByLabelText('Custom amount DKK'), '35');
+    await user.click(screen.getByRole('button', { name: 'Save changes' }));
+
+    expect(await screen.findByText('Member updated.')).toBeInTheDocument();
+    await user.click(screen.getByRole('link', { name: /home/i }));
+
+    expect(await screen.findByText('35 kr')).toBeInTheDocument();
+  });
+
+  it('shows exempt Practice payment without a paid button', async () => {
+    const exemptTakashi: MemberProfile = {
+      ...takashi,
+      practice_payment_rule: 'Exempt',
+    };
+    render(<App api={createApi({ hasAccess: true, selectedMember: exemptTakashi, members: [exemptTakashi] })} />);
+
+    expect((await screen.findAllByText('Exempt')).length).toBeGreaterThanOrEqual(2);
+    expect(screen.getByText('No Practice payment is required for this profile.')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Mark as paid' })).not.toBeInTheDocument();
   });
 
   it('lets a member select unpaid fines and report MobilePay payment', async () => {

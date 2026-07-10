@@ -163,6 +163,8 @@ Practice attendance payments are tracked separately from Fine Box penalties beca
 
 Tables:
 
+- `members.practice_payment_rule`
+- `members.practice_payment_custom_amount_dkk`
 - `practice_payments`
 
 Server-side functions:
@@ -179,6 +181,10 @@ Rules enforced in this slice:
 - Guests are not included in the member Home payment button because Guests do not use the app.
 - Normal Practice amount is 80 DKK.
 - Members with age group `Under 18` or residence type `Student` pay 20 DKK.
+- Admins can set a member-specific Practice payment rule: `Default`, `Exempt`, or `Custom`.
+- `Default` uses the standard 80/20 DKK pricing rule.
+- `Exempt` makes the member payment-free for Practice tracking and removes the Home paid button.
+- `Custom` requires a custom amount above 0 DKK and overrides the standard amount.
 - The payment window stays open through the day after Practice in the Europe/Copenhagen timezone.
 - A Member can mark only their own current Practice payment as `Paid`.
 - Marking paid writes `paid_at` immediately; there is no Admin confirmation step for this Practice payment flow.
