@@ -4,8 +4,12 @@ import type { EventSummary } from '../lib/events';
 import { eventStatuses, eventTypes } from '../lib/events';
 import type { FineBoxState } from '../lib/fines';
 import type { AgeGroup, Gender, MemberProfile, Position, ResidenceType } from '../lib/member-options';
-import { ageGroups, formatFootballLevel, genders, positions, residenceTypes } from '../lib/member-options';
+import { ageGroups, genders, positions, residenceTypes } from '../lib/member-options';
 import type { Phase1Api } from '../lib/phase1-api';
+import type { PracticePaymentState } from '../lib/practice-payments';
+
+const GENKI_MOBILEPAY_NUMBER = '+4521282316';
+const INSTAGRAM_URL = 'https://www.instagram.com/yamato_vikings?igsh=YTE0Y3J4enpubmNu&utm_source=qr';
 
 type HomePageProps = {
   api: Phase1Api;
@@ -15,26 +19,187 @@ type HomePageProps = {
 };
 
 export function HomePage({ api, members, selectedMember, onSwitchProfile }: HomePageProps) {
+  const [practicePayment, setPracticePayment] = useState<PracticePaymentState | null>(null);
+  const [paymentLoadState, setPaymentLoadState] = useState<'loading' | 'ready' | 'error'>('loading');
+  const [paymentError, setPaymentError] = useState<string | null>(null);
+  const [paymentSuccess, setPaymentSuccess] = useState<string | null>(null);
+  const [isMarkingPaid, setIsMarkingPaid] = useState(false);
+
+  useEffect(() => {
+    let isMounted = true;
+
+    async function loadPracticePayment() {
+      try {
+        setPaymentLoadState('loading');
+        setPaymentError(null);
+        const nextPayment = await api.getPracticePayment();
+        if (isMounted) {
+          setPracticePayment(nextPayment);
+          setPaymentLoadState('ready');
+        }
+      } catch (loadError) {
+        if (isMounted) {
+          setPaymentError(loadError instanceof Error ? loadError.message : 'Could not load practice payment.');
+          setPaymentLoadState('error');
+        }
+      }
+    }
+
+    void loadPracticePayment();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [api]);
+
+  async function markPracticePaid() {
+    if (!practicePayment?.event || isMarkingPaid) return;
+
+    setIsMarkingPaid(true);
+    setPaymentError(null);
+    setPaymentSuccess(null);
+    try {
+      const nextPayment = await api.markPracticePaymentPaid(practicePayment.event.id);
+      setPracticePayment(nextPayment);
+      setPaymentSuccess('Practice payment marked as paid.');
+    } catch (paymentError) {
+      setPaymentError(paymentError instanceof Error ? paymentError.message : 'Could not mark payment paid.');
+    } finally {
+      setIsMarkingPaid(false);
+    }
+  }
+
   return (
     <section className="space-y-4">
       <div className="rounded-lg border border-navy/10 bg-white p-4">
         <p className="text-sm font-semibold text-footballBlue">Submitting as {selectedMember.first_name}</p>
         <h2 className="mt-2 text-xl font-bold text-navy">Home</h2>
         <div className="mt-4 grid gap-3">
-          <ProfileRow label="Age group" value={selectedMember.age_group} />
-          {selectedMember.application_role === 'Admin' ? <ProfileRow label="Football level" value={formatFootballLevel(selectedMember.football_level)} /> : null}
-          <ProfileRow label="Primary position" value={selectedMember.primary_position} />
-          <ProfileRow label="Secondary position" value={selectedMember.secondary_position ?? 'None'} />
-          <ProfileRow label="Residence type" value={selectedMember.residence_type} />
-          <ProfileRow label="Gender" value={selectedMember.gender} />
+          <ProfileRow label="MobilePay" value={`Genki ${GENKI_MOBILEPAY_NUMBER}`} />
+          <a
+            href={INSTAGRAM_URL}
+            target="_blank"
+            rel="noreferrer"
+            className="flex min-h-11 items-center justify-between gap-3 rounded-md bg-mist px-3 text-sm font-bold text-navy"
+          >
+            <span className="text-navy/65">Instagram</span>
+            <span className="text-right text-footballBlue">Open Yamato Vikings</span>
+          </a>
         </div>
         <button type="button" onClick={onSwitchProfile} className="mt-5 min-h-12 w-full rounded-md border border-navy/20 bg-white px-4 text-base font-bold text-navy">
           Switch profile
         </button>
       </div>
 
+      <PracticePaymentPanel
+        state={practicePayment}
+        loadState={paymentLoadState}
+        error={paymentError}
+        success={paymentSuccess}
+        isAdmin={selectedMember.application_role === 'Admin'}
+        isMarkingPaid={isMarkingPaid}
+        onMarkPaid={markPracticePaid}
+      />
+
       {selectedMember.application_role === 'Admin' ? <AnalyticsOverview api={api} members={members} /> : null}
     </section>
+  );
+}
+
+function PracticePaymentPanel({
+  state,
+  loadState,
+  error,
+  success,
+  isAdmin,
+  isMarkingPaid,
+  onMarkPaid,
+}: {
+  state: PracticePaymentState | null;
+  loadState: 'loading' | 'ready' | 'error';
+  error: string | null;
+  success: string | null;
+  isAdmin: boolean;
+  isMarkingPaid: boolean;
+  onMarkPaid: () => Promise<void>;
+}) {
+  const myPayment = state?.myPayment ?? null;
+  const canMarkPaid = Boolean(state?.event && myPayment?.rsvp_status === 'Going' && !myPayment.is_paid && !isMarkingPaid);
+
+  return (
+    <div className="rounded-lg border border-navy/10 bg-white p-4">
+      <p className="text-sm font-semibold text-footballBlue">Practice</p>
+      <h2 className="mt-1 text-xl font-bold text-navy">Payment</h2>
+
+      {loadState === 'loading' ? (
+        <div className="mt-4 space-y-2" aria-busy="true">
+          <div className="h-12 rounded-md bg-mist" />
+          <div className="h-12 rounded-md bg-mist" />
+        </div>
+      ) : null}
+
+      {loadState === 'error' ? (
+        <p className="mt-4 rounded-md border border-red-200 bg-white p-3 text-sm font-semibold text-red-800" role="alert">
+          {error ?? 'Could not load practice payment.'}
+        </p>
+      ) : null}
+
+      {loadState === 'ready' && !state?.event ? <p className="mt-4 rounded-md bg-mist p-3 text-sm text-navy/70">No Practice payment is open right now.</p> : null}
+
+      {loadState === 'ready' && state?.event ? (
+        <div className="mt-4 grid gap-3">
+          <div className="grid gap-2">
+            <ProfileRow label="Practice" value={formatPracticeDate(state.event.event_date, state.event.start_time)} />
+            <ProfileRow label="Deadline" value={formatPracticeDeadline(state.event.payment_deadline_date)} />
+            <ProfileRow label="Amount" value={myPayment ? `${myPayment.amount_dkk} kr` : '-'} />
+            <ProfileRow label="Status" value={myPayment?.is_paid ? 'Paid' : myPayment?.rsvp_status === 'Going' ? 'Not paid' : 'RSVP Going first'} />
+          </div>
+          <p className="rounded-md bg-mist p-3 text-sm leading-5 text-navy/70">Pay Genki by MobilePay at {GENKI_MOBILEPAY_NUMBER}, then tap the button below.</p>
+          {success ? <p className="rounded-md border border-footballBlue/20 bg-white p-3 text-sm font-semibold text-footballBlue">{success}</p> : null}
+          {error ? (
+            <p className="rounded-md border border-red-200 bg-white p-3 text-sm font-semibold text-red-800" role="alert">
+              {error}
+            </p>
+          ) : null}
+          <button type="button" disabled={!canMarkPaid} onClick={() => void onMarkPaid()} className="min-h-12 w-full rounded-md bg-footballBlue px-4 text-base font-bold text-white disabled:bg-navy/40">
+            {myPayment?.is_paid ? 'Paid' : isMarkingPaid ? 'Saving...' : 'Mark as paid'}
+          </button>
+          {!myPayment?.is_paid && myPayment?.rsvp_status !== 'Going' ? <p className="text-sm font-semibold text-navy/70">This button is available after your RSVP is Going.</p> : null}
+          {isAdmin ? <AdminPracticePayments state={state} /> : null}
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+function AdminPracticePayments({ state }: { state: PracticePaymentState }) {
+  return (
+    <div className="rounded-md bg-mist p-3">
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <p className="text-sm font-bold text-navy">Admin tracking</p>
+          <p className="mt-1 text-xs font-semibold text-navy/60">
+            {state.totals.paid_count} paid · {state.totals.unpaid_count} not paid
+          </p>
+        </div>
+        <span className="shrink-0 rounded bg-white px-2 py-1 text-xs font-bold text-navy">{state.totals.paid_total_dkk}/{state.totals.expected_total_dkk} kr</span>
+      </div>
+      {state.adminPayments.length === 0 ? (
+        <p className="mt-3 text-sm text-navy/70">No Going members for this Practice yet.</p>
+      ) : (
+        <div className="mt-3 divide-y divide-navy/10">
+          {state.adminPayments.map((payment) => (
+            <div key={payment.member_id} className="flex min-h-11 items-center justify-between gap-3 py-2">
+              <div className="min-w-0">
+                <p className="break-words text-sm font-bold text-navy">{payment.first_name}</p>
+                <p className="text-xs font-semibold text-navy/60">{payment.amount_dkk} kr</p>
+              </div>
+              <span className="shrink-0 rounded bg-white px-2 py-1 text-xs font-bold text-navy">{payment.is_paid ? 'Paid' : 'Not paid'}</span>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
   );
 }
 
@@ -45,6 +210,25 @@ function ProfileRow({ label, value }: { label: string; value: string }) {
       <span className="text-sm font-bold text-navy">{value}</span>
     </div>
   );
+}
+
+function formatPracticeDate(date: string, time: string) {
+  const value = new Date(`${date}T${time}`);
+  return new Intl.DateTimeFormat('en-US', {
+    weekday: 'short',
+    month: 'short',
+    day: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  }).format(value);
+}
+
+function formatPracticeDeadline(date: string) {
+  return new Intl.DateTimeFormat('en-US', {
+    weekday: 'short',
+    month: 'short',
+    day: 'numeric',
+  }).format(new Date(`${date}T12:00:00`));
 }
 
 function AnalyticsOverview({ api, members }: { api: Phase1Api; members: MemberProfile[] }) {

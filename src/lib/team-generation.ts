@@ -47,6 +47,7 @@ export type ScoreBreakdown = {
 const teamNames = ['Team A', 'Team B', 'Team C', 'Team D'];
 const positions: Position[] = ['FW', 'MF', 'DF'];
 const ageScores: Record<AgeGroup, number> = {
+  'Under 18': 0.5,
   'Under 25': 1,
   '25–29': 2,
   '30–34': 3,
