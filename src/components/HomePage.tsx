@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, type ReactNode, type SVGProps } from 'react';
 import { downloadSeasonOverviewCsv } from '../lib/analytics-export';
 import type { EventSummary } from '../lib/events';
 import { eventStatuses, eventTypes } from '../lib/events';
@@ -10,6 +10,7 @@ import type { PracticePaymentState } from '../lib/practice-payments';
 
 const GENKI_MOBILEPAY_NUMBER = '+4521282316';
 const INSTAGRAM_URL = 'https://www.instagram.com/yamato_vikings?igsh=YTE0Y3J4enpubmNu&utm_source=qr';
+const YOUTUBE_URL = 'https://www.youtube.com/@YamatoVikings';
 
 type HomePageProps = {
   api: Phase1Api;
@@ -75,16 +76,9 @@ export function HomePage({ api, members, selectedMember, onSwitchProfile }: Home
         <p className="text-sm font-semibold text-footballBlue">Submitting as {selectedMember.first_name}</p>
         <h2 className="mt-2 text-xl font-bold text-navy">Home</h2>
         <div className="mt-4 grid gap-3">
-          <ProfileRow label="MobilePay" value={`Genki ${GENKI_MOBILEPAY_NUMBER}`} />
-          <a
-            href={INSTAGRAM_URL}
-            target="_blank"
-            rel="noreferrer"
-            className="flex min-h-11 items-center justify-between gap-3 rounded-md bg-mist px-3 text-sm font-bold text-navy"
-          >
-            <span className="text-navy/65">Instagram</span>
-            <span className="text-right text-footballBlue">Open Yamato Vikings</span>
-          </a>
+          <ContactRow icon={<MobilePayLogo className="h-5 w-5" />} label="MobilePay" value={`Genki ${GENKI_MOBILEPAY_NUMBER}`} />
+          <ClubLink icon={<InstagramLogo className="h-5 w-5" />} label="Instagram" href={INSTAGRAM_URL} />
+          <ClubLink icon={<YouTubeLogo className="h-5 w-5" />} label="YouTube" href={YOUTUBE_URL} />
         </div>
         <button type="button" onClick={onSwitchProfile} className="mt-5 min-h-12 w-full rounded-md border border-navy/20 bg-white px-4 text-base font-bold text-navy">
           Switch profile
@@ -218,6 +212,64 @@ function ProfileRow({ label, value }: { label: string; value: string }) {
       <span className="text-sm text-navy/65">{label}</span>
       <span className="text-sm font-bold text-navy">{value}</span>
     </div>
+  );
+}
+
+function ContactRow({ icon, label, value }: { icon: ReactNode; label: string; value: string }) {
+  return (
+    <div className="flex min-h-11 items-center justify-between gap-3 rounded-md bg-mist px-3 py-2 text-sm">
+      <span className="flex min-w-0 items-center gap-2 text-navy/65">
+        <span className="grid h-8 w-8 shrink-0 place-items-center rounded bg-white text-footballBlue" aria-hidden="true">
+          {icon}
+        </span>
+        <span>{label}</span>
+      </span>
+      <span className="text-right font-bold text-navy">{value}</span>
+    </div>
+  );
+}
+
+function ClubLink({ icon, label, href }: { icon: ReactNode; label: string; href: string }) {
+  return (
+    <a href={href} target="_blank" rel="noreferrer" className="flex min-h-11 items-center justify-between gap-3 rounded-md bg-mist px-3 py-2 text-sm font-bold text-navy">
+      <span className="flex min-w-0 items-center gap-2">
+        <span className="grid h-8 w-8 shrink-0 place-items-center rounded bg-white text-footballBlue" aria-hidden="true">
+          {icon}
+        </span>
+        <span className="text-navy/65">{label}</span>
+      </span>
+      <span className="text-right text-footballBlue">Open Yamato Vikings</span>
+    </a>
+  );
+}
+
+function MobilePayLogo(props: SVGProps<SVGSVGElement>) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" aria-hidden="true" {...props}>
+      <rect x="6" y="2.5" width="12" height="19" rx="2.5" fill="#ffffff" stroke="#5b7fff" strokeWidth="2" />
+      <path d="M9 6h6" stroke="#5b7fff" strokeWidth="2" strokeLinecap="round" />
+      <path d="M9 13.5c1.2-2.4 2.6-2.4 4.2 0 1.2 1.7 2.1 1.7 2.8 0" stroke="#00a6d6" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+      <circle cx="12" cy="18" r="1" fill="#5b7fff" />
+    </svg>
+  );
+}
+
+function InstagramLogo(props: SVGProps<SVGSVGElement>) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" aria-hidden="true" {...props}>
+      <rect x="3" y="3" width="18" height="18" rx="5" fill="#ffffff" stroke="#e1306c" strokeWidth="2" />
+      <circle cx="12" cy="12" r="4" stroke="#833ab4" strokeWidth="2" />
+      <circle cx="17" cy="7" r="1.2" fill="#f77737" />
+    </svg>
+  );
+}
+
+function YouTubeLogo(props: SVGProps<SVGSVGElement>) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" aria-hidden="true" {...props}>
+      <rect x="2.5" y="6" width="19" height="12" rx="3.5" fill="#ff0033" />
+      <path d="m10 9 5 3-5 3V9Z" fill="#ffffff" />
+    </svg>
   );
 }
 

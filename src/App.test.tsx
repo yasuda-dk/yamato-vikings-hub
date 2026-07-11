@@ -922,6 +922,7 @@ describe('App shell', () => {
       'href',
       'https://www.instagram.com/yamato_vikings?igsh=YTE0Y3J4enpubmNu&utm_source=qr',
     );
+    expect(screen.getByRole('link', { name: /youtube open yamato vikings/i })).toHaveAttribute('href', 'https://www.youtube.com/@YamatoVikings');
     expect(screen.queryByText('Age group')).not.toBeInTheDocument();
     expect(screen.queryByText('Primary position')).not.toBeInTheDocument();
     expect(screen.queryByText('Football level')).not.toBeInTheDocument();
