@@ -25,6 +25,21 @@ Deno.serve(async (req) => {
     }
 
     const { data: currentMemberId } = await supabase.rpc('current_member_id');
+    const { data: selectedMember, error: selectedMemberError } = currentMemberId
+      ? await supabase
+          .from('members')
+          .select(
+            'id, first_name, age_group, football_level, primary_position, secondary_position, residence_type, gender, practice_payment_rule, practice_payment_custom_amount_dkk, membership_status, application_role, created_at',
+          )
+          .eq('id', currentMemberId)
+          .eq('team_id', teamId)
+          .maybeSingle()
+      : { data: null, error: null };
+
+    if (selectedMemberError) {
+      return jsonResponse({ ok: false, error: selectedMemberError.message }, 400);
+    }
+
     const { data: members, error: membersError } = await supabase
       .from('members')
       .select(
@@ -40,7 +55,7 @@ Deno.serve(async (req) => {
     return jsonResponse({
       ok: true,
       hasAccess: true,
-      selectedMember: members?.find((member) => member.id === currentMemberId) ?? null,
+      selectedMember: selectedMember ?? null,
       members: members ?? [],
     });
   } catch (error) {

@@ -312,8 +312,10 @@ function createApi(initialState: SessionState): Phase1Api {
         selectedMember: state.selectedMember ? nextMembers.find((member) => member.id === state.selectedMember?.id) ?? state.selectedMember : null,
       };
     },
-    selectProfile: async (memberId) => {
-      state = { ...state, selectedMember: state.members.find((member) => member.id === memberId) ?? null };
+    selectProfile: async (memberId, profilePassword) => {
+      const selectedMember = state.members.find((member) => member.id === memberId) ?? null;
+      if (selectedMember?.first_name === 'Takashi' && profilePassword !== 'demo-takashi') throw new Error('Incorrect Takashi password');
+      state = { ...state, selectedMember };
     },
     listEvents: async () => [event],
     listAnalyticsEvents: async () => [event],
@@ -815,6 +817,26 @@ describe('App shell', () => {
 
     await user.click(screen.getByRole('link', { name: /home/i }));
     expect(screen.getByRole('heading', { name: 'Home' })).toBeInTheDocument();
+  });
+
+  it('requires the Takashi password before selecting Takashi', async () => {
+    const user = userEvent.setup();
+    render(<App api={createApi({ hasAccess: true, selectedMember: null, members: [takashi, genki] })} />);
+
+    expect(await screen.findByRole('heading', { name: 'Choose profile' })).toBeInTheDocument();
+    expect(screen.getByRole('option', { name: 'Takashi' })).toBeInTheDocument();
+    expect(screen.getByLabelText('Takashi password')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Open profile' })).toBeDisabled();
+
+    await user.type(screen.getByLabelText('Takashi password'), 'wrong');
+    await user.click(screen.getByRole('button', { name: 'Open profile' }));
+    expect(await screen.findByText('Incorrect Takashi password')).toBeInTheDocument();
+
+    await user.clear(screen.getByLabelText('Takashi password'));
+    await user.type(screen.getByLabelText('Takashi password'), 'demo-takashi');
+    await user.click(screen.getByRole('button', { name: 'Open profile' }));
+    expect(await screen.findByText('Profile selected.')).toBeInTheDocument();
+    expect((await screen.findAllByText('Submitting as Takashi')).length).toBeGreaterThan(0);
   });
 
   it('shows an admin season overview on Home', async () => {

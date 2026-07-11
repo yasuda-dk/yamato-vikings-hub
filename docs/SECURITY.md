@@ -36,6 +36,8 @@ The `setup-team-password` function is protected by `TEAM_SETUP_TOKEN` and can in
 - Admin member updates are enforced in `admin_update_member`, not only in the UI.
 - The final active Admin cannot remove their own Admin access accidentally.
 - Admin member updates write private audit metadata and public member history without exposing Admin emails.
+- Selecting the protected Takashi profile requires the extra Takashi profile password, verified only inside the `select-profile` Edge Function.
+- The Takashi profile password is stored as a Supabase Edge Function secret and must never be committed to the repository.
 
 ## Phase 2 Event And RSVP Controls
 
@@ -82,8 +84,8 @@ Practice payment tracking is server-enforced through Edge Functions and database
 - Regular Members cannot change their own Practice payment rule or custom amount.
 - Exempt Members cannot create Practice payment records.
 - Custom Practice payment amounts must be above 0 DKK.
-- Practice payments close after the day following the Practice date in the Europe/Copenhagen timezone.
-- Admin payment totals and member-by-member tracking are returned only to selected Admin profiles.
+- Unpaid Practice payments remain visible to the unpaid Member until paid.
+- Admin payment totals and member-by-member tracking are returned to selected Admin profiles and the active Genki profile.
 - Regular Members receive only their own payment amount and status.
 - Guest Practice payments are not exposed to regular users because Guests do not authenticate.
 - The Home screen displays Genki's MobilePay number for manual payment, but no MobilePay deep link or automatic payment verification is implemented.

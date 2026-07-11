@@ -433,9 +433,12 @@ export const demoPhase1Api: Phase1Api = {
     };
   },
 
-  async selectProfile(memberId: string) {
+  async selectProfile(memberId: string, profilePassword?: string) {
     const selectedMember = state.members.find((member) => member.id === memberId) ?? null;
     if (!selectedMember) throw new Error('Member not found');
+    if (normalizeFirstName(selectedMember.first_name) === 'takashi' && profilePassword !== 'demo-takashi') {
+      throw new Error('Incorrect Takashi password');
+    }
     state = { ...state, selectedMember };
   },
 

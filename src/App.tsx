@@ -121,7 +121,7 @@ export function App({ api = defaultApi }: AppProps) {
             ) : !selectedMember ? (
               <ProfileSetup
                 members={sessionState.members}
-                onSelectProfile={(memberId) => runAction(() => api.selectProfile(memberId), 'Profile selected.')}
+                onSelectProfile={(memberId, profilePassword) => runAction(() => api.selectProfile(memberId, profilePassword), 'Profile selected.')}
                 onRegister={(input) => runAction(() => api.registerMember(input), 'Profile created.')}
                 isBusy={isBusy}
                 error={error}

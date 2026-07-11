@@ -34,7 +34,7 @@ export type Phase1Api = {
   verifyTeamPassword: (password: string) => Promise<void>;
   registerMember: (input: MemberRegistrationInput) => Promise<void>;
   updateMember: (input: AdminMemberUpdateInput) => Promise<void>;
-  selectProfile: (memberId: string) => Promise<void>;
+  selectProfile: (memberId: string, profilePassword?: string) => Promise<void>;
   listEvents: () => Promise<EventSummary[]>;
   listAnalyticsEvents: (seasonYear: number) => Promise<EventSummary[]>;
   getEventDetail: (eventId: string) => Promise<EventDetail>;
@@ -130,8 +130,8 @@ export const phase1Api: Phase1Api = {
     await invokeFunction('update-member', input);
   },
 
-  async selectProfile(memberId: string) {
-    await invokeFunction('select-profile', { memberId });
+  async selectProfile(memberId: string, profilePassword?: string) {
+    await invokeFunction('select-profile', { memberId, profilePassword });
   },
 
   async listEvents() {
