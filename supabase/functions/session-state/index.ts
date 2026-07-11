@@ -46,7 +46,6 @@ Deno.serve(async (req) => {
         'id, first_name, age_group, football_level, primary_position, secondary_position, residence_type, gender, practice_payment_rule, practice_payment_custom_amount_dkk, membership_status, application_role, created_at',
       )
       .eq('team_id', teamId)
-      .neq('first_name_normalized', 'takashi')
       .order('first_name');
 
     if (membersError) {

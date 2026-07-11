@@ -36,7 +36,8 @@ The `setup-team-password` function is protected by `TEAM_SETUP_TOKEN` and can in
 - Admin member updates are enforced in `admin_update_member`, not only in the UI.
 - The final active Admin cannot remove their own Admin access accidentally.
 - Admin member updates write private audit metadata and public member history without exposing Admin emails.
-- The protected Takashi profile is omitted from existing-profile selection and cannot be selected from a different active device profile.
+- Selecting the protected Takashi profile requires the extra Takashi profile password, verified only inside the `select-profile` Edge Function.
+- The Takashi profile password is stored as a Supabase Edge Function secret and must never be committed to the repository.
 
 ## Phase 2 Event And RSVP Controls
 

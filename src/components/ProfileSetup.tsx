@@ -12,7 +12,7 @@ import {
 
 type ProfileSetupProps = {
   members: MemberProfile[];
-  onSelectProfile: (memberId: string) => Promise<void>;
+  onSelectProfile: (memberId: string, profilePassword?: string) => Promise<void>;
   onRegister: (input: MemberRegistrationInput) => Promise<void>;
   isBusy: boolean;
   error: string | null;
@@ -29,15 +29,17 @@ const defaultRegistration: MemberRegistrationInput = {
 };
 
 export function ProfileSetup({ members, onSelectProfile, onRegister, isBusy, error }: ProfileSetupProps) {
-  const selectableMembers = useMemo(() => members.filter((member) => member.first_name.trim().toLowerCase() !== 'takashi'), [members]);
-  const [mode, setMode] = useState<'select' | 'new'>(selectableMembers.length > 0 ? 'select' : 'new');
-  const [selectedMemberId, setSelectedMemberId] = useState(selectableMembers[0]?.id ?? '');
+  const [mode, setMode] = useState<'select' | 'new'>(members.length > 0 ? 'select' : 'new');
+  const [selectedMemberId, setSelectedMemberId] = useState(members[0]?.id ?? '');
+  const [profilePassword, setProfilePassword] = useState('');
   const [registration, setRegistration] = useState<MemberRegistrationInput>(defaultRegistration);
   const fieldErrors = useMemo(() => validateRegistration(registration, members), [registration, members]);
+  const selectedMember = members.find((member) => member.id === selectedMemberId) ?? null;
+  const requiresProfilePassword = selectedMember?.first_name.trim().toLowerCase() === 'takashi';
 
   async function handleSelect(event: FormEvent) {
     event.preventDefault();
-    if (selectedMemberId) await onSelectProfile(selectedMemberId);
+    if (selectedMemberId) await onSelectProfile(selectedMemberId, requiresProfilePassword ? profilePassword : undefined);
   }
 
   async function handleRegister(event: FormEvent) {
@@ -51,7 +53,7 @@ export function ProfileSetup({ members, onSelectProfile, onRegister, isBusy, err
     <section className="rounded-lg border border-navy/10 bg-white p-4">
       <h2 className="text-xl font-bold text-navy">Choose profile</h2>
       <div className="mt-4 grid grid-cols-2 gap-2">
-        <button type="button" className={tabClass(mode === 'select')} onClick={() => setMode('select')} disabled={selectableMembers.length === 0}>
+        <button type="button" className={tabClass(mode === 'select')} onClick={() => setMode('select')} disabled={members.length === 0}>
           Existing
         </button>
         <button type="button" className={tabClass(mode === 'new')} onClick={() => setMode('new')}>
@@ -64,14 +66,36 @@ export function ProfileSetup({ members, onSelectProfile, onRegister, isBusy, err
           <label className="block text-sm font-semibold text-navy" htmlFor="profile-select">
             Profile
           </label>
-          <select id="profile-select" value={selectedMemberId} onChange={(event) => setSelectedMemberId(event.target.value)} className="mt-2 min-h-12 w-full rounded-md border border-navy/20 px-3 text-base">
-            {selectableMembers.map((member) => (
+          <select
+            id="profile-select"
+            value={selectedMemberId}
+            onChange={(event) => {
+              setSelectedMemberId(event.target.value);
+              setProfilePassword('');
+            }}
+            className="mt-2 min-h-12 w-full rounded-md border border-navy/20 px-3 text-base"
+          >
+            {members.map((member) => (
               <option key={member.id} value={member.id}>
                 {member.first_name}
               </option>
             ))}
           </select>
-          <button type="submit" disabled={isBusy || !selectedMemberId} className="mt-5 min-h-12 w-full rounded-md bg-footballBlue px-4 text-base font-bold text-white disabled:bg-navy/40">
+          {requiresProfilePassword ? (
+            <label className="mt-4 block text-sm font-semibold text-navy">
+              Takashi password
+              <input
+                aria-label="Takashi password"
+                type="password"
+                value={profilePassword}
+                onChange={(event) => setProfilePassword(event.target.value)}
+                className="mt-2 min-h-12 w-full rounded-md border border-navy/20 px-3 text-base"
+                autoComplete="current-password"
+              />
+            </label>
+          ) : null}
+          {error ? <p className="mt-3 text-sm font-semibold text-red-700">{error}</p> : null}
+          <button type="submit" disabled={isBusy || !selectedMemberId || (requiresProfilePassword && !profilePassword)} className="mt-5 min-h-12 w-full rounded-md bg-footballBlue px-4 text-base font-bold text-white disabled:bg-navy/40">
             Open profile
           </button>
         </form>
