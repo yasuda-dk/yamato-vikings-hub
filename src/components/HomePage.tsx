@@ -125,6 +125,7 @@ function PracticePaymentPanel({
 }) {
   const myPayment = state?.myPayment ?? null;
   const canMarkPaid = Boolean(state?.event && myPayment?.rsvp_status === 'Going' && !myPayment.is_paid && !myPayment.is_exempt && !isMarkingPaid);
+  const canViewPaymentTracking = isAdmin || Boolean(state?.adminPayments.length);
   const amountLabel = myPayment?.is_exempt ? 'Exempt' : myPayment ? `${myPayment.amount_dkk} kr` : '-';
   const statusLabel = myPayment?.is_exempt ? 'Exempt' : myPayment?.is_paid ? 'Paid' : myPayment?.rsvp_status === 'Going' ? 'Not paid' : 'RSVP Going first';
 
@@ -173,19 +174,19 @@ function PracticePaymentPanel({
             </button>
           )}
           {!myPayment?.is_exempt && !myPayment?.is_paid && myPayment?.rsvp_status !== 'Going' ? <p className="text-sm font-semibold text-navy/70">This button is available after your RSVP is Going.</p> : null}
-          {isAdmin ? <AdminPracticePayments state={state} /> : null}
+          {canViewPaymentTracking ? <PracticePaymentTracking state={state} /> : null}
         </div>
       ) : null}
     </div>
   );
 }
 
-function AdminPracticePayments({ state }: { state: PracticePaymentState }) {
+function PracticePaymentTracking({ state }: { state: PracticePaymentState }) {
   return (
     <div className="rounded-md bg-mist p-3">
       <div className="flex items-start justify-between gap-3">
         <div>
-          <p className="text-sm font-bold text-navy">Admin tracking</p>
+          <p className="text-sm font-bold text-navy">Payment tracking</p>
           <p className="mt-1 text-xs font-semibold text-navy/60">
             {state.totals.paid_count} paid · {state.totals.unpaid_count} not paid · {state.totals.exempt_count} exempt
           </p>

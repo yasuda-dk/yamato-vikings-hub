@@ -29,6 +29,12 @@ const adminTakashi: MemberProfile = {
   application_role: 'Admin',
 };
 
+const genki: MemberProfile = {
+  ...takashi,
+  id: 'member-genki',
+  first_name: 'Genki',
+};
+
 function createApi(initialState: SessionState): Phase1Api {
   let state = initialState;
   let event: EventSummary = {
@@ -210,6 +216,7 @@ function createApi(initialState: SessionState): Phase1Api {
 
   function buildPracticePayment(): PracticePaymentState {
     const selectedMember = state.selectedMember;
+    const canViewPracticeTracking = selectedMember?.application_role === 'Admin' || selectedMember?.first_name === 'Genki';
     const selectedRsvp = rsvp && selectedMember?.id === rsvp.member_id ? rsvp : null;
     const goingMembers = state.members.filter((member) => member.membership_status === 'Active' && rsvp?.member_id === member.id && rsvp.rsvp_status === 'Going');
     const adminPayments = goingMembers.map((member) => ({
@@ -246,9 +253,9 @@ function createApi(initialState: SessionState): Phase1Api {
             paid_at: practicePaidAt,
           }
         : null,
-      adminPayments: selectedMember?.application_role === 'Admin' ? adminPayments : [],
+      adminPayments: canViewPracticeTracking ? adminPayments : [],
       totals:
-        selectedMember?.application_role === 'Admin'
+        canViewPracticeTracking
           ? {
               expected_total_dkk: expectedTotal,
               paid_total_dkk: paidTotal,
@@ -915,6 +922,19 @@ describe('App shell', () => {
 
     expect(await screen.findByText('Practice payment marked as paid.')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Paid' })).toBeDisabled();
+  });
+
+  it('shows Practice payment tracking to Genki without Admin role', async () => {
+    const api = createApi({ hasAccess: true, selectedMember: genki, members: [genki] });
+    await api.updateRsvp({ eventId: 'event-1', rsvpStatus: 'Going', isArrivingLate: false, expectedArrivalTime: '' });
+
+    render(<App api={api} />);
+
+    expect(await screen.findByRole('heading', { name: 'Home' })).toBeInTheDocument();
+    expect(await screen.findByText('Payment tracking')).toBeInTheDocument();
+    expect(screen.getByText('0 paid · 1 not paid · 0 exempt')).toBeInTheDocument();
+    expect(screen.getByText('Genki')).toBeInTheDocument();
+    expect(screen.getAllByText('Not paid').length).toBeGreaterThanOrEqual(1);
   });
 
   it('uses the 20 kr practice price for students and under 18 members', async () => {
