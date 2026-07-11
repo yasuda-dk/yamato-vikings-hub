@@ -29,8 +29,9 @@ const defaultRegistration: MemberRegistrationInput = {
 };
 
 export function ProfileSetup({ members, onSelectProfile, onRegister, isBusy, error }: ProfileSetupProps) {
-  const [mode, setMode] = useState<'select' | 'new'>(members.length > 0 ? 'select' : 'new');
-  const [selectedMemberId, setSelectedMemberId] = useState(members[0]?.id ?? '');
+  const selectableMembers = useMemo(() => members.filter((member) => member.first_name.trim().toLowerCase() !== 'takashi'), [members]);
+  const [mode, setMode] = useState<'select' | 'new'>(selectableMembers.length > 0 ? 'select' : 'new');
+  const [selectedMemberId, setSelectedMemberId] = useState(selectableMembers[0]?.id ?? '');
   const [registration, setRegistration] = useState<MemberRegistrationInput>(defaultRegistration);
   const fieldErrors = useMemo(() => validateRegistration(registration, members), [registration, members]);
 
@@ -50,7 +51,7 @@ export function ProfileSetup({ members, onSelectProfile, onRegister, isBusy, err
     <section className="rounded-lg border border-navy/10 bg-white p-4">
       <h2 className="text-xl font-bold text-navy">Choose profile</h2>
       <div className="mt-4 grid grid-cols-2 gap-2">
-        <button type="button" className={tabClass(mode === 'select')} onClick={() => setMode('select')} disabled={members.length === 0}>
+        <button type="button" className={tabClass(mode === 'select')} onClick={() => setMode('select')} disabled={selectableMembers.length === 0}>
           Existing
         </button>
         <button type="button" className={tabClass(mode === 'new')} onClick={() => setMode('new')}>
@@ -64,7 +65,7 @@ export function ProfileSetup({ members, onSelectProfile, onRegister, isBusy, err
             Profile
           </label>
           <select id="profile-select" value={selectedMemberId} onChange={(event) => setSelectedMemberId(event.target.value)} className="mt-2 min-h-12 w-full rounded-md border border-navy/20 px-3 text-base">
-            {members.map((member) => (
+            {selectableMembers.map((member) => (
               <option key={member.id} value={member.id}>
                 {member.first_name}
               </option>

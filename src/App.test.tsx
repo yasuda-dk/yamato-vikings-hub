@@ -313,7 +313,9 @@ function createApi(initialState: SessionState): Phase1Api {
       };
     },
     selectProfile: async (memberId) => {
-      state = { ...state, selectedMember: state.members.find((member) => member.id === memberId) ?? null };
+      const selectedMember = state.members.find((member) => member.id === memberId) ?? null;
+      if (selectedMember?.first_name === 'Takashi' && state.selectedMember?.id !== selectedMember.id) throw new Error('This profile cannot be selected from this device.');
+      state = { ...state, selectedMember };
     },
     listEvents: async () => [event],
     listAnalyticsEvents: async () => [event],
@@ -815,6 +817,14 @@ describe('App shell', () => {
 
     await user.click(screen.getByRole('link', { name: /home/i }));
     expect(screen.getByRole('heading', { name: 'Home' })).toBeInTheDocument();
+  });
+
+  it('hides Takashi from existing profile selection', async () => {
+    render(<App api={createApi({ hasAccess: true, selectedMember: null, members: [takashi, genki] })} />);
+
+    expect(await screen.findByRole('heading', { name: 'Choose profile' })).toBeInTheDocument();
+    expect(screen.getByRole('option', { name: 'Genki' })).toBeInTheDocument();
+    expect(screen.queryByRole('option', { name: 'Takashi' })).not.toBeInTheDocument();
   });
 
   it('shows an admin season overview on Home', async () => {

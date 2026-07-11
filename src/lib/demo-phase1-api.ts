@@ -37,6 +37,10 @@ let state: SessionState = {
   members: [],
 };
 
+function hideProtectedProfiles(members: MemberProfile[]) {
+  return members.filter((member) => normalizeFirstName(member.first_name) !== 'takashi');
+}
+
 const demoEventId = 'demo-event-1';
 let demoEvents: EventSummary[] = [
   {
@@ -379,7 +383,10 @@ export const demoPhase1Api: Phase1Api = {
   },
 
   async getSessionState() {
-    return state;
+    return {
+      ...state,
+      members: hideProtectedProfiles(state.members),
+    };
   },
 
   async verifyTeamPassword(password: string) {
@@ -436,6 +443,9 @@ export const demoPhase1Api: Phase1Api = {
   async selectProfile(memberId: string) {
     const selectedMember = state.members.find((member) => member.id === memberId) ?? null;
     if (!selectedMember) throw new Error('Member not found');
+    if (normalizeFirstName(selectedMember.first_name) === 'takashi' && state.selectedMember?.id !== selectedMember.id) {
+      throw new Error('This profile cannot be selected from this device.');
+    }
     state = { ...state, selectedMember };
   },
 
