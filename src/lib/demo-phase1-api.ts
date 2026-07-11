@@ -333,6 +333,7 @@ function buildDemoPracticePayment(): PracticePaymentState {
     };
   });
   const selectedMember = state.selectedMember;
+  const canViewPracticeTracking = selectedMember?.application_role === 'Admin' || selectedMember?.first_name === 'Genki';
   const selectedRsvp = demoRsvps[event.id]?.member_id === selectedMember?.id ? demoRsvps[event.id] : null;
   const selectedPaidAt = selectedMember ? (demoPracticePaidAt[`${event.id}:${selectedMember.id}`] ?? null) : null;
   const myPayment = selectedMember
@@ -360,14 +361,14 @@ function buildDemoPracticePayment(): PracticePaymentState {
       payment_deadline_date: '2026-07-17',
     },
     myPayment,
-    adminPayments: selectedMember?.application_role === 'Admin' ? adminPayments : [],
+    adminPayments: canViewPracticeTracking ? adminPayments : [],
     totals: {
-      expected_total_dkk: selectedMember?.application_role === 'Admin' ? expectedTotal : 0,
-      paid_total_dkk: selectedMember?.application_role === 'Admin' ? paidTotal : 0,
-      unpaid_total_dkk: selectedMember?.application_role === 'Admin' ? expectedTotal - paidTotal : 0,
-      paid_count: selectedMember?.application_role === 'Admin' ? adminPayments.filter((payment) => payment.is_paid).length : 0,
-      unpaid_count: selectedMember?.application_role === 'Admin' ? adminPayments.filter((payment) => !payment.is_paid && !payment.is_exempt).length : 0,
-      exempt_count: selectedMember?.application_role === 'Admin' ? adminPayments.filter((payment) => payment.is_exempt).length : 0,
+      expected_total_dkk: canViewPracticeTracking ? expectedTotal : 0,
+      paid_total_dkk: canViewPracticeTracking ? paidTotal : 0,
+      unpaid_total_dkk: canViewPracticeTracking ? expectedTotal - paidTotal : 0,
+      paid_count: canViewPracticeTracking ? adminPayments.filter((payment) => payment.is_paid).length : 0,
+      unpaid_count: canViewPracticeTracking ? adminPayments.filter((payment) => !payment.is_paid && !payment.is_exempt).length : 0,
+      exempt_count: canViewPracticeTracking ? adminPayments.filter((payment) => payment.is_exempt).length : 0,
     },
   };
 }
