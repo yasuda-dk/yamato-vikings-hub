@@ -2,6 +2,7 @@ import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { App } from './App';
+import { HomePage } from './components/HomePage';
 import type { ActualStatus, EventDetail, EventGuest, EventSummary, EventTeam, EventVotingState, RsvpInput, VoteInput, VotingResult } from './lib/events';
 import type { FineBoxState } from './lib/fines';
 import type { MemberProfile } from './lib/member-options';
@@ -1010,6 +1011,74 @@ describe('App shell', () => {
 
     expect(await screen.findByText('Member updated.')).toBeInTheDocument();
     await user.click(screen.getByRole('link', { name: /home/i }));
+
+    expect(await screen.findByText('35 kr')).toBeInTheDocument();
+  });
+
+  it('keeps an admin member payment exemption after saving', async () => {
+    const user = userEvent.setup();
+    render(<App api={createApi({ hasAccess: true, selectedMember: adminTakashi, members: [adminTakashi] })} />);
+
+    expect(await screen.findByRole('heading', { name: 'Home' })).toBeInTheDocument();
+    await user.click(screen.getByRole('link', { name: /members/i }));
+    await user.click(await screen.findByRole('button', { name: 'Edit member' }));
+
+    await user.selectOptions(screen.getByLabelText('Payment rule'), 'Exempt');
+    await user.click(screen.getByRole('button', { name: 'Save changes' }));
+
+    expect(await screen.findByText('Member updated.')).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Edit member' }));
+
+    expect(screen.getByLabelText('Payment rule')).toHaveValue('Exempt');
+  });
+
+  it('refreshes Home practice payment when profile payment settings change', async () => {
+    let currentMember: MemberProfile = { ...takashi };
+    const api = {
+      getPracticePayment: async (): Promise<PracticePaymentState> => ({
+        event: {
+          id: 'event-1',
+          title: 'Friday Football',
+          event_date: '2026-07-16',
+          start_time: '19:00:00',
+          location: 'Yamato Pitch',
+          payment_deadline_date: '2026-07-17',
+        },
+        myPayment: {
+          member_id: currentMember.id,
+          first_name: currentMember.first_name,
+          amount_dkk: currentMember.practice_payment_rule === 'Custom' ? currentMember.practice_payment_custom_amount_dkk ?? 0 : currentMember.practice_payment_rule === 'Exempt' ? 0 : 80,
+          payment_rule: currentMember.practice_payment_rule,
+          is_exempt: currentMember.practice_payment_rule === 'Exempt',
+          rsvp_status: 'Going',
+          is_paid: false,
+          paid_at: null,
+        },
+        adminPayments: [],
+        totals: {
+          expected_total_dkk: 0,
+          paid_total_dkk: 0,
+          unpaid_total_dkk: 0,
+          paid_count: 0,
+          unpaid_count: 0,
+          exempt_count: 0,
+        },
+      }),
+      markPracticePaymentPaid: async () => {
+        throw new Error('not used');
+      },
+    } as unknown as Phase1Api;
+
+    const { rerender } = render(<HomePage api={api} members={[currentMember]} selectedMember={currentMember} onSwitchProfile={() => undefined} />);
+
+    expect(await screen.findByText('80 kr')).toBeInTheDocument();
+
+    currentMember = {
+      ...currentMember,
+      practice_payment_rule: 'Custom',
+      practice_payment_custom_amount_dkk: 35,
+    };
+    rerender(<HomePage api={api} members={[currentMember]} selectedMember={currentMember} onSwitchProfile={() => undefined} />);
 
     expect(await screen.findByText('35 kr')).toBeInTheDocument();
   });

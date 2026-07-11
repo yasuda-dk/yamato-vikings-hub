@@ -25,6 +25,22 @@ export function HomePage({ api, members, selectedMember, onSwitchProfile }: Home
   const [paymentError, setPaymentError] = useState<string | null>(null);
   const [paymentSuccess, setPaymentSuccess] = useState<string | null>(null);
   const [isMarkingPaid, setIsMarkingPaid] = useState(false);
+  const paymentProfileVersion = useMemo(
+    () =>
+      members
+        .map((member) =>
+          [
+            member.id,
+            member.age_group,
+            member.residence_type,
+            member.membership_status,
+            member.practice_payment_rule,
+            member.practice_payment_custom_amount_dkk ?? '',
+          ].join(':'),
+        )
+        .join('|'),
+    [members],
+  );
 
   useEffect(() => {
     let isMounted = true;
@@ -51,7 +67,7 @@ export function HomePage({ api, members, selectedMember, onSwitchProfile }: Home
     return () => {
       isMounted = false;
     };
-  }, [api]);
+  }, [api, selectedMember.id, selectedMember.age_group, selectedMember.residence_type, selectedMember.practice_payment_rule, selectedMember.practice_payment_custom_amount_dkk, paymentProfileVersion]);
 
   async function markPracticePaid() {
     if (!practicePayment?.event || isMarkingPaid) return;
