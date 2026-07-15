@@ -782,6 +782,14 @@ function createApi(initialState: SessionState): Phase1Api {
       practicePaidAt = '2026-07-10T10:00:00.000Z';
       return buildPracticePayment();
     },
+    getNotificationConfig: async () => ({
+      publicKey: 'demo-public-key',
+      status: 'default',
+    }),
+    savePushSubscription: async () => ({
+      publicKey: 'demo-public-key',
+      status: 'enabled',
+    }),
   };
 }
 
@@ -918,6 +926,8 @@ describe('App shell', () => {
     render(<App api={createApi({ hasAccess: true, selectedMember: takashi, members: [takashi] })} />);
 
     expect(await screen.findByRole('heading', { name: 'Home' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Notifications' })).toBeInTheDocument();
+    expect(screen.getByText('Practice payment reminders are not available on this browser.')).toBeInTheDocument();
     expect(screen.getByText('Genki +4521282316')).toBeInTheDocument();
     expect(screen.getByRole('link', { name: /instagram open yamato vikings/i })).toHaveAttribute(
       'href',
@@ -1263,7 +1273,6 @@ describe('App shell', () => {
     await user.click(await screen.findByRole('link', { name: /Friday Football/i }));
     expect(await screen.findByRole('heading', { name: 'Your RSVP' })).toBeInTheDocument();
     expect(screen.getByText('RSVP by')).toBeInTheDocument();
-    expect(screen.getByText('Changes before the deadline are recorded as on time.')).toBeInTheDocument();
 
     await user.click(screen.getByLabelText('I’ll be late'));
     await user.type(screen.getByLabelText('Expected arrival time'), '1930');

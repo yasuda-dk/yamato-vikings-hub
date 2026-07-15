@@ -12,7 +12,8 @@
     "test": "vitest run",
     "test:e2e": "playwright test",
     "test:functions": "deno test --allow-env --allow-net supabase/functions",
-    "deploy:functions": "npx supabase functions deploy verify-team-password register-member update-member select-profile session-state events-list event-detail create-event update-rsvp create-event-guest update-attendance update-guest-attendance update-event duplicate-event generate-teams get-event-teams adjust-team event-voting submit-vote set-voting-status override-award fine-box create-fine update-fine-status create-fine-type update-fine-type create-fines-batch practice-payment-state mark-practice-payment-paid --project-ref fejfeysavvwendbjqywa",
+    "deploy:functions": "npx supabase functions deploy verify-team-password register-member update-member select-profile session-state events-list event-detail create-event update-rsvp create-event-guest update-attendance update-event duplicate-event generate-teams get-event-teams adjust-team event-voting submit-vote set-voting-status override-award fine-box create-fine update-fine-status create-fine-type update-fine-type create-fines-batch practice-payment-state mark-practice-payment-paid notification-config save-push-subscription --project-ref fejfeysavvwendbjqywa",
+    "deploy:reminder-function": "npx supabase functions deploy send-practice-payment-reminders --project-ref fejfeysavvwendbjqywa --no-verify-jwt",
     "deploy:setup-function": "npx supabase functions deploy setup-team-password --project-ref fejfeysavvwendbjqywa --no-verify-jwt",
     "setup:team-password": "bash scripts/setup-team-password.sh"
   },

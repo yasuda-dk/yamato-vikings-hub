@@ -46,6 +46,12 @@ Deploy or update the one setup-only Edge Function separately because it intentio
 npm run deploy:setup-function
 ```
 
+Deploy or update the scheduled reminder Edge Function separately because GitHub Actions calls it without a Supabase user JWT. It is protected by `PAYMENT_REMINDER_JOB_TOKEN` instead:
+
+```bash
+npm run deploy:reminder-function
+```
+
 Set or rotate the private setup token:
 
 ```bash
@@ -57,3 +63,27 @@ Set the initial team password from the local machine:
 ```bash
 TEAM_PASSWORD='choose-a-real-team-password' npm run setup:team-password
 ```
+
+## Practice payment notifications
+
+Practice payment reminders use Web Push. Members enable reminders from the Home screen, and only that device's push subscription is stored.
+
+Required Supabase Edge Function secrets:
+
+```text
+VAPID_PUBLIC_KEY
+VAPID_PRIVATE_KEY
+VAPID_SUBJECT
+PAYMENT_REMINDER_JOB_TOKEN
+```
+
+Required GitHub Actions repository secrets:
+
+```text
+PAYMENT_REMINDER_URL
+PAYMENT_REMINDER_TOKEN
+```
+
+`PAYMENT_REMINDER_URL` points to the `send-practice-payment-reminders` Edge Function URL. `PAYMENT_REMINDER_TOKEN` must match `PAYMENT_REMINDER_JOB_TOKEN`.
+
+The GitHub Actions workflow runs hourly. The Edge Function sends reminders only when the current Europe/Copenhagen time is Friday 20:00. It targets Practice payments for the previous day, so the normal Thursday Practice reminder is sent Friday at 20:00.

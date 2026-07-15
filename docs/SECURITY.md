@@ -90,6 +90,15 @@ Practice payment tracking is server-enforced through Edge Functions and database
 - Guest Practice payments are not exposed to regular users because Guests do not authenticate.
 - The Home screen displays Genki's MobilePay number for manual payment, but no MobilePay deep link or automatic payment verification is implemented.
 
+## Practice Payment Notifications
+
+- Push subscriptions are stored per approved device, anonymous Auth user, and selected Member.
+- Members must explicitly enable notifications on each device.
+- The browser receives only the public VAPID key. The VAPID private key is stored only as a Supabase Edge Function secret.
+- The scheduled reminder function is protected by `PAYMENT_REMINDER_JOB_TOKEN`.
+- Practice payment reminders target only Going, non-exempt, unpaid Members for the previous day's Practice.
+- Notification delivery history prevents repeat reminders for the same Practice and subscription.
+
 ## Phase 6 Analytics Controls
 
 - The first Season overview appears only for selected Admin profiles.

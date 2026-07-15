@@ -5,6 +5,7 @@ import { eventStatuses, eventTypes } from '../lib/events';
 import type { FineBoxState } from '../lib/fines';
 import type { AgeGroup, Gender, MemberProfile, Position, ResidenceType } from '../lib/member-options';
 import { ageGroups, genders, positions, residenceTypes } from '../lib/member-options';
+import { getBrowserNotificationStatus, getPushSubscriptionKeys, notificationSupported, urlBase64ToUint8Array, type NotificationConfig, type NotificationStatus } from '../lib/notifications';
 import type { Phase1Api } from '../lib/phase1-api';
 import type { PracticePaymentState } from '../lib/practice-payments';
 
@@ -25,6 +26,10 @@ export function HomePage({ api, members, selectedMember, onSwitchProfile }: Home
   const [paymentError, setPaymentError] = useState<string | null>(null);
   const [paymentSuccess, setPaymentSuccess] = useState<string | null>(null);
   const [isMarkingPaid, setIsMarkingPaid] = useState(false);
+  const [notificationConfig, setNotificationConfig] = useState<NotificationConfig | null>(null);
+  const [notificationStatus, setNotificationStatus] = useState<NotificationStatus>(() => (typeof window === 'undefined' ? 'unsupported' : getBrowserNotificationStatus()));
+  const [notificationError, setNotificationError] = useState<string | null>(null);
+  const [isEnablingNotifications, setIsEnablingNotifications] = useState(false);
   const paymentProfileVersion = useMemo(
     () =>
       members
@@ -86,6 +91,74 @@ export function HomePage({ api, members, selectedMember, onSwitchProfile }: Home
     }
   }
 
+  useEffect(() => {
+    let isMounted = true;
+
+    async function loadNotificationConfig() {
+      if (!notificationSupported()) {
+        setNotificationStatus('unsupported');
+        return;
+      }
+
+      try {
+        setNotificationError(null);
+        const nextConfig = await api.getNotificationConfig();
+        if (isMounted) {
+          setNotificationConfig(nextConfig);
+          setNotificationStatus(nextConfig.status === 'enabled' ? 'enabled' : getBrowserNotificationStatus());
+        }
+      } catch (error) {
+        if (isMounted) {
+          setNotificationError(error instanceof Error ? error.message : 'Could not load notification settings.');
+          setNotificationStatus(getBrowserNotificationStatus());
+        }
+      }
+    }
+
+    void loadNotificationConfig();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [api, selectedMember.id]);
+
+  async function enableNotifications() {
+    if (!notificationSupported()) {
+      setNotificationStatus('unsupported');
+      return;
+    }
+
+    setIsEnablingNotifications(true);
+    setNotificationError(null);
+    try {
+      const config = notificationConfig ?? (await api.getNotificationConfig());
+      if (!config.publicKey) throw new Error('Notifications are not configured yet.');
+
+      const permission = await Notification.requestPermission();
+      if (permission !== 'granted') {
+        setNotificationStatus(permission);
+        return;
+      }
+
+      const registration = await navigator.serviceWorker.ready;
+      const existingSubscription = await registration.pushManager.getSubscription();
+      const subscription =
+        existingSubscription ??
+        (await registration.pushManager.subscribe({
+          userVisibleOnly: true,
+          applicationServerKey: urlBase64ToUint8Array(config.publicKey),
+        }));
+      const nextConfig = await api.savePushSubscription(getPushSubscriptionKeys(subscription));
+      setNotificationConfig(nextConfig);
+      setNotificationStatus('enabled');
+    } catch (error) {
+      setNotificationError(error instanceof Error ? error.message : 'Could not enable notifications.');
+      setNotificationStatus(getBrowserNotificationStatus());
+    } finally {
+      setIsEnablingNotifications(false);
+    }
+  }
+
   return (
     <section className="space-y-4">
       <div className="rounded-lg border border-navy/10 bg-white p-4">
@@ -111,8 +184,50 @@ export function HomePage({ api, members, selectedMember, onSwitchProfile }: Home
         onMarkPaid={markPracticePaid}
       />
 
+      <NotificationPanel status={notificationStatus} error={notificationError} isBusy={isEnablingNotifications} onEnable={enableNotifications} />
+
       {selectedMember.application_role === 'Admin' ? <AnalyticsOverview api={api} members={members} /> : null}
     </section>
+  );
+}
+
+function NotificationPanel({
+  status,
+  error,
+  isBusy,
+  onEnable,
+}: {
+  status: NotificationStatus;
+  error: string | null;
+  isBusy: boolean;
+  onEnable: () => Promise<void>;
+}) {
+  const title = status === 'enabled' ? 'Notifications enabled' : 'Notifications';
+  const description =
+    status === 'unsupported'
+      ? 'Practice payment reminders are not available on this browser.'
+      : status === 'denied'
+        ? 'Notifications are blocked on this device. Enable them in browser settings to receive payment reminders.'
+        : status === 'enabled'
+          ? 'This device will receive Practice payment reminders on Friday at 20:00 when payment is still not marked paid.'
+          : 'Get Practice payment reminders on this device when payment is still not marked paid.';
+
+  return (
+    <div className="rounded-lg border border-navy/10 bg-white p-4">
+      <p className="text-sm font-semibold text-footballBlue">Practice</p>
+      <h2 className="mt-1 text-xl font-bold text-navy">{title}</h2>
+      <p className="mt-3 rounded-md bg-mist p-3 text-sm leading-5 text-navy/70">{description}</p>
+      {error ? (
+        <p className="mt-3 rounded-md border border-red-200 bg-white p-3 text-sm font-semibold text-red-800" role="alert">
+          {error}
+        </p>
+      ) : null}
+      {status === 'default' ? (
+        <button type="button" disabled={isBusy} onClick={() => void onEnable()} className="mt-4 min-h-12 w-full rounded-md bg-footballBlue px-4 text-base font-bold text-white disabled:bg-navy/40">
+          {isBusy ? 'Enabling...' : 'Enable notifications'}
+        </button>
+      ) : null}
+    </div>
   );
 }
 

@@ -1,0 +1,27 @@
+name: Practice payment reminders
+
+on:
+  schedule:
+    - cron: '0 * * * *'
+  workflow_dispatch:
+
+jobs:
+  send-practice-payment-reminders:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Call reminder function
+        env:
+          PAYMENT_REMINDER_URL: ${{ secrets.PAYMENT_REMINDER_URL }}
+          PAYMENT_REMINDER_TOKEN: ${{ secrets.PAYMENT_REMINDER_TOKEN }}
+        run: |
+          if [ -z "$PAYMENT_REMINDER_URL" ] || [ -z "$PAYMENT_REMINDER_TOKEN" ]; then
+            echo "Payment reminder secrets are not configured."
+            exit 1
+          fi
+
+          curl --fail-with-body \
+            --request POST \
+            --header "content-type: application/json" \
+            --header "x-reminder-token: $PAYMENT_REMINDER_TOKEN" \
+            --data '{}' \
+            "$PAYMENT_REMINDER_URL"
