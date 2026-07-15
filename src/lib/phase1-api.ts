@@ -20,6 +20,7 @@ import type {
 import type { CreateFineInput, CreateFinesInput, CreateFineTypeInput, FineBoxState, ReportFinePaymentInput, UpdateFineStatusInput, UpdateFineTypeInput } from './fines';
 import { createSupabaseBrowserClient } from './supabase';
 import { DEFAULT_TEAM_ID, type AdminMemberUpdateInput, type MemberProfile, type MemberRegistrationInput } from './member-options';
+import type { NotificationConfig, SavePushSubscriptionInput } from './notifications';
 import type { PracticePaymentState } from './practice-payments';
 
 export type SessionState = {
@@ -61,6 +62,8 @@ export type Phase1Api = {
   updateFineType: (input: UpdateFineTypeInput) => Promise<FineBoxState>;
   getPracticePayment: () => Promise<PracticePaymentState>;
   markPracticePaymentPaid: (eventId: string) => Promise<PracticePaymentState>;
+  getNotificationConfig: () => Promise<NotificationConfig>;
+  savePushSubscription: (input: SavePushSubscriptionInput) => Promise<NotificationConfig>;
 };
 
 let supabaseClient: ReturnType<typeof createSupabaseBrowserClient> | null = null;
@@ -259,5 +262,15 @@ export const phase1Api: Phase1Api = {
   async markPracticePaymentPaid(eventId: string) {
     const data = await invokeFunction<{ practicePayment: PracticePaymentState }>('mark-practice-payment-paid', { eventId });
     return data.practicePayment;
+  },
+
+  async getNotificationConfig() {
+    const data = await invokeFunction<{ notification: NotificationConfig }>('notification-config', {});
+    return data.notification;
+  },
+
+  async savePushSubscription(input: SavePushSubscriptionInput) {
+    const data = await invokeFunction<{ notification: NotificationConfig }>('save-push-subscription', input);
+    return data.notification;
   },
 };

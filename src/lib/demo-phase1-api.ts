@@ -155,6 +155,7 @@ let demoGuests: EventGuest[] = [
   },
 ];
 const demoActualStatuses: Record<string, ActualStatus> = {};
+let demoNotificationsEnabled = false;
 
 function voteKey(eventId: string, memberId: string, voteType: VoteType) {
   return `${eventId}:${memberId}:${voteType}`;
@@ -1020,5 +1021,20 @@ export const demoPhase1Api: Phase1Api = {
     }
     demoPracticePaidAt[`${eventId}:${selectedMember.id}`] = new Date().toISOString();
     return buildDemoPracticePayment();
+  },
+
+  async getNotificationConfig() {
+    return {
+      publicKey: 'BEl6C0demoNotificationPublicKeyForLocalUiOnly000000000000000000000000000000000000000000000000000000000',
+      status: demoNotificationsEnabled ? 'enabled' : 'default',
+    };
+  },
+
+  async savePushSubscription() {
+    demoNotificationsEnabled = true;
+    return {
+      publicKey: 'BEl6C0demoNotificationPublicKeyForLocalUiOnly000000000000000000000000000000000000000000000000000000000',
+      status: 'enabled',
+    };
   },
 };
