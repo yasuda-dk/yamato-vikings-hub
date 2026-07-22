@@ -452,6 +452,23 @@ export function EventDetailPage({ api, selectedMember }: EventDetailPageProps) {
     }
   }
 
+  async function handleDeleteGuest(eventGuestId: string, firstName: string) {
+    if (adminBusyId === `delete-guest-${eventGuestId}`) return;
+    if (!window.confirm(`Remove ${firstName} from this event?`)) return;
+
+    setAdminBusyId(`delete-guest-${eventGuestId}`);
+    setError(null);
+    setSuccess(null);
+    try {
+      await api.deleteEventGuest({ eventGuestId });
+      await refreshDetail('Guest removed.');
+    } catch (guestError) {
+      setError(guestError instanceof Error ? guestError.message : 'Could not remove guest.');
+    } finally {
+      setAdminBusyId(null);
+    }
+  }
+
   async function handleUpdateEvent(event: FormEvent) {
     event.preventDefault();
     if (!eventDraft || Object.keys(eventErrors).length > 0 || adminBusyId === 'event-form') return;
@@ -664,13 +681,25 @@ export function EventDetailPage({ api, selectedMember }: EventDetailPageProps) {
                 {detail.guests.length === 0 ? <p className="rounded-md bg-mist p-3 text-sm text-navy/70">No guests added.</p> : null}
                 {detail.guests.map((guest) => (
                   <div key={guest.id} className="rounded-md bg-mist p-3">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <p className="break-words text-sm font-bold text-navy">{guest.first_name}</p>
-                      <span className="rounded bg-white px-2 py-1 text-xs font-bold text-footballBlue">GUEST</span>
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <p className="break-words text-sm font-bold text-navy">{guest.first_name}</p>
+                          <span className="rounded bg-white px-2 py-1 text-xs font-bold text-footballBlue">GUEST</span>
+                        </div>
+                        <p className="mt-1 text-xs font-semibold text-navy/65">
+                          {guest.primary_position} · Level {guest.football_level}
+                        </p>
+                      </div>
+                      <button
+                        type="button"
+                        disabled={adminBusyId === `delete-guest-${guest.id}`}
+                        onClick={() => handleDeleteGuest(guest.id, guest.first_name)}
+                        className="min-h-11 shrink-0 rounded-md border border-red-200 bg-white px-3 text-sm font-bold text-red-700 disabled:text-red-300"
+                      >
+                        {adminBusyId === `delete-guest-${guest.id}` ? 'Removing...' : 'Remove guest'}
+                      </button>
                     </div>
-                    <p className="mt-1 text-xs font-semibold text-navy/65">
-                      {guest.primary_position} · Level {guest.football_level}
-                    </p>
                   </div>
                 ))}
               </div>

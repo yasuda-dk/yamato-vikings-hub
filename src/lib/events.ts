@@ -241,6 +241,10 @@ export type GuestAttendanceInput = {
   actualStatus: ActualStatus;
 };
 
+export type DeleteEventGuestInput = {
+  eventGuestId: string;
+};
+
 export type GenerateTeamsInput = {
   eventId: string;
   teamCount: 2 | 3 | 4;
