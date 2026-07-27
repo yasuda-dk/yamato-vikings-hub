@@ -444,10 +444,13 @@ export const demoPhase1Api: Phase1Api = {
   },
 
   async listEvents() {
-    return demoEvents.map((event) => ({
-      ...event,
-      my_rsvp_status: demoRsvps[event.id]?.rsvp_status ?? null,
-    }));
+    const isAdmin = state.selectedMember?.application_role === 'Admin';
+    return demoEvents
+      .filter((event) => event.status !== 'Cancelled' || isAdmin)
+      .map((event) => ({
+        ...event,
+        my_rsvp_status: demoRsvps[event.id]?.rsvp_status ?? null,
+      }));
   },
 
   async listAnalyticsEvents(seasonYear: number) {

@@ -36,7 +36,7 @@ const genki: MemberProfile = {
   first_name: 'Genki',
 };
 
-function createApi(initialState: SessionState): Phase1Api {
+function createApi(initialState: SessionState, options: { event?: Partial<EventSummary> } = {}): Phase1Api {
   let state = initialState;
   let event: EventSummary = {
     id: 'event-1',
@@ -52,6 +52,7 @@ function createApi(initialState: SessionState): Phase1Api {
     maybe_count: 2,
     not_going_count: 1,
     late_count: 1,
+    ...options.event,
   };
   let rsvp: EventDetail['myRsvp'] = null;
   let guest: EventGuest | null = null;
@@ -318,7 +319,7 @@ function createApi(initialState: SessionState): Phase1Api {
       if (selectedMember?.first_name === 'Takashi' && profilePassword !== 'demo-takashi') throw new Error('Incorrect Takashi password');
       state = { ...state, selectedMember };
     },
-    listEvents: async () => [event],
+    listEvents: async () => (event.status === 'Cancelled' && state.selectedMember?.application_role !== 'Admin' ? [] : [event]),
     listAnalyticsEvents: async () => [event],
     getEventDetail: async () => ({
       event: {
@@ -821,6 +822,28 @@ describe('App shell', () => {
 
     await user.click(screen.getByRole('link', { name: /home/i }));
     expect(screen.getByRole('heading', { name: 'Home' })).toBeInTheDocument();
+  });
+
+  it('hides cancelled events from regular members', async () => {
+    const user = userEvent.setup();
+    render(<App api={createApi({ hasAccess: true, selectedMember: takashi, members: [takashi] }, { event: { status: 'Cancelled' } })} />);
+
+    await user.click(await screen.findByRole('link', { name: /events/i }));
+
+    expect(await screen.findByRole('heading', { name: 'Events' })).toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: /Friday Football/i })).not.toBeInTheDocument();
+    expect(screen.queryByText('Cancelled')).not.toBeInTheDocument();
+    expect(screen.getByText('An admin will add the next session here.')).toBeInTheDocument();
+  });
+
+  it('shows cancelled events to admins', async () => {
+    const user = userEvent.setup();
+    render(<App api={createApi({ hasAccess: true, selectedMember: adminTakashi, members: [adminTakashi] }, { event: { status: 'Cancelled' } })} />);
+
+    await user.click(await screen.findByRole('link', { name: /events/i }));
+
+    expect(await screen.findByRole('link', { name: /Friday Football/i })).toBeInTheDocument();
+    expect(screen.getByText('Cancelled')).toBeInTheDocument();
   });
 
   it('requires the Takashi password before selecting Takashi', async () => {
