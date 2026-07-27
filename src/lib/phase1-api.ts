@@ -1,6 +1,7 @@
 import type { Session } from '@supabase/supabase-js';
 import type {
   AttendanceInput,
+  DeleteEventGuestInput,
   EventCreateInput,
   EventDetail,
   EventDuplicateInput,
@@ -43,6 +44,7 @@ export type Phase1Api = {
   duplicateEvent: (input: EventDuplicateInput) => Promise<string>;
   updateRsvp: (input: RsvpInput) => Promise<void>;
   createEventGuest: (input: EventGuestInput) => Promise<string>;
+  deleteEventGuest: (input: DeleteEventGuestInput) => Promise<void>;
   updateAttendance: (input: AttendanceInput) => Promise<void>;
   updateGuestAttendance: (input: GuestAttendanceInput) => Promise<void>;
   getEventTeams: (eventId: string) => Promise<EventTeam[]>;
@@ -171,6 +173,10 @@ export const phase1Api: Phase1Api = {
   async createEventGuest(input: EventGuestInput) {
     const data = await invokeFunction<{ eventGuestId: string }>('create-event-guest', input);
     return data.eventGuestId;
+  },
+
+  async deleteEventGuest(input: DeleteEventGuestInput) {
+    await invokeFunction('delete-event-guest', input);
   },
 
   async updateAttendance(input: AttendanceInput) {

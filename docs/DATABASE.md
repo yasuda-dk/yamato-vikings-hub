@@ -81,6 +81,7 @@ Server-side functions:
 - `get_event_detail`
 - `upsert_my_rsvp`
 - `create_event_guest`
+- `delete_event_guest`
 - `set_member_actual_status`
 - `set_guest_actual_status`
 
@@ -100,7 +101,8 @@ Rules enforced in this slice:
 - Event Guests are scoped to one event and do not create member profiles.
 - Guest names are normalized and must be unique within the event.
 - Guest names cannot duplicate a Member who already has an attendance row for the same event.
-- Only Admin profiles can add Guests or confirm actual attendance.
+- Only Admin profiles can add Guests, remove unused Guests, or confirm actual attendance.
+- Guest removal is allowed only before historical activity exists. Guests referenced by attendance status, draft/confirmed teams, voting, awards, or fines are retained.
 - Actual attendance is stored separately from planned RSVP.
 
 Rules for future phases:

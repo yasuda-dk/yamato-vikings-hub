@@ -2,6 +2,7 @@ import type { Session } from '@supabase/supabase-js';
 import type {
   ActualStatus,
   AttendanceInput,
+  DeleteEventGuestInput,
   EventCreateInput,
   EventDetail,
   EventDuplicateInput,
@@ -43,10 +44,10 @@ let demoEvents: EventSummary[] = [
     id: demoEventId,
     title: 'Friday Football',
     event_type: 'Football',
-    event_date: '2026-07-16',
+    event_date: '2026-08-07',
     start_time: '19:00:00',
     location: 'Yamato Pitch',
-    rsvp_deadline: '2026-07-15T18:00:00.000Z',
+    rsvp_deadline: '2026-08-06T18:00:00.000Z',
     status: 'Open',
     my_rsvp_status: null,
     going_count: 8,
@@ -358,7 +359,7 @@ function buildDemoPracticePayment(): PracticePaymentState {
       event_date: event.event_date,
       start_time: event.start_time,
       location: event.location,
-      payment_deadline_date: '2026-07-17',
+      payment_deadline_date: '2026-08-08',
     },
     myPayment,
     adminPayments: canViewPracticeTracking ? adminPayments : [],
@@ -635,6 +636,21 @@ export const demoPhase1Api: Phase1Api = {
     };
     demoGuests = [...demoGuests, guest];
     return guest.id;
+  },
+
+  async deleteEventGuest(input: DeleteEventGuestInput) {
+    const targetGuest = demoGuests.find((guest) => guest.id === input.eventGuestId);
+    if (!targetGuest) throw new Error('Guest not found');
+    if (targetGuest.actual_status !== 'Not confirmed') throw new Error('Guest already has historical activity and cannot be removed.');
+
+    const isUsedInTeams = demoTeams.some((team) => team.participants.some((participant) => participant.kind === 'guest' && participant.id === input.eventGuestId));
+    const isUsedInVotingOrFines =
+      Object.values(demoVotes).some((vote) => vote.candidateKind === 'guest' && vote.candidateId === input.eventGuestId) ||
+      demoAwards.some((award) => award.kind === 'guest' && award.id === input.eventGuestId) ||
+      demoFines.some((fine) => fine.participant_kind === 'guest' && fine.participant_id === input.eventGuestId);
+
+    if (isUsedInTeams || isUsedInVotingOrFines) throw new Error('Guest is used in teams, voting, awards or fines and cannot be removed.');
+    demoGuests = demoGuests.filter((guest) => guest.id !== input.eventGuestId);
   },
 
   async updateAttendance(input: AttendanceInput) {

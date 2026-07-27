@@ -1,6 +1,6 @@
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { beforeEach, describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { App } from './App';
 import { HomePage } from './components/HomePage';
 import type { ActualStatus, EventDetail, EventGuest, EventSummary, EventTeam, EventVotingState, RsvpInput, VoteInput, VotingResult } from './lib/events';
@@ -42,10 +42,10 @@ function createApi(initialState: SessionState): Phase1Api {
     id: 'event-1',
     title: 'Friday Football',
     event_type: 'Football',
-    event_date: '2026-07-16',
+    event_date: '2026-08-07',
     start_time: '19:00:00',
     location: 'Yamato Pitch',
-    rsvp_deadline: '2026-07-15T18:00:00.000Z',
+    rsvp_deadline: '2026-08-06T18:00:00.000Z',
     status: 'Open',
     my_rsvp_status: null,
     going_count: 8,
@@ -240,7 +240,7 @@ function createApi(initialState: SessionState): Phase1Api {
         event_date: event.event_date,
         start_time: event.start_time,
         location: event.location,
-        payment_deadline_date: '2026-07-17',
+        payment_deadline_date: '2026-08-08',
       },
       myPayment: selectedMember
         ? {
@@ -440,6 +440,9 @@ function createApi(initialState: SessionState): Phase1Api {
         created_at: '2026-06-30T00:00:00.000Z',
       };
       return guest.id;
+    },
+    deleteEventGuest: async (input) => {
+      if (guest?.id === input.eventGuestId) guest = null;
     },
     updateAttendance: async (input) => {
       actualStatus = input.actualStatus;
@@ -805,7 +808,7 @@ describe('App shell', () => {
 
     await user.click(screen.getByRole('link', { name: /events/i }));
     expect(await screen.findByRole('heading', { name: 'Events' })).toBeInTheDocument();
-    expect(screen.getByText(/RSVP Wed, Jul 15/)).toBeInTheDocument();
+    expect(screen.getByText(/RSVP Thu, Aug 6/)).toBeInTheDocument();
     expect(screen.getByText('2 maybe')).toBeInTheDocument();
     expect(screen.getByText('1 not going')).toBeInTheDocument();
     expect(screen.getByText('No RSVP yet')).toBeInTheDocument();
@@ -1039,10 +1042,10 @@ describe('App shell', () => {
         event: {
           id: 'event-1',
           title: 'Friday Football',
-          event_date: '2026-07-16',
+          event_date: '2026-08-07',
           start_time: '19:00:00',
           location: 'Yamato Pitch',
-          payment_deadline_date: '2026-07-17',
+          payment_deadline_date: '2026-08-08',
         },
         myPayment: {
           member_id: currentMember.id,
@@ -1404,6 +1407,28 @@ describe('App shell', () => {
     expect(screen.queryByRole('button', { name: 'Attended' })).not.toBeInTheDocument();
   });
 
+  it('lets an admin remove an unused event guest', async () => {
+    const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true);
+    const user = userEvent.setup();
+    render(<App api={createApi({ hasAccess: true, selectedMember: adminTakashi, members: [adminTakashi] })} />);
+
+    await user.click(await screen.findByRole('link', { name: /events/i }));
+    await user.click(await screen.findByRole('link', { name: /Friday Football/i }));
+    await user.click(await screen.findByRole('button', { name: 'Add guest' }));
+    await user.type(screen.getByLabelText('Guest first name'), 'Ken');
+    await user.click(screen.getByRole('button', { name: 'Add guest' }));
+
+    expect(await screen.findByText('Guest added.')).toBeInTheDocument();
+    expect(screen.getByText('Ken')).toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: 'Remove guest' }));
+
+    expect(confirmSpy).toHaveBeenCalledWith('Remove Ken from this event?');
+    expect(await screen.findByText('Guest removed.')).toBeInTheDocument();
+    expect(screen.queryByText('Ken')).not.toBeInTheDocument();
+    confirmSpy.mockRestore();
+  });
+
   it('lets an admin edit and duplicate an event', async () => {
     const user = userEvent.setup();
     render(<App api={createApi({ hasAccess: true, selectedMember: adminTakashi, members: [adminTakashi] })} />);
@@ -1419,7 +1444,7 @@ describe('App shell', () => {
     expect(await screen.findByRole('heading', { name: 'Sunday Football' })).toBeInTheDocument();
 
     await user.click(screen.getByRole('button', { name: 'Duplicate' }));
-    await user.type(screen.getByLabelText('New date'), '2026-07-10');
+    await user.type(screen.getByLabelText('New date'), '2026-08-14');
     await user.click(screen.getByRole('button', { name: 'Duplicate event' }));
 
     expect(await screen.findByRole('heading', { name: 'Sunday Football' })).toBeInTheDocument();
