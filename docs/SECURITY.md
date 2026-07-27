@@ -46,6 +46,7 @@ The event and RSVP slice keeps direct table writes closed to regular frontend co
 - `create-event` requires the selected profile to be an Admin.
 - `update-event` and `duplicate-event` require the selected profile to be an Admin.
 - `events-list` and `event-detail` require current approved device access.
+- `events-list` hides cancelled events from regular Members. Admins can still see cancelled events for management.
 - `update-rsvp` requires an active linked Member profile.
 - RSVP updates are scoped to `current_member_id()`.
 - Late-arrival and cancelled-event rules are enforced in the database function, not only in the UI.

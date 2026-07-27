@@ -205,7 +205,7 @@ Sources:
 
 Event list separation:
 
-- `list_events` powers the public Events tab and returns only today/future events.
+- `list_events` powers the Events tab and returns only today/future events. Cancelled events are returned only for Admin profiles.
 - `list_admin_season_events` powers Admin analytics and CSV export, and returns all events in the requested calendar year, including past and completed events.
 - `list_admin_season_events` requires both current device access and Admin role.
 
