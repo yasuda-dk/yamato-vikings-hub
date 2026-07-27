@@ -233,6 +233,43 @@ function createApi(initialState: SessionState, options: { event?: Partial<EventS
     }));
     const expectedTotal = adminPayments.reduce((total, payment) => total + payment.amount_dkk, 0);
     const paidTotal = adminPayments.filter((payment) => payment.is_paid).reduce((total, payment) => total + payment.amount_dkk, 0);
+    const historyPayments = state.members
+      .filter((member) => member.membership_status === 'Active')
+      .map((member, index) => ({
+        member_id: member.id,
+        first_name: member.first_name,
+        amount_dkk: getPracticeAmount(member),
+        payment_rule: member.practice_payment_rule,
+        is_exempt: member.practice_payment_rule === 'Exempt',
+        rsvp_status: 'Going' as const,
+        is_paid: index === 0,
+        paid_at: index === 0 ? '2026-07-24T20:30:00.000Z' : null,
+      }));
+    const historyExpectedTotal = historyPayments.reduce((total, payment) => total + payment.amount_dkk, 0);
+    const historyPaidTotal = historyPayments.filter((payment) => payment.is_paid && !payment.is_exempt).reduce((total, payment) => total + payment.amount_dkk, 0);
+    const practiceHistory = canViewPracticeTracking
+      ? [
+          {
+            event: {
+              id: 'practice-history-1',
+              title: 'Practice',
+              event_date: '2026-07-24',
+              start_time: '19:00:00',
+              location: 'Hafnia Hallen',
+              payment_deadline_date: '2026-07-25',
+            },
+            payments: historyPayments,
+            totals: {
+              expected_total_dkk: historyExpectedTotal,
+              paid_total_dkk: historyPaidTotal,
+              unpaid_total_dkk: historyExpectedTotal - historyPaidTotal,
+              paid_count: historyPayments.filter((payment) => payment.is_paid && !payment.is_exempt).length,
+              unpaid_count: historyPayments.filter((payment) => !payment.is_paid && !payment.is_exempt).length,
+              exempt_count: historyPayments.filter((payment) => payment.is_exempt).length,
+            },
+          },
+        ]
+      : [];
 
     return {
       event: {
@@ -256,6 +293,7 @@ function createApi(initialState: SessionState, options: { event?: Partial<EventS
           }
         : null,
       adminPayments: canViewPracticeTracking ? adminPayments : [],
+      practiceHistory,
       totals:
         canViewPracticeTracking
           ? {
@@ -883,7 +921,7 @@ describe('App shell', () => {
     expect(screen.getByRole('heading', { name: 'Fine totals' })).toBeInTheDocument();
     expect(screen.getByText('Payment reported')).toBeInTheDocument();
     expect(screen.getByText('15 DKK')).toBeInTheDocument();
-    expect(screen.getByText('Paid')).toBeInTheDocument();
+    expect(screen.getAllByText('Paid').length).toBeGreaterThanOrEqual(1);
     expect(screen.getByText('30 DKK')).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: 'Events by type' })).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: 'Events by status' })).toBeInTheDocument();
@@ -983,8 +1021,32 @@ describe('App shell', () => {
     expect(await screen.findByRole('heading', { name: 'Home' })).toBeInTheDocument();
     expect(await screen.findByText('Payment tracking')).toBeInTheDocument();
     expect(screen.getByText('0 paid · 1 not paid · 0 exempt')).toBeInTheDocument();
-    expect(screen.getByText('Genki')).toBeInTheDocument();
+    expect(screen.getAllByText('Genki').length).toBeGreaterThanOrEqual(1);
     expect(screen.getAllByText('Not paid').length).toBeGreaterThanOrEqual(1);
+  });
+
+  it('shows past Practice payment history to Genki and opens tracking details', async () => {
+    const user = userEvent.setup();
+    const api = createApi({ hasAccess: true, selectedMember: genki, members: [genki] });
+    await api.updateRsvp({ eventId: 'event-1', rsvpStatus: 'Going', isArrivingLate: false, expectedArrivalTime: '' });
+
+    render(<App api={api} />);
+
+    expect(await screen.findByText('Practice payment history')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Fri, Jul 24.*80\/80 kr/i })).toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: /Fri, Jul 24/i }));
+
+    expect(screen.getByText('Selected Practice tracking')).toBeInTheDocument();
+    expect(screen.getAllByText('Genki').length).toBeGreaterThanOrEqual(2);
+    expect(screen.getAllByText('Paid').length).toBeGreaterThanOrEqual(1);
+  });
+
+  it('does not show past Practice payment history to regular members', async () => {
+    render(<App api={createApi({ hasAccess: true, selectedMember: takashi, members: [takashi] })} />);
+
+    expect(await screen.findByRole('heading', { name: 'Home' })).toBeInTheDocument();
+    expect(screen.queryByText('Practice payment history')).not.toBeInTheDocument();
   });
 
   it('uses the 20 kr practice price for students and under 18 members', async () => {
@@ -1081,6 +1143,7 @@ describe('App shell', () => {
           paid_at: null,
         },
         adminPayments: [],
+        practiceHistory: [],
         totals: {
           expected_total_dkk: 0,
           paid_total_dkk: 0,

@@ -83,6 +83,7 @@ Practice payment tracking is server-enforced through Edge Functions and database
 - Only Members with RSVP `Going` for the target Practice can mark payment as paid.
 - Members can mark only their own Practice payment as paid.
 - Admin-only member editing controls `Default`, `Exempt`, and `Custom` Practice payment rules.
+- Past Practice payment history is returned only to Admin profiles and Genki through the same server-side tracking permission.
 - Regular Members cannot change their own Practice payment rule or custom amount.
 - Exempt Members cannot create Practice payment records.
 - Custom Practice payment amounts must be above 0 DKK.

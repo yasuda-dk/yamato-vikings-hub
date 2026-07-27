@@ -191,6 +191,7 @@ Rules enforced in this slice:
 - A Member can mark only their own current Practice payment as `Paid`.
 - Marking paid writes `paid_at` immediately; there is no Admin confirmation step for this Practice payment flow.
 - Admins can see the current Practice payment tracking list and totals.
+- Admins and Genki can see past Practice payment history on Home, including date, paid/expected total, and per-member tracking details.
 - Regular Members can see only their own payment state and amount.
 
 ## Phase 6 Analytics Overview And CSV Export

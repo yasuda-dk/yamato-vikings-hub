@@ -308,6 +308,7 @@ function buildDemoPracticePayment(): PracticePaymentState {
       event: null,
       myPayment: null,
       adminPayments: [],
+      practiceHistory: [],
       totals: {
         expected_total_dkk: 0,
         paid_total_dkk: 0,
@@ -351,6 +352,20 @@ function buildDemoPracticePayment(): PracticePaymentState {
     : null;
   const expectedTotal = adminPayments.reduce((total, payment) => total + payment.amount_dkk, 0);
   const paidTotal = adminPayments.filter((payment) => payment.is_paid).reduce((total, payment) => total + payment.amount_dkk, 0);
+  const historyPayments: PracticePaymentMember[] = state.members
+    .filter((member) => member.membership_status === 'Active')
+    .map((member, index) => ({
+      member_id: member.id,
+      first_name: member.first_name,
+      amount_dkk: getPracticeAmount(member),
+      payment_rule: member.practice_payment_rule,
+      is_exempt: member.practice_payment_rule === 'Exempt',
+      rsvp_status: 'Going',
+      is_paid: index === 0,
+      paid_at: index === 0 ? '2026-07-24T20:30:00.000Z' : null,
+    }));
+  const historyExpectedTotal = historyPayments.reduce((total, payment) => total + payment.amount_dkk, 0);
+  const historyPaidTotal = historyPayments.filter((payment) => payment.is_paid && !payment.is_exempt).reduce((total, payment) => total + payment.amount_dkk, 0);
 
   return {
     event: {
@@ -363,6 +378,29 @@ function buildDemoPracticePayment(): PracticePaymentState {
     },
     myPayment,
     adminPayments: canViewPracticeTracking ? adminPayments : [],
+    practiceHistory: canViewPracticeTracking
+      ? [
+          {
+            event: {
+              id: 'demo-practice-history-1',
+              title: 'Practice',
+              event_date: '2026-07-24',
+              start_time: '19:00:00',
+              location: 'Hafnia Hallen',
+              payment_deadline_date: '2026-07-25',
+            },
+            payments: historyPayments,
+            totals: {
+              expected_total_dkk: historyExpectedTotal,
+              paid_total_dkk: historyPaidTotal,
+              unpaid_total_dkk: historyExpectedTotal - historyPaidTotal,
+              paid_count: historyPayments.filter((payment) => payment.is_paid && !payment.is_exempt).length,
+              unpaid_count: historyPayments.filter((payment) => !payment.is_paid && !payment.is_exempt).length,
+              exempt_count: historyPayments.filter((payment) => payment.is_exempt).length,
+            },
+          },
+        ]
+      : [],
     totals: {
       expected_total_dkk: canViewPracticeTracking ? expectedTotal : 0,
       paid_total_dkk: canViewPracticeTracking ? paidTotal : 0,
