@@ -22,6 +22,7 @@ export type PracticePaymentState = {
   event: PracticePaymentEvent | null;
   myPayment: PracticePaymentMember | null;
   adminPayments: PracticePaymentMember[];
+  practiceHistory: PracticePaymentHistoryEvent[];
   totals: {
     expected_total_dkk: number;
     paid_total_dkk: number;
@@ -30,4 +31,12 @@ export type PracticePaymentState = {
     unpaid_count: number;
     exempt_count: number;
   };
+};
+
+export type PracticePaymentTotals = PracticePaymentState['totals'];
+
+export type PracticePaymentHistoryEvent = {
+  event: PracticePaymentEvent;
+  payments: PracticePaymentMember[];
+  totals: PracticePaymentTotals;
 };

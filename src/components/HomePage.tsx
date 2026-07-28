@@ -136,6 +136,8 @@ function PracticePaymentPanel({
   const myPayment = state?.myPayment ?? null;
   const canMarkPaid = Boolean(state?.event && myPayment?.rsvp_status === 'Going' && !myPayment.is_paid && !myPayment.is_exempt && !isMarkingPaid);
   const canViewPaymentTracking = isAdmin || Boolean(state?.adminPayments.length);
+  const [selectedHistoryEventId, setSelectedHistoryEventId] = useState<string | null>(null);
+  const selectedHistory = state?.practiceHistory.find((historyEvent) => historyEvent.event.id === selectedHistoryEventId) ?? state?.practiceHistory[0] ?? null;
   const amountLabel = myPayment?.is_exempt ? 'Exempt' : myPayment ? `${myPayment.amount_dkk} kr` : '-';
   const statusLabel = myPayment?.is_exempt ? 'Exempt' : myPayment?.is_paid ? 'Paid' : myPayment?.rsvp_status === 'Going' ? 'Not paid' : 'RSVP Going first';
 
@@ -185,29 +187,98 @@ function PracticePaymentPanel({
           )}
           {!myPayment?.is_exempt && !myPayment?.is_paid && myPayment?.rsvp_status !== 'Going' ? <p className="text-sm font-semibold text-navy/70">This button is available after your RSVP is Going.</p> : null}
           {canViewPaymentTracking ? <PracticePaymentTracking state={state} /> : null}
+          {canViewPaymentTracking && state.practiceHistory.length > 0 ? (
+            <PracticePaymentHistory history={state.practiceHistory} selectedEventId={selectedHistory?.event.id ?? null} onSelect={setSelectedHistoryEventId} />
+          ) : null}
+          {canViewPaymentTracking && selectedHistory ? <PracticePaymentTracking title="Selected Practice tracking" payments={selectedHistory.payments} totals={selectedHistory.totals} /> : null}
         </div>
       ) : null}
     </div>
   );
 }
 
-function PracticePaymentTracking({ state }: { state: PracticePaymentState }) {
+function PracticePaymentHistory({
+  history,
+  selectedEventId,
+  onSelect,
+}: {
+  history: PracticePaymentState['practiceHistory'];
+  selectedEventId: string | null;
+  onSelect: (eventId: string) => void;
+}) {
   return (
     <div className="rounded-md bg-mist p-3">
       <div className="flex items-start justify-between gap-3">
         <div>
-          <p className="text-sm font-bold text-navy">Payment tracking</p>
+          <p className="text-sm font-bold text-navy">Practice payment history</p>
+          <p className="mt-1 text-xs font-semibold text-navy/60">Tap a Practice to view tracking.</p>
+        </div>
+        <span className="shrink-0 rounded bg-white px-2 py-1 text-xs font-bold text-navy">{history.length}</span>
+      </div>
+      <div className="mt-3 divide-y divide-navy/10">
+        {history.map((historyEvent) => {
+          const isSelected = historyEvent.event.id === selectedEventId;
+          return (
+            <button
+              key={historyEvent.event.id}
+              type="button"
+              onClick={() => onSelect(historyEvent.event.id)}
+              className={`flex min-h-12 w-full items-center justify-between gap-3 py-2 text-left ${isSelected ? 'text-footballBlue' : 'text-navy'}`}
+            >
+              <span className="min-w-0">
+                <span className="block text-sm font-bold">{formatPracticeDate(historyEvent.event.event_date, historyEvent.event.start_time)}</span>
+                <span className="block text-xs font-semibold text-navy/60">{historyEvent.totals.paid_count} paid · {historyEvent.totals.unpaid_count} not paid</span>
+              </span>
+              <span className="shrink-0 rounded bg-white px-2 py-1 text-xs font-bold text-navy">
+                {historyEvent.totals.paid_total_dkk}/{historyEvent.totals.expected_total_dkk} kr
+              </span>
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+const emptyPaymentTotals: PracticePaymentState['totals'] = {
+  expected_total_dkk: 0,
+  paid_total_dkk: 0,
+  unpaid_total_dkk: 0,
+  paid_count: 0,
+  unpaid_count: 0,
+  exempt_count: 0,
+};
+
+function PracticePaymentTracking({
+  state,
+  title = 'Payment tracking',
+  payments,
+  totals,
+}: {
+  state?: PracticePaymentState;
+  title?: string;
+  payments?: PracticePaymentState['adminPayments'];
+  totals?: PracticePaymentState['totals'];
+}) {
+  const displayPayments = payments ?? state?.adminPayments ?? [];
+  const displayTotals = totals ?? state?.totals ?? emptyPaymentTotals;
+
+  return (
+    <div className="rounded-md bg-mist p-3">
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <p className="text-sm font-bold text-navy">{title}</p>
           <p className="mt-1 text-xs font-semibold text-navy/60">
-            {state.totals.paid_count} paid · {state.totals.unpaid_count} not paid · {state.totals.exempt_count} exempt
+            {displayTotals.paid_count} paid · {displayTotals.unpaid_count} not paid · {displayTotals.exempt_count} exempt
           </p>
         </div>
-        <span className="shrink-0 rounded bg-white px-2 py-1 text-xs font-bold text-navy">{state.totals.paid_total_dkk}/{state.totals.expected_total_dkk} kr</span>
+        <span className="shrink-0 rounded bg-white px-2 py-1 text-xs font-bold text-navy">{displayTotals.paid_total_dkk}/{displayTotals.expected_total_dkk} kr</span>
       </div>
-      {state.adminPayments.length === 0 ? (
+      {displayPayments.length === 0 ? (
         <p className="mt-3 text-sm text-navy/70">No Going members for this Practice yet.</p>
       ) : (
         <div className="mt-3 divide-y divide-navy/10">
-          {state.adminPayments.map((payment) => (
+          {displayPayments.map((payment) => (
             <div key={payment.member_id} className="flex min-h-11 items-center justify-between gap-3 py-2">
               <div className="min-w-0">
                 <p className="break-words text-sm font-bold text-navy">{payment.first_name}</p>
