@@ -105,6 +105,25 @@ async function getFunctionErrorMessage(error: Error, data: { error?: string } | 
   return error.message;
 }
 
+function normalizePracticePaymentState(value: Partial<PracticePaymentState> | null | undefined): PracticePaymentState {
+  const totals = value?.totals;
+
+  return {
+    event: value?.event ?? null,
+    myPayment: value?.myPayment ?? null,
+    adminPayments: Array.isArray(value?.adminPayments) ? value.adminPayments : [],
+    practiceHistory: Array.isArray(value?.practiceHistory) ? value.practiceHistory : [],
+    totals: {
+      expected_total_dkk: totals?.expected_total_dkk ?? 0,
+      paid_total_dkk: totals?.paid_total_dkk ?? 0,
+      unpaid_total_dkk: totals?.unpaid_total_dkk ?? 0,
+      paid_count: totals?.paid_count ?? 0,
+      unpaid_count: totals?.unpaid_count ?? 0,
+      exempt_count: totals?.exempt_count ?? 0,
+    },
+  };
+}
+
 export const phase1Api: Phase1Api = {
   async ensureAnonymousSession() {
     const supabase = getSupabase();
@@ -258,12 +277,12 @@ export const phase1Api: Phase1Api = {
   },
 
   async getPracticePayment() {
-    const data = await invokeFunction<{ practicePayment: PracticePaymentState }>('practice-payment-state', {});
-    return data.practicePayment;
+    const data = await invokeFunction<{ practicePayment: Partial<PracticePaymentState> }>('practice-payment-state', {});
+    return normalizePracticePaymentState(data.practicePayment);
   },
 
   async markPracticePaymentPaid(eventId: string) {
-    const data = await invokeFunction<{ practicePayment: PracticePaymentState }>('mark-practice-payment-paid', { eventId });
-    return data.practicePayment;
+    const data = await invokeFunction<{ practicePayment: Partial<PracticePaymentState> }>('mark-practice-payment-paid', { eventId });
+    return normalizePracticePaymentState(data.practicePayment);
   },
 };

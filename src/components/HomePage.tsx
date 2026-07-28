@@ -134,10 +134,12 @@ function PracticePaymentPanel({
   onMarkPaid: () => Promise<void>;
 }) {
   const myPayment = state?.myPayment ?? null;
+  const adminPayments = state?.adminPayments ?? [];
+  const practiceHistory = state?.practiceHistory ?? [];
   const canMarkPaid = Boolean(state?.event && myPayment?.rsvp_status === 'Going' && !myPayment.is_paid && !myPayment.is_exempt && !isMarkingPaid);
-  const canViewPaymentTracking = isAdmin || Boolean(state?.adminPayments.length);
+  const canViewPaymentTracking = isAdmin || adminPayments.length > 0;
   const [selectedHistoryEventId, setSelectedHistoryEventId] = useState<string | null>(null);
-  const selectedHistory = state?.practiceHistory.find((historyEvent) => historyEvent.event.id === selectedHistoryEventId) ?? state?.practiceHistory[0] ?? null;
+  const selectedHistory = practiceHistory.find((historyEvent) => historyEvent.event.id === selectedHistoryEventId) ?? practiceHistory[0] ?? null;
   const amountLabel = myPayment?.is_exempt ? 'Exempt' : myPayment ? `${myPayment.amount_dkk} kr` : '-';
   const statusLabel = myPayment?.is_exempt ? 'Exempt' : myPayment?.is_paid ? 'Paid' : myPayment?.rsvp_status === 'Going' ? 'Not paid' : 'RSVP Going first';
 
@@ -186,9 +188,9 @@ function PracticePaymentPanel({
             </button>
           )}
           {!myPayment?.is_exempt && !myPayment?.is_paid && myPayment?.rsvp_status !== 'Going' ? <p className="text-sm font-semibold text-navy/70">This button is available after your RSVP is Going.</p> : null}
-          {canViewPaymentTracking ? <PracticePaymentTracking state={state} /> : null}
-          {canViewPaymentTracking && state.practiceHistory.length > 0 ? (
-            <PracticePaymentHistory history={state.practiceHistory} selectedEventId={selectedHistory?.event.id ?? null} onSelect={setSelectedHistoryEventId} />
+          {canViewPaymentTracking ? <PracticePaymentTracking state={state} payments={adminPayments} /> : null}
+          {canViewPaymentTracking && practiceHistory.length > 0 ? (
+            <PracticePaymentHistory history={practiceHistory} selectedEventId={selectedHistory?.event.id ?? null} onSelect={setSelectedHistoryEventId} />
           ) : null}
           {canViewPaymentTracking && selectedHistory ? <PracticePaymentTracking title="Selected Practice tracking" payments={selectedHistory.payments} totals={selectedHistory.totals} /> : null}
         </div>
