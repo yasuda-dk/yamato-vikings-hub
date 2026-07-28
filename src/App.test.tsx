@@ -1120,6 +1120,47 @@ describe('App shell', () => {
     expect(screen.getByLabelText('Payment rule')).toHaveValue('Exempt');
   });
 
+  it('renders Home with a legacy Practice payment response that has no history data', async () => {
+    const legacyPayment = {
+      event: {
+        id: 'event-1',
+        title: 'Friday Football',
+        event_date: '2026-08-07',
+        start_time: '19:00:00',
+        location: 'Yamato Pitch',
+        payment_deadline_date: '2026-08-08',
+      },
+      myPayment: {
+        member_id: takashi.id,
+        first_name: takashi.first_name,
+        amount_dkk: 80,
+        payment_rule: 'Default',
+        is_exempt: false,
+        rsvp_status: 'Going',
+        is_paid: false,
+        paid_at: null,
+      },
+      totals: {
+        expected_total_dkk: 0,
+        paid_total_dkk: 0,
+        unpaid_total_dkk: 0,
+        paid_count: 0,
+        unpaid_count: 0,
+        exempt_count: 0,
+      },
+    } as unknown as PracticePaymentState;
+    const api = {
+      getPracticePayment: async () => legacyPayment,
+      markPracticePaymentPaid: async () => legacyPayment,
+    } as unknown as Phase1Api;
+
+    render(<HomePage api={api} members={[takashi]} selectedMember={takashi} onSwitchProfile={() => undefined} />);
+
+    expect(await screen.findByRole('heading', { name: 'Home' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Payment' })).toBeInTheDocument();
+    expect(screen.queryByText('Practice payment history')).not.toBeInTheDocument();
+  });
+
   it('refreshes Home practice payment when profile payment settings change', async () => {
     let currentMember: MemberProfile = { ...takashi };
     const api = {
