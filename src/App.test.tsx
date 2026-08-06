@@ -45,7 +45,7 @@ function createApi(initialState: SessionState, options: { event?: Partial<EventS
     event_date: '2026-08-07',
     start_time: '19:00:00',
     location: 'Yamato Pitch',
-    rsvp_deadline: '2026-08-06T18:00:00.000Z',
+    rsvp_deadline: '2026-08-07T18:00:00.000Z',
     status: 'Open',
     my_rsvp_status: null,
     going_count: 8,
@@ -847,7 +847,7 @@ describe('App shell', () => {
 
     await user.click(screen.getByRole('link', { name: /events/i }));
     expect(await screen.findByRole('heading', { name: 'Events' })).toBeInTheDocument();
-    expect(screen.getByText(/RSVP Thu, Aug 6/)).toBeInTheDocument();
+    expect(screen.getByText(/RSVP Fri, Aug 7/)).toBeInTheDocument();
     expect(screen.getByText('2 maybe')).toBeInTheDocument();
     expect(screen.getByText('1 not going')).toBeInTheDocument();
     expect(screen.getByText('No RSVP yet')).toBeInTheDocument();
