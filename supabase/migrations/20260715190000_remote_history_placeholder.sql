@@ -1,0 +1,3 @@
+-- This migration version already exists in the linked Supabase project's
+-- migration history, but the corresponding file was missing from the repo.
+-- Keep this no-op file so future local migrations can be pushed in order.
