@@ -1249,10 +1249,10 @@ function ParticipantRsvpLists({ participants }: { participants: EventParticipant
     <div className="mt-4 space-y-2">
       <ParticipantStatusList title="Going" participants={going} />
       <ParticipantStatusList title="Late" participants={late} />
+      <ParticipantStatusList title="Guests" participants={guests} />
       <ParticipantStatusList title="Maybe" participants={maybe} />
       <ParticipantStatusList title="Not going" participants={notGoing} />
       <ParticipantStatusList title="No response" participants={noResponse} />
-      <ParticipantStatusList title="Guests" participants={guests} />
     </div>
   );
 }

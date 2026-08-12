@@ -42,10 +42,10 @@ function createApi(initialState: SessionState, options: { event?: Partial<EventS
     id: 'event-1',
     title: 'Friday Football',
     event_type: 'Football',
-    event_date: '2026-08-07',
+    event_date: '2026-08-20',
     start_time: '19:00:00',
     location: 'Yamato Pitch',
-    rsvp_deadline: '2026-08-07T18:00:00.000Z',
+    rsvp_deadline: '2026-08-19T18:00:00.000Z',
     status: 'Open',
     my_rsvp_status: null,
     going_count: 8,
@@ -847,7 +847,7 @@ describe('App shell', () => {
 
     await user.click(screen.getByRole('link', { name: /events/i }));
     expect(await screen.findByRole('heading', { name: 'Events' })).toBeInTheDocument();
-    expect(screen.getByText(/RSVP Fri, Aug 7/)).toBeInTheDocument();
+    expect(screen.getByText(/RSVP Wed, Aug 19/)).toBeInTheDocument();
     expect(screen.getByText('2 maybe')).toBeInTheDocument();
     expect(screen.getByText('1 not going')).toBeInTheDocument();
     expect(screen.getByText('No RSVP yet')).toBeInTheDocument();
@@ -1515,6 +1515,14 @@ describe('App shell', () => {
     expect(screen.getByText('Ryo')).toBeInTheDocument();
     expect(screen.getAllByText('No response').length).toBeGreaterThanOrEqual(1);
     expect(screen.getByText('Guest A · Guest')).toBeInTheDocument();
+
+    const goingName = screen.getByText('Genki');
+    const lateName = screen.getByText('Takashi · 19:30');
+    const guestName = screen.getByText('Guest A · Guest');
+    const maybeName = screen.getByText('Ken · Late response');
+    expect(goingName.compareDocumentPosition(lateName) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(lateName.compareDocumentPosition(guestName) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(guestName.compareDocumentPosition(maybeName) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   });
 
   it('lets an admin add a guest for team generation', async () => {
