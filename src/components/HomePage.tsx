@@ -226,6 +226,7 @@ function PracticePaymentHistory({
         <SummaryTile label="Paid total" value={`${summary.paidTotal} kr`} />
         <SummaryTile label="Expected total" value={`${summary.expectedTotal} kr`} />
         <SummaryTile label="Avg paid/practice" value={`${summary.averagePaid} kr`} />
+        <SummaryTile label="Avg expected/practice" value={`${summary.averageExpected} kr`} />
         <SummaryTile label="Cost balance" value={`${summary.balance >= 0 ? '+' : ''}${summary.balance} kr`} />
       </div>
       <p className="mt-2 text-xs font-semibold text-navy/60">
@@ -267,6 +268,7 @@ function summarizePracticeHistory(history: PracticePaymentState['practiceHistory
     paidTotal,
     expectedTotal,
     averagePaid: practiceCount ? Math.round(paidTotal / practiceCount) : 0,
+    averageExpected: practiceCount ? Math.round(expectedTotal / practiceCount) : 0,
     balance: paidTotal - totalCost,
   };
 }
