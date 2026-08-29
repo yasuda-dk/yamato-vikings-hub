@@ -1037,8 +1037,8 @@ describe('App shell', () => {
     expect(screen.getByText('Expected total')).toBeInTheDocument();
     expect(screen.getByText('Avg paid/practice')).toBeInTheDocument();
     expect(screen.getByText('Cost balance')).toBeInTheDocument();
-    expect(screen.getByText('-690 kr')).toBeInTheDocument();
-    expect(screen.getByText('Cost basis: 770 kr per Practice · 1 tracked')).toBeInTheDocument();
+    expect(screen.getByText('-611 kr')).toBeInTheDocument();
+    expect(screen.getByText('Cost basis: 17,280 kr / 25 Practices = 691 kr each · 1 tracked')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /Fri, Jul 24.*80\/80 kr/i })).toBeInTheDocument();
 
     await user.click(screen.getByRole('button', { name: /Fri, Jul 24/i }));

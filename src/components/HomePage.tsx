@@ -11,7 +11,9 @@ import type { PracticePaymentState } from '../lib/practice-payments';
 const GENKI_MOBILEPAY_NUMBER = '+4521282316';
 const INSTAGRAM_URL = 'https://www.instagram.com/yamato_vikings?igsh=YTE0Y3J4enpubmNu&utm_source=qr';
 const YOUTUBE_URL = 'https://www.youtube.com/@YamatoVikings';
-const PRACTICE_COST_DKK = 770;
+const PREPAID_PRACTICE_TOTAL_DKK = 17280;
+const PREPAID_PRACTICE_COUNT = 25;
+const PRACTICE_COST_DKK = Math.round(PREPAID_PRACTICE_TOTAL_DKK / PREPAID_PRACTICE_COUNT);
 
 type HomePageProps = {
   api: Phase1Api;
@@ -227,7 +229,7 @@ function PracticePaymentHistory({
         <SummaryTile label="Cost balance" value={`${summary.balance >= 0 ? '+' : ''}${summary.balance} kr`} />
       </div>
       <p className="mt-2 text-xs font-semibold text-navy/60">
-        Cost basis: {PRACTICE_COST_DKK} kr per Practice · {summary.practiceCount} tracked
+        Cost basis: {PREPAID_PRACTICE_TOTAL_DKK.toLocaleString('en-US')} kr / {PREPAID_PRACTICE_COUNT} Practices = {PRACTICE_COST_DKK} kr each · {summary.practiceCount} tracked
       </p>
       <div className="mt-3 divide-y divide-navy/10">
         {history.map((historyEvent) => {
