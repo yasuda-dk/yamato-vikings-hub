@@ -42,10 +42,10 @@ function createApi(initialState: SessionState, options: { event?: Partial<EventS
     id: 'event-1',
     title: 'Friday Football',
     event_type: 'Football',
-    event_date: '2026-08-20',
+    event_date: '2026-09-10',
     start_time: '19:00:00',
     location: 'Yamato Pitch',
-    rsvp_deadline: '2026-08-19T18:00:00.000Z',
+    rsvp_deadline: '2026-09-09T18:00:00.000Z',
     status: 'Open',
     my_rsvp_status: null,
     going_count: 8,
@@ -278,7 +278,7 @@ function createApi(initialState: SessionState, options: { event?: Partial<EventS
         event_date: event.event_date,
         start_time: event.start_time,
         location: event.location,
-        payment_deadline_date: '2026-08-08',
+        payment_deadline_date: '2026-09-11',
       },
       myPayment: selectedMember
         ? {
@@ -847,7 +847,7 @@ describe('App shell', () => {
 
     await user.click(screen.getByRole('link', { name: /events/i }));
     expect(await screen.findByRole('heading', { name: 'Events' })).toBeInTheDocument();
-    expect(screen.getByText(/RSVP Wed, Aug 19/)).toBeInTheDocument();
+    expect(screen.getByText(/RSVP Wed, Sep 9/)).toBeInTheDocument();
     expect(screen.getByText('2 maybe')).toBeInTheDocument();
     expect(screen.getByText('1 not going')).toBeInTheDocument();
     expect(screen.getByText('No RSVP yet')).toBeInTheDocument();
@@ -1033,6 +1033,12 @@ describe('App shell', () => {
     render(<App api={api} />);
 
     expect(await screen.findByText('Practice payment history')).toBeInTheDocument();
+    expect(screen.getByText('Paid total')).toBeInTheDocument();
+    expect(screen.getByText('Expected total')).toBeInTheDocument();
+    expect(screen.getByText('Avg paid/practice')).toBeInTheDocument();
+    expect(screen.getByText('Cost balance')).toBeInTheDocument();
+    expect(screen.getByText('-690 kr')).toBeInTheDocument();
+    expect(screen.getByText('Cost basis: 770 kr per Practice · 1 tracked')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /Fri, Jul 24.*80\/80 kr/i })).toBeInTheDocument();
 
     await user.click(screen.getByRole('button', { name: /Fri, Jul 24/i }));
@@ -1100,7 +1106,7 @@ describe('App shell', () => {
     expect(await screen.findByText('Member updated.')).toBeInTheDocument();
     await user.click(screen.getByRole('link', { name: /home/i }));
 
-    expect(await screen.findByText('35 kr')).toBeInTheDocument();
+    expect(await screen.findAllByText('35 kr')).not.toHaveLength(0);
   });
 
   it('keeps an admin member payment exemption after saving', async () => {
@@ -1125,10 +1131,10 @@ describe('App shell', () => {
       event: {
         id: 'event-1',
         title: 'Friday Football',
-        event_date: '2026-08-07',
+        event_date: '2026-09-10',
         start_time: '19:00:00',
         location: 'Yamato Pitch',
-        payment_deadline_date: '2026-08-08',
+        payment_deadline_date: '2026-09-11',
       },
       myPayment: {
         member_id: takashi.id,
@@ -1168,10 +1174,10 @@ describe('App shell', () => {
         event: {
           id: 'event-1',
           title: 'Friday Football',
-          event_date: '2026-08-07',
+          event_date: '2026-09-10',
           start_time: '19:00:00',
           location: 'Yamato Pitch',
-          payment_deadline_date: '2026-08-08',
+          payment_deadline_date: '2026-09-11',
         },
         myPayment: {
           member_id: currentMember.id,
@@ -1579,7 +1585,7 @@ describe('App shell', () => {
     expect(await screen.findByRole('heading', { name: 'Sunday Football' })).toBeInTheDocument();
 
     await user.click(screen.getByRole('button', { name: 'Duplicate' }));
-    await user.type(screen.getByLabelText('New date'), '2026-08-14');
+    await user.type(screen.getByLabelText('New date'), '2026-09-17');
     await user.click(screen.getByRole('button', { name: 'Duplicate event' }));
 
     expect(await screen.findByRole('heading', { name: 'Sunday Football' })).toBeInTheDocument();
