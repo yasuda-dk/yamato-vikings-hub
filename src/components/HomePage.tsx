@@ -11,6 +11,7 @@ import type { PracticePaymentState } from '../lib/practice-payments';
 const GENKI_MOBILEPAY_NUMBER = '+4521282316';
 const INSTAGRAM_URL = 'https://www.instagram.com/yamato_vikings?igsh=YTE0Y3J4enpubmNu&utm_source=qr';
 const YOUTUBE_URL = 'https://www.youtube.com/@YamatoVikings';
+const PRACTICE_COST_DKK = 770;
 
 type HomePageProps = {
   api: Phase1Api;
@@ -208,6 +209,8 @@ function PracticePaymentHistory({
   selectedEventId: string | null;
   onSelect: (eventId: string) => void;
 }) {
+  const summary = summarizePracticeHistory(history);
+
   return (
     <div className="rounded-md bg-mist p-3">
       <div className="flex items-start justify-between gap-3">
@@ -217,6 +220,15 @@ function PracticePaymentHistory({
         </div>
         <span className="shrink-0 rounded bg-white px-2 py-1 text-xs font-bold text-navy">{history.length}</span>
       </div>
+      <div className="mt-3 grid grid-cols-2 gap-2">
+        <SummaryTile label="Paid total" value={`${summary.paidTotal} kr`} />
+        <SummaryTile label="Expected total" value={`${summary.expectedTotal} kr`} />
+        <SummaryTile label="Avg paid/practice" value={`${summary.averagePaid} kr`} />
+        <SummaryTile label="Cost balance" value={`${summary.balance >= 0 ? '+' : ''}${summary.balance} kr`} />
+      </div>
+      <p className="mt-2 text-xs font-semibold text-navy/60">
+        Cost basis: {PRACTICE_COST_DKK} kr per Practice · {summary.practiceCount} tracked
+      </p>
       <div className="mt-3 divide-y divide-navy/10">
         {history.map((historyEvent) => {
           const isSelected = historyEvent.event.id === selectedEventId;
@@ -238,6 +250,30 @@ function PracticePaymentHistory({
           );
         })}
       </div>
+    </div>
+  );
+}
+
+function summarizePracticeHistory(history: PracticePaymentState['practiceHistory']) {
+  const practiceCount = history.length;
+  const paidTotal = history.reduce((total, historyEvent) => total + historyEvent.totals.paid_total_dkk, 0);
+  const expectedTotal = history.reduce((total, historyEvent) => total + historyEvent.totals.expected_total_dkk, 0);
+  const totalCost = practiceCount * PRACTICE_COST_DKK;
+
+  return {
+    practiceCount,
+    paidTotal,
+    expectedTotal,
+    averagePaid: practiceCount ? Math.round(paidTotal / practiceCount) : 0,
+    balance: paidTotal - totalCost,
+  };
+}
+
+function SummaryTile({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded bg-white px-2 py-2">
+      <p className="text-xs font-semibold text-navy/60">{label}</p>
+      <p className="mt-1 break-words text-sm font-bold text-navy">{value}</p>
     </div>
   );
 }
