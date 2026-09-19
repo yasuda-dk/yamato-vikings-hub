@@ -2,7 +2,7 @@ import { type FormEvent, useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import type { EventCreateInput, EventSummary, EventType } from '../lib/events';
 import { defaultEventSettings, eventTypes, filterUpcomingEvents, formatEventDate, formatRsvpDeadline, isRsvpDeadlinePassed, validateEventInput } from '../lib/events';
-import type { MemberProfile } from '../lib/member-options';
+import { canManageEvents, type MemberProfile } from '../lib/member-options';
 import type { Phase1Api } from '../lib/phase1-api';
 
 type EventsPageProps = {
@@ -33,7 +33,7 @@ export function EventsPage({ api, selectedMember }: EventsPageProps) {
   const [isCreating, setIsCreating] = useState(false);
   const [showCreate, setShowCreate] = useState(false);
   const [draft, setDraft] = useState<EventCreateInput>(defaultCreateEvent);
-  const isAdmin = selectedMember.application_role === 'Admin';
+  const canManageEventControls = canManageEvents(selectedMember);
   const fieldErrors = useMemo(() => validateEventInput(draft), [draft]);
   const createDisabled = isCreating || Object.keys(fieldErrors).length > 0;
 
@@ -97,7 +97,7 @@ export function EventsPage({ api, selectedMember }: EventsPageProps) {
             <p className="text-sm font-semibold text-footballBlue">Sessions</p>
             <h2 className="mt-1 text-xl font-bold text-navy">Events</h2>
           </div>
-          {isAdmin ? (
+          {canManageEventControls ? (
             <button
               type="button"
               onClick={() => setShowCreate((current) => !current)}
@@ -117,7 +117,7 @@ export function EventsPage({ api, selectedMember }: EventsPageProps) {
       ) : null}
       {success ? <div className="rounded-md border border-footballBlue/20 bg-white p-3 text-sm font-semibold text-footballBlue">{success}</div> : null}
 
-      {showCreate && isAdmin ? (
+      {showCreate && canManageEventControls ? (
         <form onSubmit={handleCreate} className="rounded-lg border border-navy/10 bg-white p-4">
           <h3 className="text-base font-bold text-navy">Create event</h3>
           <div className="mt-4 space-y-4">
@@ -167,7 +167,7 @@ export function EventsPage({ api, selectedMember }: EventsPageProps) {
       {loadState === 'ready' && events.length === 0 ? (
         <div className="rounded-lg border border-navy/10 bg-white p-4">
           <h3 className="text-base font-bold text-navy">No events yet</h3>
-          <p className="mt-2 text-sm text-navy/70">{isAdmin ? 'Create the first football session when the date is ready.' : 'An admin will add the next session here.'}</p>
+          <p className="mt-2 text-sm text-navy/70">{canManageEventControls ? 'Create the first football session when the date is ready.' : 'An admin will add the next session here.'}</p>
         </div>
       ) : null}
       {loadState === 'ready' && events.length > 0 ? (

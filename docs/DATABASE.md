@@ -87,8 +87,9 @@ Server-side functions:
 
 Rules enforced in this slice:
 
-- Only Admin profiles can create events.
+- Only Admin profiles and the active Yua event-manager profile can create events.
 - Only Admin profiles can edit events.
+- Yua can cancel events through the same event update path, but the UI does not expose general event editing or duplication to Yua.
 - Event duplication copies the operational event configuration but requires a new date.
 - Approved devices can read events and their own/public RSVP counts.
 - A linked Member can update only their own RSVP through `upsert_my_rsvp`.
@@ -101,7 +102,8 @@ Rules enforced in this slice:
 - Event Guests are scoped to one event and do not create member profiles.
 - Guest names are normalized and must be unique within the event.
 - Guest names cannot duplicate a Member who already has an attendance row for the same event.
-- Only Admin profiles can add Guests, remove unused Guests, or confirm actual attendance.
+- Only Admin profiles and the active Yua event-manager profile can add Guests or remove unused Guests.
+- Only Admin profiles can confirm actual attendance.
 - Guest removal is allowed only before historical activity exists. Guests referenced by attendance status, draft/confirmed teams, voting, awards, or fines are retained.
 - Actual attendance is stored separately from planned RSVP.
 

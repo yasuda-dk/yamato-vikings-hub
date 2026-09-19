@@ -43,15 +43,16 @@ The `setup-team-password` function is protected by `TEAM_SETUP_TOKEN` and can in
 
 The event and RSVP slice keeps direct table writes closed to regular frontend code. The browser calls Edge Functions, and those functions execute database functions with the authenticated Supabase user context.
 
-- `create-event` requires the selected profile to be an Admin.
-- `update-event` and `duplicate-event` require the selected profile to be an Admin.
+- `create-event` requires an Admin profile or the active Yua event-manager profile.
+- `update-event` requires an Admin profile or the active Yua event-manager profile. The UI exposes only event cancellation to Yua.
+- `duplicate-event` requires the selected profile to be an Admin.
 - `events-list` and `event-detail` require current approved device access.
-- `events-list` hides cancelled events from regular Members. Admins can still see cancelled events for management.
+- `events-list` hides cancelled events from regular Members. Admins and the Yua event-manager profile can still see cancelled events for management.
 - `update-rsvp` requires an active linked Member profile.
 - RSVP updates are scoped to `current_member_id()`.
 - Late-arrival and cancelled-event rules are enforced in the database function, not only in the UI.
-- `create-event-guest` requires an Admin profile and keeps Guests event-specific.
-- `delete-event-guest` requires an Admin profile and refuses to remove Guests with historical attendance, team, voting, award, or fine records.
+- `create-event-guest` requires an Admin profile or the active Yua event-manager profile and keeps Guests event-specific.
+- `delete-event-guest` requires an Admin profile or the active Yua event-manager profile and refuses to remove Guests with historical attendance, team, voting, award, or fine records.
 - `update-attendance` and `update-guest-attendance` require an Admin profile.
 - Actual attendance confirmation is separated from RSVP and remains server-enforced.
 - Team generation, voting, and fines remain out of scope for this slice.

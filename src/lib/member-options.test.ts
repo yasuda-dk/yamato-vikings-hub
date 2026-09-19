@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { normalizeFirstName, validateRegistration, type MemberProfile, type MemberRegistrationInput } from './member-options';
+import { canManageEvents, normalizeFirstName, validateRegistration, type MemberProfile, type MemberRegistrationInput } from './member-options';
 
 const baseInput: MemberRegistrationInput = {
   firstName: 'Takashi',
@@ -42,5 +42,12 @@ describe('member profile validation', () => {
 
   it('accepts a valid profile', () => {
     expect(validateRegistration(baseInput, [])).toEqual({});
+  });
+
+  it('allows Admins and active Yua to manage event and guest operations', () => {
+    expect(canManageEvents({ ...existingMember, application_role: 'Admin' })).toBe(true);
+    expect(canManageEvents({ ...existingMember, first_name: ' Yua ' })).toBe(true);
+    expect(canManageEvents({ ...existingMember, first_name: 'Yua', membership_status: 'Inactive' })).toBe(false);
+    expect(canManageEvents(existingMember)).toBe(false);
   });
 });

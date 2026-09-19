@@ -29,7 +29,7 @@ import {
   validateRsvpInput,
   voteTypes,
 } from '../lib/events';
-import { ageGroups, formatFootballLevel, footballLevelLabels, footballLevels, genders, positions, residenceTypes, type MemberProfile, type SecondaryPosition } from '../lib/member-options';
+import { ageGroups, canManageEvents, formatFootballLevel, footballLevelLabels, footballLevels, genders, positions, residenceTypes, type MemberProfile, type SecondaryPosition } from '../lib/member-options';
 import type { Phase1Api } from '../lib/phase1-api';
 
 type EventDetailPageProps = {
@@ -142,6 +142,7 @@ export function EventDetailPage({ api, selectedMember }: EventDetailPageProps) {
   const duplicateError = useMemo(() => (detail ? validateDuplicateInput(duplicateDraft, detail.event.event_date) : null), [detail, duplicateDraft]);
   const saveDisabled = isSaving || Boolean(validationError) || loadState !== 'ready' || detail?.event.status === 'Cancelled';
   const isAdmin = selectedMember.application_role === 'Admin';
+  const canManageEventControls = canManageEvents(selectedMember);
   const isPastRsvpDeadline = detail ? isRsvpDeadlinePassed(detail.event.rsvp_deadline) : false;
   const teamParticipantCount = detail ? detail.participants.filter(isTeamParticipant).length : 0;
   const hasDraftTeams = teams.length > 0 && teams.every((team) => !team.is_confirmed);
@@ -586,27 +587,29 @@ export function EventDetailPage({ api, selectedMember }: EventDetailPageProps) {
             <ParticipantRsvpLists participants={detail.participants} />
           </div>
 
-          {isAdmin ? (
+          {canManageEventControls || isAdmin ? (
             <div className="rounded-lg border border-navy/10 bg-white p-4">
               <div className="flex items-start justify-between gap-3">
                 <div>
-                  <p className="text-sm font-semibold text-footballBlue">Admin</p>
+                  <p className="text-sm font-semibold text-footballBlue">{isAdmin ? 'Admin' : 'Event manager'}</p>
                   <h3 className="mt-1 text-base font-bold text-navy">Event controls</h3>
                 </div>
               </div>
-              <div className="mt-4 grid grid-cols-2 gap-2">
-                <button type="button" onClick={() => setShowEventForm((current) => !current)} className="min-h-11 rounded-md border border-footballBlue px-3 text-sm font-bold text-footballBlue">
-                  {showEventForm ? 'Close edit' : 'Edit event'}
-                </button>
-                <button type="button" onClick={() => setShowDuplicateForm((current) => !current)} className="min-h-11 rounded-md border border-footballBlue px-3 text-sm font-bold text-footballBlue">
-                  {showDuplicateForm ? 'Close copy' : 'Duplicate'}
-                </button>
-              </div>
+              {isAdmin ? (
+                <div className="mt-4 grid grid-cols-2 gap-2">
+                  <button type="button" onClick={() => setShowEventForm((current) => !current)} className="min-h-11 rounded-md border border-footballBlue px-3 text-sm font-bold text-footballBlue">
+                    {showEventForm ? 'Close edit' : 'Edit event'}
+                  </button>
+                  <button type="button" onClick={() => setShowDuplicateForm((current) => !current)} className="min-h-11 rounded-md border border-footballBlue px-3 text-sm font-bold text-footballBlue">
+                    {showDuplicateForm ? 'Close copy' : 'Duplicate'}
+                  </button>
+                </div>
+              ) : null}
               <button
                 type="button"
                 onClick={handleCancelEvent}
                 disabled={detail.event.status === 'Cancelled' || adminBusyId === 'cancel-event'}
-                className="mt-2 min-h-11 w-full rounded-md border border-red-200 bg-white px-3 text-sm font-bold text-red-700 disabled:border-navy/10 disabled:text-navy/45"
+                className={`${isAdmin ? 'mt-2' : 'mt-4'} min-h-11 w-full rounded-md border border-red-200 bg-white px-3 text-sm font-bold text-red-700 disabled:border-navy/10 disabled:text-navy/45`}
               >
                 {detail.event.status === 'Cancelled' ? 'Event cancelled' : adminBusyId === 'cancel-event' ? 'Cancelling...' : 'Cancel event'}
               </button>
@@ -633,11 +636,11 @@ export function EventDetailPage({ api, selectedMember }: EventDetailPageProps) {
             </div>
           ) : null}
 
-          {isAdmin ? (
+          {canManageEventControls ? (
             <div className="rounded-lg border border-navy/10 bg-white p-4">
               <div className="flex items-start justify-between gap-3">
                 <div>
-                  <p className="text-sm font-semibold text-footballBlue">Admin</p>
+                  <p className="text-sm font-semibold text-footballBlue">{isAdmin ? 'Admin' : 'Event manager'}</p>
                   <h3 className="mt-1 text-base font-bold text-navy">Guests</h3>
                   <p className="mt-1 text-sm text-navy/70">Going members and guests are used for team generation.</p>
                 </div>

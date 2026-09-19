@@ -36,16 +36,22 @@ const genki: MemberProfile = {
   first_name: 'Genki',
 };
 
+const yua: MemberProfile = {
+  ...takashi,
+  id: 'member-yua',
+  first_name: 'Yua',
+};
+
 function createApi(initialState: SessionState, options: { event?: Partial<EventSummary> } = {}): Phase1Api {
   let state = initialState;
   let event: EventSummary = {
     id: 'event-1',
     title: 'Friday Football',
     event_type: 'Football',
-    event_date: '2026-09-10',
+    event_date: '2026-10-08',
     start_time: '19:00:00',
     location: 'Yamato Pitch',
-    rsvp_deadline: '2026-09-09T18:00:00.000Z',
+    rsvp_deadline: '2026-10-07T18:00:00.000Z',
     status: 'Open',
     my_rsvp_status: null,
     going_count: 8,
@@ -278,7 +284,7 @@ function createApi(initialState: SessionState, options: { event?: Partial<EventS
         event_date: event.event_date,
         start_time: event.start_time,
         location: event.location,
-        payment_deadline_date: '2026-09-11',
+        payment_deadline_date: '2026-10-09',
       },
       myPayment: selectedMember
         ? {
@@ -847,7 +853,7 @@ describe('App shell', () => {
 
     await user.click(screen.getByRole('link', { name: /events/i }));
     expect(await screen.findByRole('heading', { name: 'Events' })).toBeInTheDocument();
-    expect(screen.getByText(/RSVP Wed, Sep 9/)).toBeInTheDocument();
+    expect(screen.getByText(/RSVP Wed, Oct 7/)).toBeInTheDocument();
     expect(screen.getByText('2 maybe')).toBeInTheDocument();
     expect(screen.getByText('1 not going')).toBeInTheDocument();
     expect(screen.getByText('No RSVP yet')).toBeInTheDocument();
@@ -882,6 +888,24 @@ describe('App shell', () => {
 
     expect(await screen.findByRole('link', { name: /Friday Football/i })).toBeInTheDocument();
     expect(screen.getByText('Cancelled')).toBeInTheDocument();
+  });
+
+  it('allows Yua to create events and manage event guests without full Admin controls', async () => {
+    const user = userEvent.setup();
+    render(<App api={createApi({ hasAccess: true, selectedMember: yua, members: [yua] })} />);
+
+    await user.click(await screen.findByRole('link', { name: /events/i }));
+
+    expect(await screen.findByRole('button', { name: 'Create' })).toBeInTheDocument();
+
+    await user.click(await screen.findByRole('link', { name: /Friday Football/i }));
+
+    expect((await screen.findAllByText('Event manager')).length).toBeGreaterThanOrEqual(1);
+    expect(screen.getByRole('button', { name: 'Cancel event' })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Edit event' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Duplicate' })).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Add guest' })).toBeInTheDocument();
+    expect(screen.queryByText('No draft teams yet.')).not.toBeInTheDocument();
   });
 
   it('requires the Takashi password before selecting Takashi', async () => {
@@ -1133,10 +1157,10 @@ describe('App shell', () => {
       event: {
         id: 'event-1',
         title: 'Friday Football',
-        event_date: '2026-09-10',
+        event_date: '2026-10-08',
         start_time: '19:00:00',
         location: 'Yamato Pitch',
-        payment_deadline_date: '2026-09-11',
+        payment_deadline_date: '2026-10-09',
       },
       myPayment: {
         member_id: takashi.id,
@@ -1176,10 +1200,10 @@ describe('App shell', () => {
         event: {
           id: 'event-1',
           title: 'Friday Football',
-          event_date: '2026-09-10',
+          event_date: '2026-10-08',
           start_time: '19:00:00',
           location: 'Yamato Pitch',
-          payment_deadline_date: '2026-09-11',
+          payment_deadline_date: '2026-10-09',
         },
         myPayment: {
           member_id: currentMember.id,
@@ -1587,7 +1611,7 @@ describe('App shell', () => {
     expect(await screen.findByRole('heading', { name: 'Sunday Football' })).toBeInTheDocument();
 
     await user.click(screen.getByRole('button', { name: 'Duplicate' }));
-    await user.type(screen.getByLabelText('New date'), '2026-09-17');
+    await user.type(screen.getByLabelText('New date'), '2026-10-15');
     await user.click(screen.getByRole('button', { name: 'Duplicate event' }));
 
     expect(await screen.findByRole('heading', { name: 'Sunday Football' })).toBeInTheDocument();

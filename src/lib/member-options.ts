@@ -67,6 +67,10 @@ export function normalizeFirstName(value: string) {
   return value.trim().replace(/\s+/g, ' ').toLowerCase();
 }
 
+export function canManageEvents(member: MemberProfile | null | undefined) {
+  return member?.application_role === 'Admin' || (member?.membership_status === 'Active' && normalizeFirstName(member.first_name) === 'yua');
+}
+
 export function isAgeGroup(value: string): value is AgeGroup {
   return ageGroups.includes(value as AgeGroup);
 }
