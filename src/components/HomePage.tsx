@@ -7,13 +7,11 @@ import type { AgeGroup, Gender, MemberProfile, Position, ResidenceType } from '.
 import { ageGroups, genders, positions, residenceTypes } from '../lib/member-options';
 import type { Phase1Api } from '../lib/phase1-api';
 import type { PracticePaymentState } from '../lib/practice-payments';
+import { getPracticeVenueCost, STANDARD_PRACTICE_COST_DKK } from '../lib/practice-payments';
 
 const GENKI_MOBILEPAY_NUMBER = '+4521282316';
 const INSTAGRAM_URL = 'https://www.instagram.com/yamato_vikings?igsh=YTE0Y3J4enpubmNu&utm_source=qr';
 const YOUTUBE_URL = 'https://www.youtube.com/@YamatoVikings';
-const PREPAID_PRACTICE_TOTAL_DKK = 17280;
-const PREPAID_PRACTICE_COUNT = 25;
-const PRACTICE_COST_DKK = Math.round(PREPAID_PRACTICE_TOTAL_DKK / PREPAID_PRACTICE_COUNT);
 
 type HomePageProps = {
   api: Phase1Api;
@@ -231,7 +229,7 @@ function PracticePaymentHistory({
         <SummaryTile label="Expected cost balance" value={`${summary.expectedBalance >= 0 ? '+' : ''}${summary.expectedBalance} kr`} />
       </div>
       <p className="mt-2 text-xs font-semibold text-navy/60">
-        Cost basis: {PREPAID_PRACTICE_TOTAL_DKK.toLocaleString('en-US')} kr / {PREPAID_PRACTICE_COUNT} Practices = {PRACTICE_COST_DKK} kr each · {summary.practiceCount} tracked
+        Pitch costs: 7 aside half indoor {STANDARD_PRACTICE_COST_DKK} kr · 4 vs 4 400 kr. Total cost: {summary.totalCost} kr · {summary.practiceCount} tracked
       </p>
       <div className="mt-3 divide-y divide-navy/10">
         {history.map((historyEvent) => {
@@ -245,6 +243,7 @@ function PracticePaymentHistory({
             >
               <span className="min-w-0">
                 <span className="block text-sm font-bold">{formatPracticeDate(historyEvent.event.event_date, historyEvent.event.start_time)}</span>
+                <span className="block text-xs font-semibold text-navy/70">{historyEvent.event.pitch_type ?? '7 aside half indoor'} · {getPracticeVenueCost(historyEvent.event.pitch_type)} kr</span>
                 <span className="block text-xs font-semibold text-navy/60">{historyEvent.totals.paid_count} paid · {historyEvent.totals.unpaid_count} not paid</span>
               </span>
               <span className="shrink-0 rounded bg-white px-2 py-1 text-xs font-bold text-navy">
@@ -262,10 +261,11 @@ function summarizePracticeHistory(history: PracticePaymentState['practiceHistory
   const practiceCount = history.length;
   const paidTotal = history.reduce((total, historyEvent) => total + historyEvent.totals.paid_total_dkk, 0);
   const expectedTotal = history.reduce((total, historyEvent) => total + historyEvent.totals.expected_total_dkk, 0);
-  const totalCost = practiceCount * PRACTICE_COST_DKK;
+  const totalCost = history.reduce((total, historyEvent) => total + getPracticeVenueCost(historyEvent.event.pitch_type), 0);
 
   return {
     practiceCount,
+    totalCost,
     paidTotal,
     expectedTotal,
     averagePaid: practiceCount ? Math.round(paidTotal / practiceCount) : 0,

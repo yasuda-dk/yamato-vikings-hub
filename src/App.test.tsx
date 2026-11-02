@@ -1081,7 +1081,7 @@ describe('App shell', () => {
     expect(screen.getByText('Paid cost balance')).toBeInTheDocument();
     expect(screen.getByText('Expected cost balance')).toBeInTheDocument();
     expect(screen.getAllByText('-611 kr')).toHaveLength(2);
-    expect(screen.getByText('Cost basis: 17,280 kr / 25 Practices = 691 kr each · 1 tracked')).toBeInTheDocument();
+    expect(screen.getByText('Pitch costs: 7 aside half indoor 691 kr · 4 vs 4 400 kr. Total cost: 691 kr · 1 tracked')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /Fri, Jul 24.*80\/80 kr/i })).toBeInTheDocument();
 
     await user.click(screen.getByRole('button', { name: /Fri, Jul 24/i }));
@@ -1089,6 +1089,29 @@ describe('App shell', () => {
     expect(screen.getByText('Selected Practice tracking')).toBeInTheDocument();
     expect(screen.getAllByText('Genki').length).toBeGreaterThanOrEqual(2);
     expect(screen.getAllByText('Paid').length).toBeGreaterThanOrEqual(1);
+  });
+
+  it('uses each historical pitch cost without changing member payments', async () => {
+    const api = createApi({ hasAccess: true, selectedMember: genki, members: [genki] });
+    await api.updateRsvp({ eventId: 'event-1', rsvpStatus: 'Going', isArrivingLate: false, expectedArrivalTime: '' });
+    const paymentState = await api.getPracticePayment();
+    const history = paymentState.practiceHistory[0];
+    api.getPracticePayment = async () => ({
+      ...paymentState,
+      practiceHistory: [
+        ...['2026-09-10', '2026-09-17', '2026-09-24', '2026-10-01'].map((date) => ({
+          ...history,
+          event: { ...history.event, id: date, event_date: date, pitch_type: '4 vs 4' as const },
+        })),
+        history,
+      ],
+    });
+    render(<App api={api} />);
+
+    expect(await screen.findByText(/Total cost: 2291 kr/)).toBeInTheDocument();
+    expect(screen.getAllByText('-1891 kr')).toHaveLength(2);
+    expect(screen.getAllByText('4 vs 4 · 400 kr')).toHaveLength(4);
+    expect(screen.getAllByRole('button', { name: /80\/80 kr/i })).toHaveLength(5);
   });
 
   it('does not show past Practice payment history to regular members', async () => {

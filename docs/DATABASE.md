@@ -94,6 +94,7 @@ Rules enforced in this slice:
 - Event duplication copies the operational event configuration but requires a new date.
 - Football events store a controlled pitch value. Existing and default events use `7 aside half indoor`; `4 vs 4` is shown with a 400 kr pitch cost.
 - Event lists expose a `guest_count` so the app can show expected participants as `Going + Guests`.
+- Practice payment history includes the event's `pitch_type`. Cost balances sum each event's venue cost: 400 kr for `4 vs 4`, otherwise the existing rounded prepaid cost of 691 kr (17,280 kr / 25). Member charges and payment records are unchanged by pitch corrections. Older API responses without a pitch use the standard rate.
 - Approved devices can read events and their own/public RSVP counts.
 - A linked Member can update only their own RSVP through `upsert_my_rsvp`.
 - Late arrival is valid only when RSVP is `Going`.

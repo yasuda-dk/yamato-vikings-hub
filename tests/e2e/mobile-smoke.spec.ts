@@ -44,6 +44,12 @@ for (const width of [320, 390, 430]) {
     await page.getByRole('button', { name: 'Continue' }).click();
     await page.getByLabel('First name').fill('Admin');
     await page.getByRole('button', { name: 'Create profile' }).click();
+    await expect(page.getByText('4 vs 4 · 400 kr', { exact: true })).toBeVisible();
+    await expect(page.getByText(/Total cost: 400 kr/)).toBeVisible();
+    await expect(page.getByText('-320 kr', { exact: true })).toHaveCount(2);
+    await page.getByText('Practice payment history', { exact: true }).scrollIntoViewIfNeeded();
+    await page.screenshot({ path: testInfo.outputPath(`practice-history-${width}.png`), fullPage: true });
+    expect(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth)).toBe(false);
     await page.getByRole('link', { name: /events/i }).click();
     await page.getByRole('link', { name: /Friday Football/i }).click();
     await expect(page.getByText('7 aside half indoor', { exact: true })).toBeVisible();

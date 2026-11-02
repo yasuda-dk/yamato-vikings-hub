@@ -1,9 +1,18 @@
+import type { PracticePitchType } from './events';
+
+export const STANDARD_PRACTICE_COST_DKK = Math.round(17280 / 25);
+
+export function getPracticeVenueCost(pitchType?: PracticePitchType) {
+  return pitchType === '4 vs 4' ? 400 : STANDARD_PRACTICE_COST_DKK;
+}
+
 export type PracticePaymentEvent = {
   id: string;
   title: string;
   event_date: string;
   start_time: string;
   location: string;
+  pitch_type?: PracticePitchType;
   payment_deadline_date: string;
 };
 

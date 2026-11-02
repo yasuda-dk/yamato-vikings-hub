@@ -385,6 +385,7 @@ function buildDemoPracticePayment(): PracticePaymentState {
           {
             event: {
               id: 'demo-practice-history-1',
+              pitch_type: '4 vs 4',
               title: 'Practice',
               event_date: '2026-07-24',
               start_time: '19:00:00',
