@@ -5,6 +5,7 @@ import {
   filterUpcomingEvents,
   formatEventDate,
   formatRsvpDeadline,
+  getPracticePitchCost,
   isRsvpDeadlinePassed,
   isUpcomingEventDate,
   validateDuplicateInput,
@@ -21,6 +22,7 @@ const validEvent: EventCreateInput = {
   eventDate: '2026-07-03',
   startTime: '19:00',
   location: 'Yamato Pitch',
+  pitchType: '7 aside half indoor',
   rsvpDeadline: '2026-07-02T18:00',
   numberOfTeams: 2,
   notes: '',
@@ -30,6 +32,11 @@ const validEvent: EventCreateInput = {
 };
 
 describe('event helpers', () => {
+  it('offers the controlled practice pitches and the 4 vs 4 cost', () => {
+    expect(validateEventInput({ ...validEvent, pitchType: '4 vs 4' })).toEqual({});
+    expect(getPracticePitchCost('4 vs 4')).toBe(400);
+  });
+
   it('uses sensible defaults by event type', () => {
     expect(defaultEventSettings('Football')).toEqual({ enableTeamGeneration: true, enableVoting: true });
     expect(defaultEventSettings('Social')).toEqual({ enableTeamGeneration: false, enableVoting: false });
@@ -88,10 +95,12 @@ describe('event helpers', () => {
       event_date: '2026-07-02',
       start_time: '19:00:00',
       location: 'Hafnia Hallen',
+      pitch_type: '7 aside half indoor',
       rsvp_deadline: '2026-07-02T18:00:00Z',
       status: 'Open',
       my_rsvp_status: null,
       going_count: 0,
+      guest_count: 0,
       maybe_count: 0,
       not_going_count: 0,
       late_count: 0,

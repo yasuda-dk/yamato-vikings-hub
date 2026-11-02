@@ -69,6 +69,7 @@ Controlled values:
 
 - Event type: `Football`, `Tournament`, `Social`, `Other`
 - Event status: `Draft`, `Open`, `Attendance confirmed`, `Teams confirmed`, `Voting open`, `Completed`, `Cancelled`
+- Football pitch: `7 aside half indoor`, `4 vs 4`
 - RSVP status: `Going`, `Maybe`, `Not going`
 - Actual status: `Not confirmed`, `Attended`, `Absent`
 
@@ -91,6 +92,8 @@ Rules enforced in this slice:
 - Only Admin profiles can edit events.
 - Yua can cancel events through the same event update path, but the UI does not expose general event editing or duplication to Yua.
 - Event duplication copies the operational event configuration but requires a new date.
+- Football events store a controlled pitch value. Existing and default events use `7 aside half indoor`; `4 vs 4` is shown with a 400 kr pitch cost.
+- Event lists expose a `guest_count` so the app can show expected participants as `Going + Guests`.
 - Approved devices can read events and their own/public RSVP counts.
 - A linked Member can update only their own RSVP through `upsert_my_rsvp`.
 - Late arrival is valid only when RSVP is `Going`.

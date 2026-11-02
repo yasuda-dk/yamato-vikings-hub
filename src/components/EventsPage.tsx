@@ -1,7 +1,7 @@
 import { type FormEvent, useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import type { EventCreateInput, EventSummary, EventType } from '../lib/events';
-import { defaultEventSettings, eventTypes, filterUpcomingEvents, formatEventDate, formatRsvpDeadline, isRsvpDeadlinePassed, validateEventInput } from '../lib/events';
+import { defaultEventSettings, eventTypes, filterUpcomingEvents, formatEventDate, formatRsvpDeadline, getPracticePitchCost, isRsvpDeadlinePassed, practicePitchTypes, validateEventInput } from '../lib/events';
 import { canManageEvents, type MemberProfile } from '../lib/member-options';
 import type { Phase1Api } from '../lib/phase1-api';
 
@@ -16,6 +16,7 @@ const defaultCreateEvent: EventCreateInput = {
   eventDate: '',
   startTime: '19:00',
   location: '',
+  pitchType: '7 aside half indoor',
   rsvpDeadline: '',
   numberOfTeams: 2,
   notes: '',
@@ -126,6 +127,16 @@ export function EventsPage({ api, selectedMember }: EventsPageProps) {
             <TextInput label="Date" type="date" value={draft.eventDate} error={fieldErrors.eventDate} onChange={(eventDate) => setDraft((current) => ({ ...current, eventDate }))} />
             <TextInput label="Start time" type="time" value={draft.startTime} error={fieldErrors.startTime} onChange={(startTime) => setDraft((current) => ({ ...current, startTime }))} />
             <TextInput label="Location" value={draft.location} error={fieldErrors.location} onChange={(location) => setDraft((current) => ({ ...current, location }))} />
+            {draft.eventType === 'Football' ? (
+              <Select
+                label="Pitch"
+                value={draft.pitchType}
+                options={practicePitchTypes}
+                error={fieldErrors.pitchType}
+                getOptionLabel={formatPitchOption}
+                onChange={(pitchType) => setDraft((current) => ({ ...current, pitchType }))}
+              />
+            ) : null}
             <TextInput
               label="RSVP deadline"
               type="datetime-local"
@@ -183,6 +194,7 @@ export function EventsPage({ api, selectedMember }: EventsPageProps) {
 
 function EventRow({ event }: { event: EventSummary }) {
   const isPastRsvpDeadline = isRsvpDeadlinePassed(event.rsvp_deadline);
+  const expectedCount = event.going_count + event.guest_count;
 
   return (
     <Link to={`/events/${event.id}`} className="block border-b border-navy/10 px-4 py-3 last:border-b-0 focus:outline-none focus:ring-2 focus:ring-footballBlue">
@@ -191,12 +203,15 @@ function EventRow({ event }: { event: EventSummary }) {
           <h3 className="break-words text-base font-bold text-navy">{event.title}</h3>
           <p className="mt-1 text-sm font-semibold text-navy/70">{formatEventDate(event.event_date, event.start_time)}</p>
           <p className="mt-1 text-sm text-navy/60">{event.location}</p>
+          {event.event_type === 'Football' ? <p className="mt-1 text-sm text-navy/60">Pitch {event.pitch_type}</p> : null}
           <p className="mt-1 text-sm text-navy/60">RSVP {formatRsvpDeadline(event.rsvp_deadline)}</p>
         </div>
         <span className="shrink-0 rounded-md bg-mist px-2 py-1 text-xs font-bold text-navy">{event.status}</span>
       </div>
       <div className="mt-3 flex flex-wrap gap-2 text-xs font-bold">
+        <span className="rounded-md bg-footballBlue px-2 py-1 text-white">{expectedCount} expected</span>
         <span className="rounded-md bg-footballBlue/10 px-2 py-1 text-footballBlue">{event.going_count} going</span>
+        <span className="rounded-md bg-mist px-2 py-1 text-navy">{event.guest_count} guests</span>
         <span className="rounded-md bg-mist px-2 py-1 text-navy">{event.late_count} late</span>
         <span className="rounded-md bg-mist px-2 py-1 text-navy">{event.maybe_count} maybe</span>
         <span className="rounded-md bg-mist px-2 py-1 text-navy">{event.not_going_count} not going</span>
@@ -247,12 +262,14 @@ function Select<T extends string>({
   options,
   onChange,
   error,
+  getOptionLabel = (option) => option,
 }: {
   label: string;
   value: string;
   options: readonly T[];
   onChange: (value: T) => void;
   error?: string;
+  getOptionLabel?: (value: T) => string;
 }) {
   return (
     <label className="block text-sm font-semibold text-navy">
@@ -260,13 +277,18 @@ function Select<T extends string>({
       <select aria-label={label} value={value} onChange={(event) => onChange(event.target.value as T)} className="mt-2 min-h-12 w-full rounded-md border border-navy/20 px-3 text-base">
         {options.map((option) => (
           <option key={option} value={option}>
-            {option}
+            {getOptionLabel(option)}
           </option>
         ))}
       </select>
       {error ? <span className="mt-1 block text-sm text-red-700">{error}</span> : null}
     </label>
   );
+}
+
+function formatPitchOption(pitchType: (typeof practicePitchTypes)[number]) {
+  const cost = getPracticePitchCost(pitchType);
+  return cost > 0 ? `${pitchType} (${cost} kr)` : pitchType;
 }
 
 function Toggle({ label, checked, onChange }: { label: string; checked: boolean; onChange: (checked: boolean) => void }) {

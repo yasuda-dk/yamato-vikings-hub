@@ -20,12 +20,14 @@ import {
 
 export const eventTypes = ['Football', 'Tournament', 'Social', 'Other'] as const;
 export const eventStatuses = ['Draft', 'Open', 'Attendance confirmed', 'Teams confirmed', 'Voting open', 'Completed', 'Cancelled'] as const;
+export const practicePitchTypes = ['7 aside half indoor', '4 vs 4'] as const;
 export const rsvpStatuses = ['Going', 'Maybe', 'Not going'] as const;
 export const actualStatuses = ['Not confirmed', 'Attended', 'Absent'] as const;
 export const voteTypes = ['MVP', 'Worst'] as const;
 
 export type EventType = (typeof eventTypes)[number];
 export type EventStatus = (typeof eventStatuses)[number];
+export type PracticePitchType = (typeof practicePitchTypes)[number];
 export type RsvpStatus = (typeof rsvpStatuses)[number];
 export type ActualStatus = (typeof actualStatuses)[number];
 export type VoteType = (typeof voteTypes)[number];
@@ -37,10 +39,12 @@ export type EventSummary = {
   event_date: string;
   start_time: string;
   location: string;
+  pitch_type: PracticePitchType;
   rsvp_deadline: string;
   status: EventStatus;
   my_rsvp_status: RsvpStatus | null;
   going_count: number;
+  guest_count: number;
   maybe_count: number;
   not_going_count: number;
   late_count: number;
@@ -55,6 +59,7 @@ export type EventRecord = {
   event_date: string;
   start_time: string;
   location: string;
+  pitch_type: PracticePitchType;
   rsvp_deadline: string;
   number_of_teams: number;
   notes: string | null;
@@ -195,6 +200,7 @@ export type EventCreateInput = {
   eventDate: string;
   startTime: string;
   location: string;
+  pitchType: PracticePitchType;
   rsvpDeadline: string;
   numberOfTeams: number;
   notes: string;
@@ -304,11 +310,16 @@ export function defaultEventSettings(eventType: EventType) {
   return { enableTeamGeneration: true, enableVoting: true };
 }
 
+export function getPracticePitchCost(pitchType: PracticePitchType) {
+  return pitchType === '4 vs 4' ? 400 : 0;
+}
+
 export function validateEventInput(input: EventCreateInput) {
   const errors: Partial<Record<keyof EventCreateInput, string>> = {};
 
   if (!input.title.trim()) errors.title = 'Title is required.';
   if (!input.location.trim()) errors.location = 'Location is required.';
+  if (!practicePitchTypes.includes(input.pitchType)) errors.pitchType = 'Select a pitch.';
   if (!input.eventDate) errors.eventDate = 'Date is required.';
   if (!input.startTime) errors.startTime = 'Start time is required.';
   if (!input.rsvpDeadline) errors.rsvpDeadline = 'RSVP deadline is required.';
@@ -403,6 +414,7 @@ export function eventRecordToInput(event: EventRecord): EventCreateInput {
     eventDate: event.event_date,
     startTime: event.start_time.slice(0, 5),
     location: event.location,
+    pitchType: event.pitch_type,
     rsvpDeadline: event.rsvp_deadline.slice(0, 16),
     numberOfTeams: event.number_of_teams,
     notes: event.notes ?? '',

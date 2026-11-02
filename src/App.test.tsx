@@ -1,6 +1,6 @@
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { App } from './App';
 import { HomePage } from './components/HomePage';
 import type { ActualStatus, EventDetail, EventGuest, EventSummary, EventTeam, EventVotingState, RsvpInput, VoteInput, VotingResult } from './lib/events';
@@ -51,10 +51,12 @@ function createApi(initialState: SessionState, options: { event?: Partial<EventS
     event_date: '2026-10-08',
     start_time: '19:00:00',
     location: 'Yamato Pitch',
+    pitch_type: '7 aside half indoor',
     rsvp_deadline: '2026-10-07T18:00:00.000Z',
     status: 'Open',
     my_rsvp_status: null,
     going_count: 8,
+    guest_count: 0,
     maybe_count: 2,
     not_going_count: 1,
     late_count: 1,
@@ -435,6 +437,7 @@ function createApi(initialState: SessionState, options: { event?: Partial<EventS
         event_date: input.eventDate,
         start_time: input.startTime,
         location: input.location,
+        pitch_type: input.pitchType,
         rsvp_deadline: input.rsvpDeadline,
         status: input.status,
       };
@@ -448,6 +451,7 @@ function createApi(initialState: SessionState, options: { event?: Partial<EventS
         event_date: input.eventDate,
         my_rsvp_status: null,
         going_count: 0,
+        guest_count: 0,
         maybe_count: 0,
         not_going_count: 0,
         late_count: 0,
@@ -484,10 +488,14 @@ function createApi(initialState: SessionState, options: { event?: Partial<EventS
         created_by: null,
         created_at: '2026-06-30T00:00:00.000Z',
       };
+      event = { ...event, guest_count: 1 };
       return guest.id;
     },
     deleteEventGuest: async (input) => {
-      if (guest?.id === input.eventGuestId) guest = null;
+      if (guest?.id === input.eventGuestId) {
+        guest = null;
+        event = { ...event, guest_count: 0 };
+      }
     },
     updateAttendance: async (input) => {
       actualStatus = input.actualStatus;
@@ -835,7 +843,13 @@ function createApi(initialState: SessionState, options: { event?: Partial<EventS
 
 describe('App shell', () => {
   beforeEach(() => {
+    vi.useFakeTimers({ toFake: ['Date'] });
+    vi.setSystemTime(new Date('2026-10-01T12:00:00Z'));
     window.location.hash = '#/';
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
   });
 
   it('renders the team-password gate before device approval', async () => {
@@ -854,6 +868,7 @@ describe('App shell', () => {
     await user.click(screen.getByRole('link', { name: /events/i }));
     expect(await screen.findByRole('heading', { name: 'Events' })).toBeInTheDocument();
     expect(screen.getByText(/RSVP Wed, Oct 7/)).toBeInTheDocument();
+    expect(screen.getByText('8 expected')).toBeInTheDocument();
     expect(screen.getByText('2 maybe')).toBeInTheDocument();
     expect(screen.getByText('1 not going')).toBeInTheDocument();
     expect(screen.getByText('No RSVP yet')).toBeInTheDocument();
@@ -974,10 +989,12 @@ describe('App shell', () => {
         event_date: '2026-01-08',
         start_time: '19:00:00',
         location: 'Hafnia Hallen',
+        pitch_type: '7 aside half indoor',
         rsvp_deadline: '2026-01-07T18:00:00.000Z',
         status: 'Completed',
         my_rsvp_status: null,
         going_count: 10,
+        guest_count: 0,
         maybe_count: 0,
         not_going_count: 1,
         late_count: 2,
@@ -1563,6 +1580,8 @@ describe('App shell', () => {
 
     await user.click(await screen.findByRole('link', { name: /events/i }));
     await user.click(await screen.findByRole('link', { name: /Friday Football/i }));
+    expect(screen.getAllByText('8').length).toBeGreaterThanOrEqual(1);
+    expect(screen.getByText('Expected')).toBeInTheDocument();
     expect(await screen.findByRole('heading', { name: 'Guests' })).toBeInTheDocument();
 
     await user.click(screen.getByRole('button', { name: 'Add guest' }));
@@ -1570,6 +1589,7 @@ describe('App shell', () => {
     await user.click(screen.getByRole('button', { name: 'Add guest' }));
 
     expect(await screen.findByText('Guest added.')).toBeInTheDocument();
+    expect(screen.getByText('Expected').parentElement).toHaveTextContent('9Expected');
     expect(screen.getByText('GUEST')).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Attended' })).not.toBeInTheDocument();
   });
@@ -1602,13 +1622,16 @@ describe('App shell', () => {
 
     await user.click(await screen.findByRole('link', { name: /events/i }));
     await user.click(await screen.findByRole('link', { name: /Friday Football/i }));
+    expect(screen.getByText('7 aside half indoor')).toBeInTheDocument();
     await user.click(await screen.findByRole('button', { name: 'Edit event' }));
     await user.clear(screen.getByLabelText('Title'));
     await user.type(screen.getByLabelText('Title'), 'Sunday Football');
+    await user.selectOptions(screen.getByLabelText('Pitch'), '4 vs 4');
     await user.click(screen.getByRole('button', { name: 'Save event' }));
 
     expect(await screen.findByText('Event updated.')).toBeInTheDocument();
     expect(await screen.findByRole('heading', { name: 'Sunday Football' })).toBeInTheDocument();
+    expect(screen.getByText('4 vs 4 (400 kr)')).toBeInTheDocument();
 
     await user.click(screen.getByRole('button', { name: 'Duplicate' }));
     await user.type(screen.getByLabelText('New date'), '2026-10-15');

@@ -21,7 +21,9 @@ import {
   eventTypes,
   formatEventDate,
   formatRsvpDeadline,
+  getPracticePitchCost,
   isRsvpDeadlinePassed,
+  practicePitchTypes,
   rsvpStatuses,
   validateDuplicateInput,
   validateEventGuestInput,
@@ -145,6 +147,7 @@ export function EventDetailPage({ api, selectedMember }: EventDetailPageProps) {
   const canManageEventControls = canManageEvents(selectedMember);
   const isPastRsvpDeadline = detail ? isRsvpDeadlinePassed(detail.event.rsvp_deadline) : false;
   const teamParticipantCount = detail ? detail.participants.filter(isTeamParticipant).length : 0;
+  const expectedParticipantCount = detail ? detail.counts.going + detail.counts.guests : 0;
   const hasDraftTeams = teams.length > 0 && teams.every((team) => !team.is_confirmed);
   const canGenerateDraft = teams.length === 0 || hasDraftTeams;
   const hasUnlockedDraftParticipants = teams.some((team) => team.participants.some((participant) => !participant.is_locked));
@@ -560,6 +563,7 @@ export function EventDetailPage({ api, selectedMember }: EventDetailPageProps) {
             <div className="mt-4 grid gap-2">
               <InfoRow label="When" value={formatEventDate(detail.event.event_date, detail.event.start_time)} />
               <InfoRow label="Where" value={detail.event.location} />
+              {detail.event.event_type === 'Football' ? <InfoRow label="Pitch" value={formatPitchOption(detail.event.pitch_type)} /> : null}
               <InfoRow label="RSVP by" value={formatRsvpDeadline(detail.event.rsvp_deadline)} />
               <InfoRow label="Submitting as" value={selectedMember.first_name} />
             </div>
@@ -576,13 +580,14 @@ export function EventDetailPage({ api, selectedMember }: EventDetailPageProps) {
           <div className="rounded-lg border border-navy/10 bg-white p-4">
             <h3 className="text-base font-bold text-navy">Participants</h3>
             <div className="mt-3 grid grid-cols-2 gap-2">
+              <Count label="Expected" value={expectedParticipantCount} highlight />
               <Count label="Going" value={detail.counts.going} />
+              <Count label="Guests" value={detail.counts.guests} />
               <Count label="Late" value={detail.counts.late} />
               <Count label="Maybe" value={detail.counts.maybe} />
               <Count label="Not going" value={detail.counts.notGoing} />
               <Count label="No response" value={detail.counts.noResponse} />
               <Count label="Attended" value={detail.counts.attended} />
-              <Count label="Guests" value={detail.counts.guests} />
             </div>
             <ParticipantRsvpLists participants={detail.participants} />
           </div>
@@ -1231,11 +1236,11 @@ function InfoRow({ label, value }: { label: string; value: string }) {
   );
 }
 
-function Count({ label, value }: { label: string; value: number }) {
+function Count({ label, value, highlight = false }: { label: string; value: number; highlight?: boolean }) {
   return (
-    <div className="rounded-md bg-mist px-3 py-2">
-      <p className="text-xl font-bold text-navy">{value}</p>
-      <p className="text-xs font-semibold text-navy/65">{label}</p>
+    <div className={`rounded-md px-3 py-2 ${highlight ? 'bg-footballBlue text-white' : 'bg-mist text-navy'}`}>
+      <p className="text-xl font-bold">{value}</p>
+      <p className={`text-xs font-semibold ${highlight ? 'text-white/85' : 'text-navy/65'}`}>{label}</p>
     </div>
   );
 }
@@ -1313,6 +1318,9 @@ function EventFields({
       <TextInput label="Date" type="date" value={draft.eventDate} error={errors.eventDate} onChange={(eventDate) => onChange({ ...draft, eventDate })} />
       <TextInput label="Start time" type="time" value={draft.startTime} error={errors.startTime} onChange={(startTime) => onChange({ ...draft, startTime })} />
       <TextInput label="Location" value={draft.location} error={errors.location} onChange={(location) => onChange({ ...draft, location })} />
+      {draft.eventType === 'Football' ? (
+        <Select label="Pitch" value={draft.pitchType} options={practicePitchTypes} error={errors.pitchType} getOptionLabel={formatPitchOption} onChange={(pitchType) => onChange({ ...draft, pitchType })} />
+      ) : null}
       <TextInput label="RSVP deadline" type="datetime-local" value={draft.rsvpDeadline} error={errors.rsvpDeadline} onChange={(rsvpDeadline) => onChange({ ...draft, rsvpDeadline })} />
       <Select
         label="Number of teams"
@@ -1336,6 +1344,11 @@ function EventFields({
       </label>
     </>
   );
+}
+
+function formatPitchOption(pitchType: (typeof practicePitchTypes)[number]) {
+  const cost = getPracticePitchCost(pitchType);
+  return cost > 0 ? `${pitchType} (${cost} kr)` : pitchType;
 }
 
 function rsvpButtonClass(isActive: boolean) {

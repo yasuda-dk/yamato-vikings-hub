@@ -18,6 +18,7 @@ Deno.serve(async (req) => {
       p_event_date: body.eventDate,
       p_start_time: body.startTime,
       p_location: body.location,
+      p_pitch_type: body.pitchType,
       p_rsvp_deadline: body.rsvpDeadline,
       p_number_of_teams: body.numberOfTeams,
       p_notes: body.notes ?? null,
