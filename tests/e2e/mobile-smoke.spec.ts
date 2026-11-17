@@ -1,5 +1,7 @@
 import { expect, test } from '@playwright/test';
 
+test.use({ serviceWorkers: 'block' });
+
 test('mobile shell renders and navigates without horizontal overflow', async ({ page }) => {
   await page.clock.setFixedTime(new Date('2026-10-01T12:00:00Z'));
   await page.goto('./');
@@ -36,6 +38,52 @@ test('mobile shell renders and navigates without horizontal overflow', async ({ 
 });
 
 for (const width of [320, 390, 430]) {
+  test(`loads screens on demand at ${width}px`, async ({ page }, testInfo) => {
+    await page.setViewportSize({ width, height: 844 });
+    await page.clock.setFixedTime(new Date('2026-10-01T12:00:00Z'));
+    const chunks: string[] = [];
+    page.on('request', (request) => {
+      if (request.resourceType() === 'script') chunks.push(new URL(request.url()).pathname);
+    });
+    let releaseEvents: () => void = () => {};
+    const heldChunk = new Promise<void>((resolve) => { releaseEvents = resolve; });
+    await page.route('**/assets/EventsPage-*.js', async (route) => {
+      await heldChunk;
+      await route.continue();
+    });
+    await page.goto('./');
+    await expect(page.getByLabel('Team password')).toBeVisible();
+    expect(chunks.some((url) => /(?:HomePage|EventsPage|EventDetailPage|FinesPage|MembersPage)-/.test(url))).toBe(false);
+    await page.getByLabel('Team password').fill('demo');
+    await page.getByRole('button', { name: 'Continue' }).click();
+    await page.getByLabel('First name').fill('Admin');
+    await page.getByRole('button', { name: 'Create profile' }).click();
+    await expect(page.getByRole('heading', { name: 'Home', exact: true })).toBeVisible();
+    expect(chunks.some((url) => /HomePage-/.test(url))).toBe(true);
+    expect(chunks.some((url) => /(?:EventsPage|EventDetailPage|FinesPage|MembersPage)-/.test(url))).toBe(false);
+    await expect(page.getByRole('button', { name: 'Export CSV' })).toHaveCount(0);
+    await page.getByRole('heading', { name: 'Season overview', exact: true }).scrollIntoViewIfNeeded();
+    await expect(page.getByRole('button', { name: 'Export CSV' })).toBeVisible();
+    await page.getByRole('link', { name: 'Events', exact: true }).click();
+    await expect(page.getByRole('heading', { name: 'Opening screen' })).toBeVisible();
+    await expect(page.getByRole('navigation', { name: 'Primary' })).toBeVisible();
+    await page.screenshot({ path: testInfo.outputPath(`lazy-loading-${width}.png`) });
+    expect(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth)).toBe(false);
+    releaseEvents();
+    await expect(page.getByRole('heading', { name: 'Events', exact: true })).toBeVisible();
+    await page.getByRole('link', { name: 'Home', exact: true }).click();
+    await expect(page.getByRole('heading', { name: 'Home', exact: true })).toBeVisible();
+    await page.getByRole('link', { name: 'Events', exact: true }).click();
+    await expect(page.getByRole('heading', { name: 'Events', exact: true })).toBeVisible();
+    expect(chunks.filter((url) => /EventsPage-/.test(url))).toHaveLength(1);
+    await page.route('**/assets/FinesPage-*.js', (route) => route.abort());
+    await page.getByRole('link', { name: 'Fines', exact: true }).click();
+    await expect(page.getByRole('alert')).toContainText('Could not open screen');
+    await expect(page.getByRole('button', { name: 'Reload' })).toBeEnabled();
+    await expect(page.getByRole('navigation', { name: 'Primary' })).toBeVisible();
+    await page.screenshot({ path: testInfo.outputPath(`lazy-error-${width}.png`) });
+  });
+
   test(`event totals and pitch persist at ${width}px`, async ({ page }, testInfo) => {
     await page.setViewportSize({ width, height: 844 });
     await page.clock.setFixedTime(new Date('2026-10-01T12:00:00Z'));

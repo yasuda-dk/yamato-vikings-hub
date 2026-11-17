@@ -26,6 +26,12 @@ npm run build
 
 `GITHUB_PAGES=true` sets the Vite base path to `/yamato-vikings-hub/`.
 
+## On-Demand Loading
+
+The authenticated Home, Events, Event Detail, Fines, and Members screens use React lazy imports. The header and bottom navigation stay mounted during screen loading. A failed screen load offers a reload action that preserves the current hash URL and existing device session. Demo API and team-generation fixtures are dynamically imported only in demo builds.
+
+Home's admin Season overview mounts when it comes within 200px of the viewport, deferring its analytics and fines requests until then. Browsers without IntersectionObserver load it immediately. Payment tracking, member permissions, and RSVP behavior are unchanged. Loaded screen modules are reused for subsequent navigation; live API data is still refreshed by each screen as before.
+
 ## Supabase
 
 Apply migrations:

@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState, type ReactNode, type SVGProps } from 'react';
+import { DeferredContent } from './DeferredContent';
 import { downloadSeasonOverviewCsv } from '../lib/analytics-export';
 import type { EventSummary } from '../lib/events';
 import { eventStatuses, eventTypes } from '../lib/events';
@@ -112,7 +113,18 @@ export function HomePage({ api, members, selectedMember, onSwitchProfile }: Home
         onMarkPaid={markPracticePaid}
       />
 
-      {selectedMember.application_role === 'Admin' ? <AnalyticsOverview api={api} members={members} /> : null}
+      {selectedMember.application_role === 'Admin' && paymentLoadState !== 'loading' ? (
+        <DeferredContent placeholder={
+          <section className="min-h-64 rounded-lg border border-navy/10 bg-white p-4" aria-busy="true">
+            <h2 className="text-xl font-bold text-navy">Season overview</h2>
+            <div className="mt-4 grid grid-cols-2 gap-2" aria-hidden="true">
+              {[0, 1, 2, 3].map((item) => <div key={item} className="h-16 rounded-md bg-mist" />)}
+            </div>
+          </section>
+        }>
+          <AnalyticsOverview api={api} members={members} />
+        </DeferredContent>
+      ) : null}
     </section>
   );
 }

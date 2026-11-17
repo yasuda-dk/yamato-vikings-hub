@@ -1,17 +1,22 @@
-import { useCallback, useEffect, useState } from 'react';
-import { HashRouter, Navigate, NavLink, Route, Routes } from 'react-router-dom';
+import { lazy, Suspense, useCallback, useEffect, useState, type ReactNode } from 'react';
+import { HashRouter, Navigate, NavLink, Route, Routes, useLocation } from 'react-router-dom';
 import { AccessGate } from './components/AccessGate';
-import { EventDetailPage } from './components/EventDetailPage';
-import { EventsPage } from './components/EventsPage';
-import { FinesPage } from './components/FinesPage';
-import { HomePage } from './components/HomePage';
 import { CalendarDays, CircleDollarSign, Home, UsersRound } from './components/icons';
-import { MembersPage } from './components/MembersPage';
+import { PageLoadBoundary } from './components/PageLoadBoundary';
 import { Page } from './components/Page';
 import { ProfileSetup } from './components/ProfileSetup';
 import { getSupabaseConfigStatus } from './lib/env';
-import { demoPhase1Api } from './lib/demo-phase1-api';
 import { phase1Api, type Phase1Api, type SessionState } from './lib/phase1-api';
+
+const HomePage = lazy(() => import('./components/HomePage').then((module) => ({ default: module.HomePage })));
+const EventsPage = lazy(() => import('./components/EventsPage').then((module) => ({ default: module.EventsPage })));
+const EventDetailPage = lazy(() => import('./components/EventDetailPage').then((module) => ({ default: module.EventDetailPage })));
+const FinesPage = lazy(() => import('./components/FinesPage').then((module) => ({ default: module.FinesPage })));
+const MembersPage = lazy(() => import('./components/MembersPage').then((module) => ({ default: module.MembersPage })));
+const DemoApp = /* @__PURE__ */ lazy(async () => {
+  const { demoPhase1Api } = await import('./lib/demo-phase1-api');
+  return { default: () => <AppContent api={demoPhase1Api} /> };
+});
 
 const navItems = [
   { to: '/', label: 'Home', icon: Home },
@@ -30,9 +35,14 @@ const initialState: SessionState = {
   members: [],
 };
 
-const defaultApi = import.meta.env.VITE_USE_DEMO_API === 'true' ? demoPhase1Api : phase1Api;
+export function App({ api }: AppProps) {
+  if (!api && import.meta.env.VITE_USE_DEMO_API === 'true') {
+    return <Suspense fallback={<LoadingScreen />}><DemoApp /></Suspense>;
+  }
+  return <AppContent api={api ?? phase1Api} />;
+}
 
-export function App({ api = defaultApi }: AppProps) {
+function AppContent({ api }: { api: Phase1Api }) {
   const configStatus = getSupabaseConfigStatus();
   const [sessionState, setSessionState] = useState<SessionState>(initialState);
   const [isBooting, setIsBooting] = useState(true);
@@ -127,18 +137,20 @@ export function App({ api = defaultApi }: AppProps) {
                 error={error}
               />
             ) : (
-              <Routes>
-                <Route path="/" element={<HomePage api={api} members={sessionState.members} selectedMember={selectedMember} onSwitchProfile={() => setSessionState((current) => ({ ...current, selectedMember: null }))} />} />
-                <Route path="/events" element={<EventsPage api={api} selectedMember={selectedMember} />} />
-                <Route path="/events/:eventId" element={<EventDetailPage api={api} selectedMember={selectedMember} />} />
-                <Route path="/fines" element={<FinesPage api={api} selectedMember={selectedMember} />} />
-                <Route
-                  path="/members"
-                  element={<MembersPage members={sessionState.members} selectedMember={selectedMember} isBusy={isBusy} onUpdateMember={(input) => runAction(() => api.updateMember(input), 'Member updated.')} />}
-                />
-                <Route path="/404" element={<Page title="Not found" description="This screen is not part of the mobile hub." configStatus={configStatus} />} />
-                <Route path="*" element={<Navigate to="/404" replace />} />
-              </Routes>
+              <ScreenLoader>
+                <Routes>
+                  <Route path="/" element={<HomePage api={api} members={sessionState.members} selectedMember={selectedMember} onSwitchProfile={() => setSessionState((current) => ({ ...current, selectedMember: null }))} />} />
+                  <Route path="/events" element={<EventsPage api={api} selectedMember={selectedMember} />} />
+                  <Route path="/events/:eventId" element={<EventDetailPage api={api} selectedMember={selectedMember} />} />
+                  <Route path="/fines" element={<FinesPage api={api} selectedMember={selectedMember} />} />
+                  <Route
+                    path="/members"
+                    element={<MembersPage members={sessionState.members} selectedMember={selectedMember} isBusy={isBusy} onUpdateMember={(input) => runAction(() => api.updateMember(input), 'Member updated.')} />}
+                  />
+                  <Route path="/404" element={<Page title="Not found" description="This screen is not part of the mobile hub." configStatus={configStatus} />} />
+                  <Route path="*" element={<Navigate to="/404" replace />} />
+                </Routes>
+              </ScreenLoader>
             )}
           </main>
 
@@ -173,11 +185,20 @@ export function App({ api = defaultApi }: AppProps) {
   );
 }
 
-function LoadingScreen() {
+function ScreenLoader({ children }: { children: ReactNode }) {
+  const { pathname } = useLocation();
   return (
-    <section className="rounded-lg border border-navy/10 bg-white p-4" aria-busy="true">
+    <PageLoadBoundary key={pathname}>
+      <Suspense fallback={<LoadingScreen title="Opening screen" />}>{children}</Suspense>
+    </PageLoadBoundary>
+  );
+}
+
+function LoadingScreen({ title = 'Opening Team Hub' }: { title?: string }) {
+  return (
+    <section className="rounded-lg border border-navy/10 bg-white p-4" aria-busy="true" role="status">
       <p className="text-sm font-semibold text-footballBlue">Loading</p>
-      <h2 className="mt-2 text-xl font-bold text-navy">Opening Team Hub</h2>
+      <h2 className="mt-2 text-xl font-bold text-navy">{title}</h2>
       <div className="mt-5 space-y-3">
         <div className="h-11 rounded-md bg-mist" />
         <div className="h-11 rounded-md bg-mist" />

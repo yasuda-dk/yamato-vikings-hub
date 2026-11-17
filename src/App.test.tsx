@@ -867,17 +867,17 @@ describe('App shell', () => {
 
     await user.click(screen.getByRole('link', { name: /events/i }));
     expect(await screen.findByRole('heading', { name: 'Events' })).toBeInTheDocument();
-    expect(screen.getByText(/RSVP Wed, Oct 7/)).toBeInTheDocument();
+    expect(await screen.findByText(/RSVP Wed, Oct 7/)).toBeInTheDocument();
     expect(screen.getByText('8 expected')).toBeInTheDocument();
     expect(screen.getByText('2 maybe')).toBeInTheDocument();
     expect(screen.getByText('1 not going')).toBeInTheDocument();
     expect(screen.getByText('No RSVP yet')).toBeInTheDocument();
 
     await user.click(screen.getByRole('link', { name: /fines/i }));
-    expect(screen.getByRole('heading', { name: 'Fines' })).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: 'Fines' })).toBeInTheDocument();
 
     await user.click(screen.getByRole('link', { name: /members/i }));
-    expect(screen.getByRole('heading', { name: 'Members' })).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: 'Members' })).toBeInTheDocument();
 
     await user.click(screen.getByRole('link', { name: /home/i }));
     expect(screen.getByRole('heading', { name: 'Home' })).toBeInTheDocument();
@@ -949,8 +949,8 @@ describe('App shell', () => {
       expect(screen.getAllByText((_, element) => element?.textContent?.replace(/\s+/g, ' ').trim() === label).length).toBeGreaterThanOrEqual(1);
     };
 
-    expect(await screen.findByRole('heading', { name: 'Season overview' })).toBeInTheDocument();
     expect(await screen.findByRole('button', { name: 'Export CSV' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Season overview' })).toBeInTheDocument();
     expectMetricLabel('Active members');
     expectMetricLabel('Average level');
     expectMetricLabel('Open events');
@@ -1003,7 +1003,8 @@ describe('App shell', () => {
 
     render(<App api={api} />);
 
-    expect(await screen.findByRole('heading', { name: 'Season overview' })).toBeInTheDocument();
+    await screen.findByRole('button', { name: 'Export CSV' });
+    expect(screen.getByRole('heading', { name: 'Season overview' })).toBeInTheDocument();
     expect(await screen.findByText('Completed events')).toBeInTheDocument();
     expect(screen.getByText('Going responses')).toBeInTheDocument();
     expect(screen.getAllByText('Late arrivals').length).toBeGreaterThanOrEqual(1);
