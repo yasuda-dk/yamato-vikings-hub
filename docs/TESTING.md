@@ -18,6 +18,7 @@ npm run test:e2e
 - Viewport-triggered admin analytics with a fallback for browsers without IntersectionObserver
 - Home module preloading alongside authentication, independent current-payment/history requests, history retry, no-current-Practice history, and regular-member privacy
 - Startup and route football/photo loading animation, real image decoding, ball motion, reduced-motion support, and responsive Home banner/emblem layout
+- Home banner overlay placement, white text, title fit, and locally served display font at 320px, 390px, and 430px
 
 `tests/integration/practice-payment-loading.sql` checks the split payment RPCs against the legacy response using approved, selected profiles discovered at runtime. Run it as the database owner inside a rollback-only transaction on a populated test/approved environment. It changes no application records and verifies unchanged totals/pitches, denied unauthenticated and cross-team requests, and no historical tracking data for regular profiles. Apply the split-history migration first (or include it in the same rollback-only transaction when testing before deployment).
 

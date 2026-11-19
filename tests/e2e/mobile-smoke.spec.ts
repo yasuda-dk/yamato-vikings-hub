@@ -65,6 +65,20 @@ for (const width of [320, 390, 430]) {
     await expect.poll(() => banner.evaluate((image) => (image as HTMLImageElement).complete && (image as HTMLImageElement).naturalWidth > 0)).toBe(true);
     await expect(page.getByAltText('Yamato Vikings logo')).toBeVisible();
     expect(await banner.evaluate((image) => getComputedStyle(image).objectFit)).toBe('contain');
+    expect(await page.evaluate(async () => (await document.fonts.load('700 28px "Barlow Condensed"')).length)).toBe(1);
+    const brand = page.getByTestId('home-banner-brand');
+    await expect(brand.getByRole('heading')).toHaveCSS('color', 'rgb(255, 255, 255)');
+    await expect(brand.getByText('Team Hub')).toHaveCSS('color', 'rgb(255, 255, 255)');
+    const placement = await brand.evaluate((element) => {
+      const overlay = element.getBoundingClientRect();
+      const photo = element.parentElement!.querySelector('img')!.getBoundingClientRect();
+      const title = element.querySelector('h1')!;
+      return {
+        withinPhoto: overlay.top >= photo.top && overlay.bottom <= photo.bottom && overlay.left >= photo.left && overlay.right <= photo.right,
+        titleFits: title.scrollWidth <= title.clientWidth,
+      };
+    });
+    expect(placement).toEqual({ withinPhoto: true, titleFits: true });
     await page.evaluate(() => window.scrollTo(0, 0));
     await page.screenshot({ path: testInfo.outputPath(`home-banner-${width}.png`) });
     expect(chunks.some((url) => /HomePage-/.test(url))).toBe(true);

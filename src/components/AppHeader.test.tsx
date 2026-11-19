@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { render, screen, within } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { describe, expect, it } from 'vitest';
 import { AppHeader } from './AppHeader';
@@ -10,6 +10,11 @@ describe('AppHeader', () => {
     expect(screen.getByAltText(/teammates together/)).toHaveAttribute('width', '860');
     expect(screen.getByAltText(/teammates together/)).toHaveAttribute('height', '645');
     expect(screen.getByAltText('Yamato Vikings logo')).toBeInTheDocument();
+    const brand = screen.getByTestId('home-banner-brand');
+    expect(brand).toHaveClass('absolute', 'top-0');
+    expect(within(brand).getByAltText('Yamato Vikings logo')).toBeInTheDocument();
+    expect(within(brand).getByRole('heading', { name: 'Yamato Vikings' })).toHaveClass('text-white');
+    expect(within(brand).getByText('Team Hub')).toHaveClass('text-white');
   });
 
   it('keeps other screens compact', () => {

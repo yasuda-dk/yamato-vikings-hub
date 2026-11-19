@@ -29,7 +29,7 @@ Yamato Vikings Hub is a mobile portrait PWA for fast use around football session
 ## Layout
 
 - Fixed bottom navigation: Home, Events, Fines, Members.
-- Home pairs the full 4:3 team photo with the emblem and team name in a separate identity strip. Keep faces uncropped and uncovered; use the compact header on other routes. Serve responsive WebP banner assets with explicit dimensions.
+- Home overlays the emblem and white Yamato Vikings / Team Hub lettering on the top of the full 4:3 team photo. Use the locally hosted Barlow Condensed bold font for this banner only, with a translucent dark top band for contrast. Keep the photo uncropped and avoid covering faces; keep the compact header on other routes. Serve responsive WebP banner assets with explicit dimensions.
 - Keep primary content vertically scannable.
 - Use compact rows for lists and summaries.
 - Use simple sections for grouped information.
