@@ -1073,7 +1073,12 @@ export const demoPhase1Api: Phase1Api = {
   },
 
   async getPracticePayment() {
-    return buildDemoPracticePayment();
+    const payment = buildDemoPracticePayment();
+    return { ...payment, canTrackPayments: Boolean(state.selectedMember?.application_role === 'Admin' || payment.adminPayments.length || payment.practiceHistory.length), practiceHistory: [] };
+  },
+
+  async getPracticePaymentHistory() {
+    return buildDemoPracticePayment().practiceHistory;
   },
 
   async markPracticePaymentPaid(eventId: string) {

@@ -28,6 +28,7 @@ export type PracticePaymentMember = {
 };
 
 export type PracticePaymentState = {
+  canTrackPayments?: boolean;
   event: PracticePaymentEvent | null;
   myPayment: PracticePaymentMember | null;
   adminPayments: PracticePaymentMember[];

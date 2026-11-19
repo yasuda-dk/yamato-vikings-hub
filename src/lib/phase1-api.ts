@@ -62,6 +62,7 @@ export type Phase1Api = {
   createFineType: (input: CreateFineTypeInput) => Promise<FineBoxState>;
   updateFineType: (input: UpdateFineTypeInput) => Promise<FineBoxState>;
   getPracticePayment: () => Promise<PracticePaymentState>;
+  getPracticePaymentHistory: () => Promise<PracticePaymentState['practiceHistory']>;
   markPracticePaymentPaid: (eventId: string) => Promise<PracticePaymentState>;
 };
 
@@ -109,6 +110,7 @@ function normalizePracticePaymentState(value: Partial<PracticePaymentState> | nu
   const totals = value?.totals;
 
   return {
+    canTrackPayments: value?.canTrackPayments,
     event: value?.event ?? null,
     myPayment: value?.myPayment ?? null,
     adminPayments: Array.isArray(value?.adminPayments) ? value.adminPayments : [],
@@ -277,8 +279,13 @@ export const phase1Api: Phase1Api = {
   },
 
   async getPracticePayment() {
-    const data = await invokeFunction<{ practicePayment: Partial<PracticePaymentState> }>('practice-payment-state', {});
+    const data = await invokeFunction<{ practicePayment: Partial<PracticePaymentState> }>('practice-payment-state', { section: 'current' });
     return normalizePracticePaymentState(data.practicePayment);
+  },
+
+  async getPracticePaymentHistory() {
+    const data = await invokeFunction<{ practiceHistory: PracticePaymentState['practiceHistory'] }>('practice-payment-state', { section: 'history' });
+    return Array.isArray(data.practiceHistory) ? data.practiceHistory : [];
   },
 
   async markPracticePaymentPaid(eventId: string) {

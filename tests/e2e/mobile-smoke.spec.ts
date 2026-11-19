@@ -53,12 +53,20 @@ for (const width of [320, 390, 430]) {
     });
     await page.goto('./');
     await expect(page.getByLabel('Team password')).toBeVisible();
-    expect(chunks.some((url) => /(?:HomePage|EventsPage|EventDetailPage|FinesPage|MembersPage)-/.test(url))).toBe(false);
+    await expect.poll(() => chunks.some((url) => /HomePage-/.test(url))).toBe(true);
+    expect(chunks.some((url) => /(?:EventsPage|EventDetailPage|FinesPage|MembersPage)-/.test(url))).toBe(false);
     await page.getByLabel('Team password').fill('demo');
     await page.getByRole('button', { name: 'Continue' }).click();
     await page.getByLabel('First name').fill('Admin');
     await page.getByRole('button', { name: 'Create profile' }).click();
     await expect(page.getByRole('heading', { name: 'Home', exact: true })).toBeVisible();
+    const banner = page.getByAltText(/teammates together/);
+    await expect(banner).toBeVisible();
+    await expect.poll(() => banner.evaluate((image) => (image as HTMLImageElement).complete && (image as HTMLImageElement).naturalWidth > 0)).toBe(true);
+    await expect(page.getByAltText('Yamato Vikings logo')).toBeVisible();
+    expect(await banner.evaluate((image) => getComputedStyle(image).objectFit)).toBe('contain');
+    await page.evaluate(() => window.scrollTo(0, 0));
+    await page.screenshot({ path: testInfo.outputPath(`home-banner-${width}.png`) });
     expect(chunks.some((url) => /HomePage-/.test(url))).toBe(true);
     expect(chunks.some((url) => /(?:EventsPage|EventDetailPage|FinesPage|MembersPage)-/.test(url))).toBe(false);
     await expect(page.getByRole('button', { name: 'Export CSV' })).toHaveCount(0);
@@ -67,8 +75,23 @@ for (const width of [320, 390, 430]) {
     await page.getByRole('link', { name: 'Events', exact: true }).click();
     await expect(page.getByRole('heading', { name: 'Opening screen' })).toBeVisible();
     await expect(page.getByRole('navigation', { name: 'Primary' })).toBeVisible();
+    const loader = page.getByTestId('football-loader');
+    await expect(loader).toBeVisible();
+    await expect.poll(() => loader.locator('img').evaluateAll((images) => images.every((image) => (image as HTMLImageElement).complete && (image as HTMLImageElement).naturalWidth > 0))).toBe(true);
+    const positions = await loader.evaluate((element) => {
+      const animations = element.getAnimations({ subtree: true });
+      animations.forEach((animation) => { animation.pause(); animation.currentTime = 240; });
+      const ball = element.querySelector('.football-loader__ball')!;
+      const before = ball.getBoundingClientRect().x;
+      animations.forEach((animation) => { animation.currentTime = 1008; });
+      return { before, after: ball.getBoundingClientRect().x };
+    });
+    expect(positions.after).toBeGreaterThan(positions.before + 100);
     await page.screenshot({ path: testInfo.outputPath(`lazy-loading-${width}.png`) });
     expect(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth)).toBe(false);
+    await page.emulateMedia({ reducedMotion: 'reduce' });
+    await expect(loader.locator('img').first()).toHaveCSS('animation-name', 'none');
+    await page.emulateMedia({ reducedMotion: 'no-preference' });
     releaseEvents();
     await expect(page.getByRole('heading', { name: 'Events', exact: true })).toBeVisible();
     await page.getByRole('link', { name: 'Home', exact: true }).click();
@@ -92,6 +115,9 @@ for (const width of [320, 390, 430]) {
     await page.getByRole('button', { name: 'Continue' }).click();
     await page.getByLabel('First name').fill('Admin');
     await page.getByRole('button', { name: 'Create profile' }).click();
+    await expect(page.getByRole('heading', { name: 'Home', exact: true })).toBeVisible();
+    await page.screenshot({ path: testInfo.outputPath(`home-first-${width}.png`) });
+    await page.getByText('Practice payment history', { exact: true }).scrollIntoViewIfNeeded();
     await expect(page.getByText('4 vs 4 · 400 kr', { exact: true })).toBeVisible();
     await expect(page.getByText(/Total cost: 400 kr/)).toBeVisible();
     await expect(page.getByText('-320 kr', { exact: true })).toHaveCount(2);
@@ -130,3 +156,14 @@ for (const width of [320, 390, 430]) {
     expect(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth)).toBe(false);
   });
 }
+
+test('shows the loading photo before the app JavaScript arrives', async ({ page }, testInfo) => {
+  await page.route('**/assets/index-*.js', (route) => route.abort());
+  await page.goto('./');
+  await expect(page.getByText('Loading Yamato Vikings', { exact: true })).toBeVisible();
+  await expect.poll(() => page.locator('.startup-loader img').evaluateAll((images) => images.every((image) => (image as HTMLImageElement).complete && (image as HTMLImageElement).naturalWidth > 0))).toBe(true);
+  await page.screenshot({ path: testInfo.outputPath('startup-loading.png') });
+  await page.unroute('**/assets/index-*.js');
+  await page.reload();
+  await expect(page.getByLabel('Team password')).toBeVisible();
+});

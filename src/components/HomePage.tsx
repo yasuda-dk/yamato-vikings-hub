@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState, type ReactNode, type SVGProps } from 'react';
 import { DeferredContent } from './DeferredContent';
+import { FootballLoader } from './FootballLoader';
 import { downloadSeasonOverviewCsv } from '../lib/analytics-export';
 import type { EventSummary } from '../lib/events';
 import { eventStatuses, eventTypes } from '../lib/events';
@@ -104,6 +105,8 @@ export function HomePage({ api, members, selectedMember, onSwitchProfile }: Home
       </div>
 
       <PracticePaymentPanel
+        api={api}
+        historyKey={`${selectedMember.id}:${paymentProfileVersion}`}
         state={practicePayment}
         loadState={paymentLoadState}
         error={paymentError}
@@ -130,6 +133,8 @@ export function HomePage({ api, members, selectedMember, onSwitchProfile }: Home
 }
 
 function PracticePaymentPanel({
+  api,
+  historyKey,
   state,
   loadState,
   error,
@@ -138,6 +143,8 @@ function PracticePaymentPanel({
   isMarkingPaid,
   onMarkPaid,
 }: {
+  api: Phase1Api;
+  historyKey: string;
   state: PracticePaymentState | null;
   loadState: 'loading' | 'ready' | 'error';
   error: string | null;
@@ -148,11 +155,8 @@ function PracticePaymentPanel({
 }) {
   const myPayment = state?.myPayment ?? null;
   const adminPayments = state?.adminPayments ?? [];
-  const practiceHistory = state?.practiceHistory ?? [];
   const canMarkPaid = Boolean(state?.event && myPayment?.rsvp_status === 'Going' && !myPayment.is_paid && !myPayment.is_exempt && !isMarkingPaid);
-  const canViewPaymentTracking = isAdmin || adminPayments.length > 0;
-  const [selectedHistoryEventId, setSelectedHistoryEventId] = useState<string | null>(null);
-  const selectedHistory = practiceHistory.find((historyEvent) => historyEvent.event.id === selectedHistoryEventId) ?? practiceHistory[0] ?? null;
+  const canViewPaymentTracking = state?.canTrackPayments ?? (isAdmin || adminPayments.length > 0);
   const amountLabel = myPayment?.is_exempt ? 'Exempt' : myPayment ? `${myPayment.amount_dkk} kr` : '-';
   const statusLabel = myPayment?.is_exempt ? 'Exempt' : myPayment?.is_paid ? 'Paid' : myPayment?.rsvp_status === 'Going' ? 'Not paid' : 'RSVP Going first';
 
@@ -162,9 +166,8 @@ function PracticePaymentPanel({
       <h2 className="mt-1 text-xl font-bold text-navy">Payment</h2>
 
       {loadState === 'loading' ? (
-        <div className="mt-4 space-y-2" aria-busy="true">
-          <div className="h-12 rounded-md bg-mist" />
-          <div className="h-12 rounded-md bg-mist" />
+        <div className="mt-4" role="status" aria-label="Loading practice payment" aria-busy="true">
+          <FootballLoader />
         </div>
       ) : null}
 
@@ -202,12 +205,60 @@ function PracticePaymentPanel({
           )}
           {!myPayment?.is_exempt && !myPayment?.is_paid && myPayment?.rsvp_status !== 'Going' ? <p className="text-sm font-semibold text-navy/70">This button is available after your RSVP is Going.</p> : null}
           {canViewPaymentTracking ? <PracticePaymentTracking state={state} payments={adminPayments} /> : null}
-          {canViewPaymentTracking && practiceHistory.length > 0 ? (
-            <PracticePaymentHistory history={practiceHistory} selectedEventId={selectedHistory?.event.id ?? null} onSelect={setSelectedHistoryEventId} />
-          ) : null}
-          {canViewPaymentTracking && selectedHistory ? <PracticePaymentTracking title="Selected Practice tracking" payments={selectedHistory.payments} totals={selectedHistory.totals} /> : null}
         </div>
       ) : null}
+      {loadState === 'ready' && canViewPaymentTracking ? (
+        <div className="mt-3">
+          <DeferredContent key={`${historyKey}:${state?.myPayment?.paid_at ?? ''}`} placeholder={<HistoryLoading />}>
+            <PracticeHistoryLoader api={api} />
+          </DeferredContent>
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+function HistoryLoading() {
+  return (
+    <div className="min-h-64 rounded-md bg-mist p-3" role="status" aria-label="Loading practice payment history">
+      <p className="text-sm font-bold text-navy">Practice payment history</p>
+      <div className="mt-3 grid grid-cols-2 gap-2" aria-hidden="true">
+        {[0, 1, 2, 3].map((item) => <div key={item} className="h-16 rounded bg-white" />)}
+      </div>
+    </div>
+  );
+}
+
+function PracticeHistoryLoader({ api }: { api: Phase1Api }) {
+  const [history, setHistory] = useState<PracticePaymentState['practiceHistory'] | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [attempt, setAttempt] = useState(0);
+  const [selectedEventId, setSelectedEventId] = useState<string | null>(null);
+
+  useEffect(() => {
+    let isMounted = true;
+    setError(null);
+    void api.getPracticePaymentHistory().then((nextHistory) => {
+      if (isMounted) setHistory(nextHistory);
+    }).catch((loadError: unknown) => {
+      if (isMounted) setError(loadError instanceof Error ? loadError.message : 'Could not load practice payment history.');
+    });
+    return () => { isMounted = false; };
+  }, [api, attempt]);
+
+  if (error) return (
+    <div className="rounded-md bg-mist p-3">
+      <p className="text-sm font-semibold text-red-800" role="alert">{error}</p>
+      <button type="button" onClick={() => setAttempt((current) => current + 1)} className="mt-3 min-h-12 rounded-md border border-navy/20 bg-white px-4 font-bold text-navy">Retry history</button>
+    </div>
+  );
+  if (!history) return <HistoryLoading />;
+  if (!history.length) return <p className="rounded-md bg-mist p-3 text-sm text-navy/70">No past Practice payments.</p>;
+  const selected = history.find((item) => item.event.id === selectedEventId) ?? history[0];
+  return (
+    <div className="grid gap-3">
+      <PracticePaymentHistory history={history} selectedEventId={selected.event.id} onSelect={setSelectedEventId} />
+      <PracticePaymentTracking title="Selected Practice tracking" payments={selected.payments} totals={selected.totals} />
     </div>
   );
 }

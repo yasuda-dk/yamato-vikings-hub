@@ -1,6 +1,8 @@
 import { lazy, Suspense, useCallback, useEffect, useState, type ReactNode } from 'react';
 import { HashRouter, Navigate, NavLink, Route, Routes, useLocation } from 'react-router-dom';
 import { AccessGate } from './components/AccessGate';
+import { AppHeader } from './components/AppHeader';
+import { LoadingScreen } from './components/LoadingScreen';
 import { CalendarDays, CircleDollarSign, Home, UsersRound } from './components/icons';
 import { PageLoadBoundary } from './components/PageLoadBoundary';
 import { Page } from './components/Page';
@@ -8,7 +10,8 @@ import { ProfileSetup } from './components/ProfileSetup';
 import { getSupabaseConfigStatus } from './lib/env';
 import { phase1Api, type Phase1Api, type SessionState } from './lib/phase1-api';
 
-const HomePage = lazy(() => import('./components/HomePage').then((module) => ({ default: module.HomePage })));
+const loadHomePage = () => import('./components/HomePage').then((module) => ({ default: module.HomePage }));
+const HomePage = lazy(loadHomePage);
 const EventsPage = lazy(() => import('./components/EventsPage').then((module) => ({ default: module.EventsPage })));
 const EventDetailPage = lazy(() => import('./components/EventDetailPage').then((module) => ({ default: module.EventDetailPage })));
 const FinesPage = lazy(() => import('./components/FinesPage').then((module) => ({ default: module.FinesPage })));
@@ -61,6 +64,9 @@ function AppContent({ api }: { api: Phase1Api }) {
     async function boot() {
       try {
         setError(null);
+        if (!window.location.hash || window.location.hash === '#/' || window.location.hash === '#') {
+          void loadHomePage().catch(() => undefined);
+        }
         await api.ensureAnonymousSession();
         const nextState = await api.getSessionState();
         if (isMounted) setSessionState(nextState);
@@ -100,22 +106,7 @@ function AppContent({ api }: { api: Phase1Api }) {
     <HashRouter>
       <div className="min-h-dvh bg-mist px-0 text-navy sm:px-6">
         <div className="mx-auto flex min-h-dvh w-full max-w-[430px] flex-col bg-mist">
-          <header className="border-b border-navy/10 bg-white px-4 pb-4 pt-[max(1rem,env(safe-area-inset-top))]">
-            <div className="flex items-center gap-3">
-              <img
-                src={`${import.meta.env.BASE_URL}brand/yamato-vikings-logo.png`}
-                alt="Yamato Vikings logo"
-                className="h-14 w-14 shrink-0 rounded-md object-contain"
-              />
-              <div className="min-w-0">
-                <p className="text-sm font-semibold uppercase tracking-wide text-footballBlue">Yamato Vikings</p>
-                <h1 className="mt-1 text-2xl font-bold tracking-normal text-navy">Team Hub</h1>
-              </div>
-            </div>
-            <p className="mt-3 text-sm leading-5 text-navy/70">
-              {selectedMember ? `Submitting as ${selectedMember.first_name}` : 'Mobile access for team members and admins.'}
-            </p>
-          </header>
+          <AppHeader selectedMember={selectedMember} />
 
           <main className="flex-1 px-4 pb-24 pt-4" data-testid="app-main" data-app-mode={appMode}>
             {error && appMode !== 'gate' && appMode !== 'profile' ? (
@@ -191,19 +182,5 @@ function ScreenLoader({ children }: { children: ReactNode }) {
     <PageLoadBoundary key={pathname}>
       <Suspense fallback={<LoadingScreen title="Opening screen" />}>{children}</Suspense>
     </PageLoadBoundary>
-  );
-}
-
-function LoadingScreen({ title = 'Opening Team Hub' }: { title?: string }) {
-  return (
-    <section className="rounded-lg border border-navy/10 bg-white p-4" aria-busy="true" role="status">
-      <p className="text-sm font-semibold text-footballBlue">Loading</p>
-      <h2 className="mt-2 text-xl font-bold text-navy">{title}</h2>
-      <div className="mt-5 space-y-3">
-        <div className="h-11 rounded-md bg-mist" />
-        <div className="h-11 rounded-md bg-mist" />
-        <div className="h-12 rounded-md bg-mist" />
-      </div>
-    </section>
   );
 }

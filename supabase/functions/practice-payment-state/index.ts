@@ -13,15 +13,20 @@ Deno.serve(async (req) => {
       return jsonResponse({ ok: false, error: 'Team is required' }, 400);
     }
 
-    const { data, error } = await supabase.rpc('get_practice_payment_state', {
-      target_team_id: body.teamId,
-    });
+    const isHistory = body.section === 'history';
+    const { data, error } = await supabase.rpc(
+      isHistory ? 'get_practice_payment_history' : 'get_practice_payment_state',
+      {
+        target_team_id: body.teamId,
+        ...(!isHistory && body.section === 'current' ? { include_history: false } : {}),
+      },
+    );
 
     if (error) {
       return jsonResponse({ ok: false, error: error.message }, 400);
     }
 
-    return jsonResponse({ ok: true, practicePayment: data });
+    return jsonResponse(isHistory ? { ok: true, practiceHistory: data } : { ok: true, practicePayment: data });
   } catch (error) {
     return jsonResponse({ ok: false, error: error instanceof Error ? error.message : 'Unexpected error' }, 500);
   }

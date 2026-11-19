@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { act, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { App } from './App';
@@ -828,6 +828,7 @@ function createApi(initialState: SessionState, options: { event?: Partial<EventS
       return fineBox;
     },
     getPracticePayment: async () => buildPracticePayment(),
+    getPracticePaymentHistory: async () => buildPracticePayment().practiceHistory,
     markPracticePaymentPaid: async (eventId) => {
       if (!state.selectedMember) throw new Error('Select a member profile before reporting payment');
       if (eventId !== event.id) throw new Error('Practice event not found');
@@ -850,6 +851,7 @@ describe('App shell', () => {
 
   afterEach(() => {
     vi.useRealTimers();
+    vi.unstubAllGlobals();
   });
 
   it('renders the team-password gate before device approval', async () => {
@@ -1074,7 +1076,7 @@ describe('App shell', () => {
 
     render(<App api={api} />);
 
-    expect(await screen.findByText('Practice payment history')).toBeInTheDocument();
+    expect(await screen.findByText('Paid total')).toBeInTheDocument();
     expect(screen.getByText('Paid total')).toBeInTheDocument();
     expect(screen.getByText('Expected total')).toBeInTheDocument();
     expect(screen.getByText('Avg paid/practice')).toBeInTheDocument();
@@ -1092,21 +1094,61 @@ describe('App shell', () => {
     expect(screen.getAllByText('Paid').length).toBeGreaterThanOrEqual(1);
   });
 
+  it('keeps current payment usable while history is deferred, loading, or failing', async () => {
+    let intersect: IntersectionObserverCallback = () => {};
+    vi.stubGlobal('IntersectionObserver', vi.fn(function (callback: IntersectionObserverCallback) {
+      intersect = callback;
+      return { observe: vi.fn(), disconnect: vi.fn() };
+    }));
+    const api = createApi({ hasAccess: true, selectedMember: genki, members: [genki] });
+    await api.updateRsvp({ eventId: 'event-1', rsvpStatus: 'Going', isArrivingLate: false, expectedArrivalTime: '' });
+    const history = await api.getPracticePaymentHistory();
+    let fail: (error: Error) => void = () => {};
+    api.getPracticePaymentHistory = vi.fn()
+      .mockImplementationOnce(() => new Promise((_, reject) => { fail = reject; }))
+      .mockResolvedValueOnce(history);
+    render(<HomePage api={api} members={[genki]} selectedMember={genki} onSwitchProfile={() => undefined} />);
+    expect(await screen.findByRole('button', { name: 'Mark as paid' })).toBeEnabled();
+    expect(api.getPracticePaymentHistory).not.toHaveBeenCalled();
+    act(() => intersect([{ isIntersecting: true } as IntersectionObserverEntry], {} as IntersectionObserver));
+    await waitFor(() => expect(api.getPracticePaymentHistory).toHaveBeenCalledOnce());
+    expect(screen.getByRole('button', { name: 'Mark as paid' })).toBeEnabled();
+    await act(async () => fail(new Error('History unavailable')));
+    expect(await screen.findByRole('alert')).toHaveTextContent('History unavailable');
+    expect(screen.getByRole('button', { name: 'Mark as paid' })).toBeEnabled();
+    await userEvent.setup().click(screen.getByRole('button', { name: 'Retry history' }));
+    expect(await screen.findByText('Paid total')).toBeInTheDocument();
+  });
+
+  it('loads authorized history even when there is no current Practice', async () => {
+    const api = createApi({ hasAccess: true, selectedMember: genki, members: [genki] });
+    const state = await api.getPracticePayment();
+    api.getPracticePayment = async () => ({ ...state, event: null, canTrackPayments: true });
+    render(<HomePage api={api} members={[genki]} selectedMember={genki} onSwitchProfile={() => undefined} />);
+    expect(await screen.findByText('No Practice payment is open right now.')).toBeInTheDocument();
+    expect(await screen.findByText('Paid total')).toBeInTheDocument();
+  });
+
+  it('does not request tracking history for regular members', async () => {
+    const api = createApi({ hasAccess: true, selectedMember: takashi, members: [takashi] });
+    api.getPracticePaymentHistory = vi.fn();
+    render(<HomePage api={api} members={[takashi]} selectedMember={takashi} onSwitchProfile={() => undefined} />);
+    await screen.findByText('RSVP Going first');
+    expect(api.getPracticePaymentHistory).not.toHaveBeenCalled();
+  });
+
   it('uses each historical pitch cost without changing member payments', async () => {
     const api = createApi({ hasAccess: true, selectedMember: genki, members: [genki] });
     await api.updateRsvp({ eventId: 'event-1', rsvpStatus: 'Going', isArrivingLate: false, expectedArrivalTime: '' });
     const paymentState = await api.getPracticePayment();
     const history = paymentState.practiceHistory[0];
-    api.getPracticePayment = async () => ({
-      ...paymentState,
-      practiceHistory: [
+    api.getPracticePaymentHistory = async () => [
         ...['2026-09-10', '2026-09-17', '2026-09-24', '2026-10-01'].map((date) => ({
           ...history,
           event: { ...history.event, id: date, event_date: date, pitch_type: '4 vs 4' as const },
         })),
         history,
-      ],
-    });
+      ];
     render(<App api={api} />);
 
     expect(await screen.findByText(/Total cost: 2291 kr/)).toBeInTheDocument();

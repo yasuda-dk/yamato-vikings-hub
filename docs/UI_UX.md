@@ -29,6 +29,7 @@ Yamato Vikings Hub is a mobile portrait PWA for fast use around football session
 ## Layout
 
 - Fixed bottom navigation: Home, Events, Fines, Members.
+- Home pairs the full 4:3 team photo with the emblem and team name in a separate identity strip. Keep faces uncropped and uncovered; use the compact header on other routes. Serve responsive WebP banner assets with explicit dimensions.
 - Keep primary content vertically scannable.
 - Use compact rows for lists and summaries.
 - Use simple sections for grouped information.
@@ -47,6 +48,7 @@ Yamato Vikings Hub is a mobile portrait PWA for fast use around football session
 - Use disabled states for unavailable actions.
 - Use success states after meaningful completed actions.
 - Use loading states for async work.
+- App startup, route loading, and the current Practice payment loading state use the lightweight football/photo animation. It must never delay readiness; respect `prefers-reduced-motion` with a static pose. Keep the animation decorative and announce loading through the status text instead.
 - Use error states with plain language and recovery paths.
 - Use empty states that tell the user what is missing and what action is available.
 
