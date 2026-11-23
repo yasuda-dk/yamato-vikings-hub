@@ -42,6 +42,10 @@ begin
     insert into public.device_access (team_id, auth_user_id, access_version) values (case when person = 'outsider' then other_t else t end, u, 1);
     insert into public.member_device_links (member_id, auth_user_id) values (m, u);
   end loop;
+  m := gen_random_uuid();
+  perform set_config('test.award_former_member', m::text, true);
+  insert into public.members (id, team_id, first_name, football_level, primary_position, membership_status)
+  values (m, t, 'Former', 3, 'MF', 'Inactive');
   insert into app_private.club_award_reviewers values (t, pg_temp.award_id('owner_member'));
 end;
 $$;
@@ -62,7 +66,7 @@ select pg_temp.assert_award(jsonb_array_length(public.club_awards_state(pg_temp.
 select pg_temp.assert_award(not (public.club_awards_state(pg_temp.award_id('team'), 2099) ? 'rankings'), 'Rankings leaked through public state');
 select pg_temp.award_rejected($q$select public.club_awards_results(pg_temp.award_id('team'), pg_temp.award_id('survey'))$q$, 'Only Takashi');
 select pg_temp.award_rejected($q$select public.manage_club_award_survey(pg_temp.award_id('team'), 2099, '2099-11-28T18:00', 'Closed')$q$, 'Only Takashi');
-select pg_temp.award_rejected($q$select public.save_club_award_vote(pg_temp.award_id('team'), pg_temp.award_id('survey'), 'MGP', pg_temp.award_id('outsider_member'), 'Wrong team')$q$, 'Choose an active');
+select pg_temp.award_rejected($q$select public.save_club_award_vote(pg_temp.award_id('team'), pg_temp.award_id('survey'), 'MGP', pg_temp.award_id('outsider_member'), 'Wrong team')$q$, 'Choose a team member');
 select pg_temp.award_rejected($q$select public.save_club_award_vote(pg_temp.award_id('other_team'), pg_temp.award_id('survey'), 'MGP', pg_temp.award_id('player_member'), 'Wrong team')$q$, 'Approved member');
 select pg_temp.award_rejected($q$select public.save_club_award_vote(pg_temp.award_id('team'), pg_temp.award_id('survey'), 'MGP', pg_temp.award_id('owner_member'), ' ')$q$, 'Comment must');
 select pg_temp.award_rejected($q$insert into public.club_award_votes values (pg_temp.award_id('survey'), pg_temp.award_id('owner_member'), 'MGP', pg_temp.award_id('player_member'), 'Spoofed', now())$q$, 'permission denied');
@@ -83,6 +87,10 @@ begin
   perform pg_temp.assert_award((select count(*) = 1 from jsonb_array_elements(results->'rankings') r where r->>'award' = 'MGP' and r->>'votes' = '2'), 'Ranking totals incorrect');
 end;
 $$;
+select pg_temp.assert_award(exists (select 1 from jsonb_array_elements(public.club_awards_state(pg_temp.award_id('team'), 2099)->'candidates') c where c->>'id' = pg_temp.award_id('former_member')::text and c->>'membership_status' = 'Inactive'), 'Former member missing before nomination');
+select public.save_club_award_vote(pg_temp.award_id('team'), pg_temp.award_id('survey'), 'MGP', pg_temp.award_id('former_member'), 'Former member effort');
+select public.save_club_award_vote(pg_temp.award_id('team'), pg_temp.award_id('survey'), 'MOP', pg_temp.award_id('former_member'), 'Former member generosity');
+select pg_temp.assert_award((select count(*) = 2 from jsonb_array_elements(public.club_awards_results(pg_temp.award_id('team'), pg_temp.award_id('survey'))->'rankings') r where r->>'candidateId' = pg_temp.award_id('former_member')::text and r->>'votes' = '1'), 'Former nominee missing from rankings');
 select public.manage_club_award_survey(pg_temp.award_id('team'), 2099, '2099-11-28T18:00', 'Closed');
 select pg_temp.award_login('player');
 select pg_temp.award_rejected($q$select public.save_club_award_vote(pg_temp.award_id('team'), pg_temp.award_id('survey'), 'MOP', pg_temp.award_id('player_member'), 'Late')$q$, 'Voting is closed');

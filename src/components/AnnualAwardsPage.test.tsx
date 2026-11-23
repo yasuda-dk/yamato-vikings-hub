@@ -27,6 +27,20 @@ function show(api: ReturnType<typeof apiFor>, profile = member) {
 }
 
 describe('Annual Awards', () => {
+  it('allows former inactive members as nominees for both awards', async () => {
+    const api = apiFor({ ...baseState, candidates: [...baseState.candidates, { id: 'former', first_name: 'Former', membership_status: 'Inactive' }] });
+    const user = userEvent.setup(); show(api);
+    await screen.findByLabelText('MGP nominee');
+    for (const award of ['MGP', 'MOP']) {
+      await user.selectOptions(screen.getByLabelText(`${award} nominee`), 'former');
+      expect(screen.getByLabelText(`${award} nominee`)).toHaveValue('former');
+      await user.type(screen.getByLabelText(`${award} comment`), 'Contributed throughout the year');
+      await user.click(screen.getByRole('button', { name: `Submit ${award} vote` }));
+      expect(await screen.findByText(`${award} vote saved.`)).toBeInTheDocument();
+      expect(api.saveAnnualAwardVote).toHaveBeenCalledWith('survey', { award, candidateId: 'former', comment: 'Contributed throughout the year' });
+    }
+  });
+
   it('accepts a self-nomination with a required comment but never fetches results for another Admin', async () => {
     const api = apiFor(); const user = userEvent.setup(); show(api);
     const nominee = await screen.findByLabelText('MGP nominee');

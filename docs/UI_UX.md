@@ -42,6 +42,8 @@ Yamato Vikings Hub is a mobile portrait PWA for fast use around football session
 
 ## Touch And Interaction
 
+- Annual Awards nominees include Active and Inactive former members of the team; label former members with "(Inactive)" in both nominee lists. Only Active members can submit ballots. This does not change Takashi-only access to results.
+
 - Minimum touch target: 44px.
 - Do not rely on hover-dependent controls.
 - Do not require drag-and-drop for essential interactions.

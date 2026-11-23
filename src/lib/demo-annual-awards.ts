@@ -32,7 +32,7 @@ export function createDemoAnnualAwards(getSession: () => SessionState): Pick<Pha
       if (!survey || survey.status !== 'Open' || Date.now() >= new Date(survey.deadline).getTime()) throw new Error('Voting is closed');
       if (state.selectedMember.membership_status !== 'Active') throw new Error('Active member profile required');
       if (!vote.comment.trim() || [...vote.comment.trim()].length > 1000) throw new Error('Comment must be between 1 and 1000 characters');
-      if (!state.members.some((member) => member.id === vote.candidateId && member.membership_status === 'Active')) throw new Error('Choose an active team member');
+      if (!state.members.some((member) => member.id === vote.candidateId)) throw new Error('Choose a team member');
       votes = votes.filter((saved) => !(saved.surveyId === surveyId && saved.voterId === state.selectedMember.id && saved.award === vote.award));
       votes.push({ ...vote, comment: vote.comment.trim(), surveyId, voterId: state.selectedMember.id, updatedAt: new Date().toISOString() });
     },

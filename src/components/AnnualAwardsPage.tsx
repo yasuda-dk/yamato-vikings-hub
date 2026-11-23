@@ -103,7 +103,7 @@ function AwardBallot({ award, candidates, saved, canVote, onSave }: { award: Awa
       <label className="mt-4 block text-sm font-semibold">{award} nominee
         <select className={inputClass} required value={candidateId} onChange={(event) => { setCandidateId(event.target.value); setSuccess(false); }}>
           <option value="">Choose a member</option>
-          {candidates.map((candidate) => <option key={candidate.id} value={candidate.id} disabled={candidate.membership_status !== 'Active'}>{candidate.first_name}{candidate.membership_status !== 'Active' ? ' (Inactive)' : ''}</option>)}
+          {candidates.map((candidate) => <option key={candidate.id} value={candidate.id}>{candidate.first_name}{candidate.membership_status !== 'Active' ? ' (Inactive)' : ''}</option>)}
         </select>
       </label>
       <label className="mt-4 block text-sm font-semibold">{award} comment
