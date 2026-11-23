@@ -10,6 +10,7 @@ import { ageGroups, genders, positions, residenceTypes } from '../lib/member-opt
 import type { Phase1Api } from '../lib/phase1-api';
 import type { PracticePaymentState } from '../lib/practice-payments';
 import { getPracticeVenueCost, STANDARD_PRACTICE_COST_DKK } from '../lib/practice-payments';
+import { normalizeFirstName } from '../lib/member-options';
 
 const GENKI_MOBILEPAY_NUMBER = '+4521282316';
 const INSTAGRAM_URL = 'https://www.instagram.com/yamato_vikings?igsh=YTE0Y3J4enpubmNu&utm_source=qr';
@@ -95,6 +96,7 @@ export function HomePage({ api, members, selectedMember, onSwitchProfile }: Home
         <p className="text-sm font-semibold text-footballBlue">Submitting as {selectedMember.first_name}</p>
         <h2 className="mt-2 text-xl font-bold text-navy">Home</h2>
         <a href="#/awards" className="mt-4 flex min-h-12 items-center justify-between gap-3 border-y border-navy/10 py-3 font-bold text-footballBlue"><span>Annual Awards</span><span className="text-sm">MGP / MOP</span></a>
+        {normalizeFirstName(selectedMember.first_name) === 'takashi' && selectedMember.membership_status === 'Active' ? <a href="#/attendance-ranking" className="flex min-h-12 items-center border-b border-navy/10 py-3 font-bold text-footballBlue">Attendance Top 10</a> : null}
         <div className="mt-4 grid gap-3">
           <ContactRow icon={<MobilePayLogo className="h-5 w-5" />} label="MobilePay" value={`Genki ${GENKI_MOBILEPAY_NUMBER}`} />
           <ClubLink icon={<InstagramLogo className="h-5 w-5" />} label="Instagram" href={INSTAGRAM_URL} />

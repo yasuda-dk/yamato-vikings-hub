@@ -38,6 +38,8 @@ Home first requests `practice-payment-state` with `section: current`, which call
 
 ### Annual Awards
 
+Attendance Top 10 requires the `takashi_attendance_top_ten` migration and the `attendance-ranking` Edge Function before publishing the frontend. Run `supabase functions deploy attendance-ranking --project-ref fejfeysavvwendbjqywa`. It reuses the pinned Takashi reviewer identity without granting access to other Admins.
+
 Apply the `annual_club_awards` migration before deploying `npm run deploy:annual-awards`, then publish the frontend. The migration binds review access to each team's existing protected Takashi member ID; it does not open a voting round or insert ballots. Confirm this profile exists before deployment. Only Takashi can open annual rounds at Home > Annual Awards > Voting settings. Deadlines are entered and interpreted in Europe/Copenhagen, independent of device timezone. The 2026 round is configured operationally for November 28 at 18:00; do not commit live survey records or votes.
 
 All new tables use RLS. Mutations are available only through authenticated, guarded RPCs; privileged implementations and the pinned reviewer configuration live in the unexposed `app_private` schema. Members can read only their own ballots; other Admins cannot read results. The existing profile-selection guard additionally protects the pinned reviewer ID after profile renaming. No client-side local storage caches survey responses or results.

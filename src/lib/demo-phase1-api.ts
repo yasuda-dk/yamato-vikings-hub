@@ -418,6 +418,25 @@ function buildDemoPracticePayment(): PracticePaymentState {
 
 export const demoPhase1Api: Phase1Api = {
   ...createDemoAnnualAwards(() => state),
+  async getAttendanceRanking(year) {
+    const awards = await this.getAnnualAwards(new Date().getFullYear());
+    if (!awards.canManage || state.selectedMember?.membership_status !== 'Active') throw new Error('Only Takashi can view attendance rankings');
+    const today = new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Copenhagen', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
+    const events = demoEvents.filter((event) => !['Draft', 'Cancelled'].includes(event.status) && event.event_date <= today);
+    const counts = new Map<string, number>();
+    for (const event of events) {
+      if (year !== null && Number(event.event_date.slice(0, 4)) !== year) continue;
+      for (const rsvp of Object.values(demoRsvps).filter((rsvp) => rsvp.event_id === event.id)) {
+        if (rsvp.rsvp_status === 'Going') counts.set(rsvp.member_id, (counts.get(rsvp.member_id) ?? 0) + 1);
+      }
+    }
+    const rows = state.members.filter((member) => counts.has(member.id)).map((member) => ({ memberId: member.id, first_name: member.first_name, membership_status: member.membership_status, attended: counts.get(member.id)! }));
+    rows.sort((a, b) => b.attended - a.attended || a.first_name.localeCompare(b.first_name) || a.memberId.localeCompare(b.memberId));
+    return {
+      years: [...new Set(events.map((event) => Number(event.event_date.slice(0, 4))))].sort((a, b) => b - a),
+      rankings: rows.slice(0, 10).map((row, index) => ({ ...row, rank: rows.findIndex((candidate) => candidate.attended === rows[index].attended) + 1 })),
+    };
+  },
   async ensureAnonymousSession() {
     return demoSession;
   },

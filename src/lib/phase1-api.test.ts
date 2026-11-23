@@ -7,6 +7,12 @@ import { phase1Api } from './phase1-api';
 describe('progressive practice payment API', () => {
   beforeEach(() => invoke.mockReset());
 
+  it('requests private attendance ranking without a client permission flag', async () => {
+    invoke.mockResolvedValue({ data: { ok: true, ranking: { years: [2026], rankings: [] } }, error: null });
+    expect(await phase1Api.getAttendanceRanking(null)).toEqual({ years: [2026], rankings: [] });
+    expect(invoke).toHaveBeenCalledWith('attendance-ranking', { body: { teamId: expect.any(String), year: null } });
+  });
+
   it('requests only current payment data and keeps tracking permission without an event', async () => {
     invoke.mockResolvedValue({ data: { ok: true, practicePayment: { event: null, canTrackPayments: true } }, error: null });
     const state = await phase1Api.getPracticePayment();

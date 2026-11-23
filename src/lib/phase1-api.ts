@@ -23,6 +23,7 @@ import { createSupabaseBrowserClient } from './supabase';
 import { DEFAULT_TEAM_ID, type AdminMemberUpdateInput, type MemberProfile, type MemberRegistrationInput } from './member-options';
 import type { PracticePaymentState } from './practice-payments';
 import type { AnnualAwardsState, AnnualAwardsResults, AwardVote, ManageAwardSurvey } from './annual-awards';
+import type { AttendanceRanking } from './attendance-ranking';
 
 export type SessionState = {
   hasAccess: boolean;
@@ -69,6 +70,7 @@ export type Phase1Api = {
   saveAnnualAwardVote: (surveyId: string, vote: AwardVote) => Promise<void>;
   manageAnnualAwards: (input: ManageAwardSurvey) => Promise<void>;
   getAnnualAwardResults: (surveyId: string) => Promise<AnnualAwardsResults>;
+  getAttendanceRanking: (year: number | null) => Promise<AttendanceRanking>;
 };
 
 let supabaseClient: ReturnType<typeof createSupabaseBrowserClient> | null = null;
@@ -132,6 +134,9 @@ function normalizePracticePaymentState(value: Partial<PracticePaymentState> | nu
 }
 
 export const phase1Api: Phase1Api = {
+  async getAttendanceRanking(year) {
+    return (await invokeFunction<{ ranking: AttendanceRanking }>('attendance-ranking', { year })).ranking;
+  },
   async getAnnualAwards(year) {
     return (await invokeFunction<{ state: AnnualAwardsState }>('annual-awards', { action: 'state', year })).state;
   },

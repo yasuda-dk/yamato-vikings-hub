@@ -17,6 +17,7 @@ const EventDetailPage = lazy(() => import('./components/EventDetailPage').then((
 const FinesPage = lazy(() => import('./components/FinesPage').then((module) => ({ default: module.FinesPage })));
 const MembersPage = lazy(() => import('./components/MembersPage').then((module) => ({ default: module.MembersPage })));
 const AnnualAwardsPage = lazy(() => import('./components/AnnualAwardsPage').then((module) => ({ default: module.AnnualAwardsPage })));
+const AttendanceRankingPage = lazy(() => import('./components/AttendanceRankingPage').then((module) => ({ default: module.AttendanceRankingPage })));
 const DemoApp = /* @__PURE__ */ lazy(async () => {
   const { demoPhase1Api } = await import('./lib/demo-phase1-api');
   return { default: () => <AppContent api={demoPhase1Api} /> };
@@ -136,6 +137,7 @@ function AppContent({ api }: { api: Phase1Api }) {
                   <Route path="/events/:eventId" element={<EventDetailPage api={api} selectedMember={selectedMember} />} />
                   <Route path="/fines" element={<FinesPage api={api} selectedMember={selectedMember} />} />
                   <Route path="/awards" element={<AnnualAwardsPage api={api} selectedMember={selectedMember} />} />
+                  <Route path="/attendance-ranking" element={<AttendanceRankingPage api={api} memberId={selectedMember.id} />} />
                   <Route
                     path="/members"
                     element={<MembersPage members={sessionState.members} selectedMember={selectedMember} isBusy={isBusy} onUpdateMember={(input) => runAction(() => api.updateMember(input), 'Member updated.')} />}

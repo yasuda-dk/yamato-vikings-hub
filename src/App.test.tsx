@@ -833,6 +833,7 @@ function createApi(initialState: SessionState, options: { event?: Partial<EventS
     saveAnnualAwardVote: async () => undefined,
     manageAnnualAwards: async () => undefined,
     getAnnualAwardResults: async () => ({ rankings: [], comments: [], responseCount: 0 }),
+    getAttendanceRanking: async () => ({ years: [], rankings: [] }),
     markPracticePaymentPaid: async (eventId) => {
       if (!state.selectedMember) throw new Error('Select a member profile before reporting payment');
       if (eventId !== event.id) throw new Error('Practice event not found');
