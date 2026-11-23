@@ -29,6 +29,7 @@ Yamato Vikings Hub is a mobile portrait PWA for fast use around football session
 ## Layout
 
 - Fixed bottom navigation: Home, Events, Fines, Members.
+- Annual Awards is an on-demand Home subpage with separate MGP and MOP ballots. Use flat form sections and required nominee/comment fields. Show only the member's own saved votes; results and voting settings are available only to the server-authorized Takashi profile. Keep year selection, Copenhagen deadline display, loading/retry states, and closed/read-only ballots usable at all phone breakpoints. These club-wide annual surveys are independent of event-attendance-based MVP voting.
 - Home overlays the emblem and white Yamato Vikings / Team Hub lettering on the top of the full 4:3 team photo. Use the locally hosted Barlow Condensed bold font for this banner only, with a translucent dark top band for contrast. Keep the photo uncropped and avoid covering faces; keep the compact header on other routes. Serve responsive WebP banner assets with explicit dimensions.
 - Keep primary content vertically scannable.
 - Use compact rows for lists and summaries.

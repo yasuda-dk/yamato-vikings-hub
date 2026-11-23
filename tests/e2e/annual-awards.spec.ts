@@ -1,0 +1,48 @@
+import { expect, test } from '@playwright/test';
+test.use({ serviceWorkers: 'block' });
+
+for (const width of [320, 390, 430]) {
+  test(`annual awards voting and private results at ${width}px`, async ({ page }, testInfo) => {
+    await page.setViewportSize({ width, height: 844 });
+    await page.clock.setFixedTime(new Date('2026-11-23T12:00:00Z'));
+    await page.goto('./');
+    await page.getByLabel('Team password').fill('demo');
+    await page.getByRole('button', { name: 'Continue' }).click();
+    await page.getByLabel('First name').fill('Takashi');
+    await page.getByRole('button', { name: 'Create profile' }).click();
+    await page.getByRole('link', { name: 'Annual Awards MGP / MOP' }).click();
+    await expect(page.getByRole('heading', { name: 'Annual Awards' })).toBeVisible();
+    await expect(page.getByText(/Deadline: 28 Nov 2026(?:,| at) 18:00 Copenhagen/)).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Submit MGP vote' })).toBeDisabled();
+    await page.screenshot({ path: testInfo.outputPath(`awards-empty-${width}.png`), fullPage: true });
+    await page.getByLabel('MGP nominee').selectOption({ label: 'Takashi' });
+    await page.getByLabel('MGP comment').fill('Always gives their best, on and off the pitch.');
+    await page.getByRole('button', { name: 'Submit MGP vote' }).click();
+    await expect(page.getByText('MGP vote saved.', { exact: true })).toBeVisible();
+    await page.getByLabel('MOP nominee').selectOption({ label: 'Takashi' });
+    await page.getByLabel('MOP comment').fill('Treated the team to dinner.');
+    await page.getByRole('button', { name: 'Submit MOP vote' }).click();
+    await expect(page.getByText('MOP vote saved.', { exact: true })).toBeVisible();
+    await page.getByRole('tab', { name: 'Results' }).click();
+    await expect(page.getByText('1. Takashi', { exact: true })).toHaveCount(2);
+    await expect(page.getByText('Always gives their best, on and off the pitch.', { exact: true })).toBeVisible();
+    await page.screenshot({ path: testInfo.outputPath(`awards-results-${width}.png`), fullPage: true });
+    expect(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth)).toBe(false);
+    await page.getByLabel('Voting status').selectOption('Closed');
+    await page.getByRole('button', { name: 'Save voting settings' }).click();
+    await expect(page.getByText('Voting closed', { exact: true })).toBeVisible();
+    await expect(page.getByLabel('MGP nominee')).toBeDisabled();
+    await page.screenshot({ path: testInfo.outputPath(`awards-closed-${width}.png`), fullPage: true });
+    await page.getByRole('link', { name: 'Back to Home' }).click();
+    await page.getByRole('button', { name: 'Switch profile' }).click();
+    await page.getByRole('button', { name: /new/ }).click();
+    await page.getByLabel('First name').fill('Admin');
+    await page.getByRole('button', { name: 'Create profile' }).click();
+    await page.getByRole('link', { name: 'Annual Awards MGP / MOP' }).click();
+    await expect(page.getByText('Voting closed', { exact: true })).toBeVisible();
+    await expect(page.getByRole('tab', { name: 'Results' })).toHaveCount(0);
+    await expect(page.getByText('Voting settings', { exact: true })).toHaveCount(0);
+    await expect(page.getByText('Treated the team to dinner.', { exact: true })).toHaveCount(0);
+    expect(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth)).toBe(false);
+  });
+}

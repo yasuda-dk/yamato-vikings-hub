@@ -13,6 +13,10 @@ npm run test:e2e
 
 ## Current coverage
 
+- Annual MGP/MOP voting with required comments, self-voting, updates, year selection, closed/read-only states, load/save failures, and Takashi-only result rendering
+- Annual award database/RLS integration tests in `tests/integration/annual-awards.sql`, using synthetic fixtures inside a rollback-only transaction: direct-table privacy, denial for other Admins, cross-team isolation, vote uniqueness, ties, deadline enforcement, inactive/revoked profiles, and protection against selecting a renamed reviewer profile
+- Annual award phone screenshots and complete vote/result/close/profile-switch flows at 320px, 390px, and 430px on both device projects
+
 - Route rendering
 - On-demand route chunks, slow-screen loading, chunk failure recovery, and cached return navigation
 - Viewport-triggered admin analytics with a fallback for browsers without IntersectionObserver

@@ -94,6 +94,7 @@ export function HomePage({ api, members, selectedMember, onSwitchProfile }: Home
       <div className="rounded-lg border border-navy/10 bg-white p-4">
         <p className="text-sm font-semibold text-footballBlue">Submitting as {selectedMember.first_name}</p>
         <h2 className="mt-2 text-xl font-bold text-navy">Home</h2>
+        <a href="#/awards" className="mt-4 flex min-h-12 items-center justify-between gap-3 border-y border-navy/10 py-3 font-bold text-footballBlue"><span>Annual Awards</span><span className="text-sm">MGP / MOP</span></a>
         <div className="mt-4 grid gap-3">
           <ContactRow icon={<MobilePayLogo className="h-5 w-5" />} label="MobilePay" value={`Genki ${GENKI_MOBILEPAY_NUMBER}`} />
           <ClubLink icon={<InstagramLogo className="h-5 w-5" />} label="Instagram" href={INSTAGRAM_URL} />

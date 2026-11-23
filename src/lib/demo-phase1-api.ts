@@ -29,6 +29,7 @@ import type { MemberProfile, MemberRegistrationInput } from './member-options';
 import type { Phase1Api, SessionState } from './phase1-api';
 import type { PracticePaymentMember, PracticePaymentState } from './practice-payments';
 import { generateTeams as generateBalancedTeams, type TeamGenerationParticipant } from './team-generation';
+import { createDemoAnnualAwards } from './demo-annual-awards';
 
 const demoSession = { access_token: 'demo' } as Session;
 
@@ -416,6 +417,7 @@ function buildDemoPracticePayment(): PracticePaymentState {
 }
 
 export const demoPhase1Api: Phase1Api = {
+  ...createDemoAnnualAwards(() => state),
   async ensureAnonymousSession() {
     return demoSession;
   },

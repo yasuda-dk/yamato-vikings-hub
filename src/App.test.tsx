@@ -829,6 +829,10 @@ function createApi(initialState: SessionState, options: { event?: Partial<EventS
     },
     getPracticePayment: async () => buildPracticePayment(),
     getPracticePaymentHistory: async () => buildPracticePayment().practiceHistory,
+    getAnnualAwards: async () => ({ canManage: false, years: [], survey: null, candidates: [], ownVotes: [] }),
+    saveAnnualAwardVote: async () => undefined,
+    manageAnnualAwards: async () => undefined,
+    getAnnualAwardResults: async () => ({ rankings: [], comments: [], responseCount: 0 }),
     markPracticePaymentPaid: async (eventId) => {
       if (!state.selectedMember) throw new Error('Select a member profile before reporting payment');
       if (eventId !== event.id) throw new Error('Practice event not found');

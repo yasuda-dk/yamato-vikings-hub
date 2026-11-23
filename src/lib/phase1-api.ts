@@ -22,6 +22,7 @@ import type { CreateFineInput, CreateFinesInput, CreateFineTypeInput, FineBoxSta
 import { createSupabaseBrowserClient } from './supabase';
 import { DEFAULT_TEAM_ID, type AdminMemberUpdateInput, type MemberProfile, type MemberRegistrationInput } from './member-options';
 import type { PracticePaymentState } from './practice-payments';
+import type { AnnualAwardsState, AnnualAwardsResults, AwardVote, ManageAwardSurvey } from './annual-awards';
 
 export type SessionState = {
   hasAccess: boolean;
@@ -64,6 +65,10 @@ export type Phase1Api = {
   getPracticePayment: () => Promise<PracticePaymentState>;
   getPracticePaymentHistory: () => Promise<PracticePaymentState['practiceHistory']>;
   markPracticePaymentPaid: (eventId: string) => Promise<PracticePaymentState>;
+  getAnnualAwards: (year: number) => Promise<AnnualAwardsState>;
+  saveAnnualAwardVote: (surveyId: string, vote: AwardVote) => Promise<void>;
+  manageAnnualAwards: (input: ManageAwardSurvey) => Promise<void>;
+  getAnnualAwardResults: (surveyId: string) => Promise<AnnualAwardsResults>;
 };
 
 let supabaseClient: ReturnType<typeof createSupabaseBrowserClient> | null = null;
@@ -127,6 +132,18 @@ function normalizePracticePaymentState(value: Partial<PracticePaymentState> | nu
 }
 
 export const phase1Api: Phase1Api = {
+  async getAnnualAwards(year) {
+    return (await invokeFunction<{ state: AnnualAwardsState }>('annual-awards', { action: 'state', year })).state;
+  },
+  async saveAnnualAwardVote(surveyId, vote) {
+    await invokeFunction('annual-awards', { action: 'vote', surveyId, ...vote });
+  },
+  async manageAnnualAwards(input) {
+    await invokeFunction('annual-awards', { action: 'manage', ...input });
+  },
+  async getAnnualAwardResults(surveyId) {
+    return (await invokeFunction<{ results: AnnualAwardsResults }>('annual-awards', { action: 'results', surveyId })).results;
+  },
   async ensureAnonymousSession() {
     const supabase = getSupabase();
     const { data: current } = await supabase.auth.getSession();

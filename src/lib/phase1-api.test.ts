@@ -25,4 +25,16 @@ describe('progressive practice payment API', () => {
     invoke.mockResolvedValue({ data: { ok: false, error: 'History unavailable' }, error: null });
     await expect(phase1Api.getPracticePaymentHistory()).rejects.toThrow('History unavailable');
   });
+
+  it('sends award ballots without a client-supplied voter or permission flag', async () => {
+    invoke.mockResolvedValue({ data: { ok: true }, error: null });
+    await phase1Api.saveAnnualAwardVote('survey', { award: 'MGP', candidateId: 'self', comment: 'Great effort' });
+    expect(invoke).toHaveBeenCalledWith('annual-awards', { body: { teamId: expect.any(String), action: 'vote', surveyId: 'survey', award: 'MGP', candidateId: 'self', comment: 'Great effort' } });
+  });
+
+  it('keeps result requests separate and propagates server authorization failures', async () => {
+    invoke.mockResolvedValue({ data: { ok: false, error: 'Only Takashi can view annual award results' }, error: null });
+    await expect(phase1Api.getAnnualAwardResults('survey')).rejects.toThrow('Only Takashi');
+    expect(invoke).toHaveBeenCalledWith('annual-awards', { body: expect.objectContaining({ action: 'results', surveyId: 'survey' }) });
+  });
 });
