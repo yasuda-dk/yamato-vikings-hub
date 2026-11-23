@@ -12,6 +12,8 @@ for (const width of [320, 390, 430]) {
     await page.getByRole('button', { name: 'Create profile' }).click();
     await page.getByRole('link', { name: 'Annual Awards MGP / MOP' }).click();
     await expect(page.getByRole('heading', { name: 'Annual Awards' })).toBeVisible();
+    await expect(page.getByText('Most 頑張ったプレーヤー', { exact: true })).toBeVisible();
+    await expect(page.getByText('Most 奢ったプレーヤー', { exact: true })).toBeVisible();
     await expect(page.getByText(/Deadline: 28 Nov 2026(?:,| at) 18:00 Copenhagen/)).toBeVisible();
     await expect(page.getByRole('button', { name: 'Submit MGP vote' })).toBeDisabled();
     await page.screenshot({ path: testInfo.outputPath(`awards-empty-${width}.png`), fullPage: true });

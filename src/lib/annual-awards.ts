@@ -1,8 +1,8 @@
 export const awardTypes = ['MGP', 'MOP'] as const;
 export type AwardType = (typeof awardTypes)[number];
 export const awardLabels: Record<AwardType, { title: string; description: string }> = {
-  MGP: { title: 'Outstanding Effort', description: 'Recognise effort and contribution, on and off the pitch.' },
-  MOP: { title: 'Most Generous', description: 'Recognise the teammate who treated others most generously.' },
+  MGP: { title: 'Most 頑張ったプレーヤー', description: 'Recognise effort and contribution, on and off the pitch.' },
+  MOP: { title: 'Most 奢ったプレーヤー', description: 'Recognise the teammate who treated others most generously.' },
 };
 export type AwardSurvey = { id: string; year: number; deadline: string; status: 'Open' | 'Closed'; canVote: boolean };
 export type AwardVote = { award: AwardType; candidateId: string; comment: string };

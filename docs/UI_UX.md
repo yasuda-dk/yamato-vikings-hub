@@ -4,7 +4,7 @@ Yamato Vikings Hub is a mobile portrait PWA for fast use around football session
 
 ## Core Principles
 
-- Use English UI text only.
+- Use English UI text, except the explicitly requested Annual Awards titles: MGP "Most 頑張ったプレーヤー" and MOP "Most 奢ったプレーヤー". Keep the stored award codes MGP and MOP unchanged.
 - Design mobile portrait screens only.
 - Target width: 390px.
 - Must work correctly from 320px to 430px.
