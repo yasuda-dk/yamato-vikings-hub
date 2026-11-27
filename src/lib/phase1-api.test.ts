@@ -7,6 +7,12 @@ import { phase1Api } from './phase1-api';
 describe('progressive practice payment API', () => {
   beforeEach(() => invoke.mockReset());
 
+  it('requests only the selected member unpaid Practices without sending a member ID', async () => {
+    invoke.mockResolvedValue({ data: { ok: true, unpaidPractices: [] }, error: null });
+    expect(await phase1Api.getMyUnpaidPractices()).toEqual([]);
+    expect(invoke).toHaveBeenCalledWith('practice-payment-state', { body: { teamId: expect.any(String), section: 'my-unpaid' } });
+  });
+
   it('requests private attendance ranking without a client permission flag', async () => {
     invoke.mockResolvedValue({ data: { ok: true, ranking: { years: [2026], rankings: [] } }, error: null });
     expect(await phase1Api.getAttendanceRanking(null)).toEqual({ years: [2026], rankings: [] });

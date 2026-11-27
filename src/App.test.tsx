@@ -829,6 +829,7 @@ function createApi(initialState: SessionState, options: { event?: Partial<EventS
     },
     getPracticePayment: async () => buildPracticePayment(),
     getPracticePaymentHistory: async () => buildPracticePayment().practiceHistory,
+    getMyUnpaidPractices: async () => [],
     getAnnualAwards: async () => ({ canManage: false, years: [], survey: null, candidates: [], ownVotes: [] }),
     saveAnnualAwardVote: async () => undefined,
     manageAnnualAwards: async () => undefined,
@@ -1271,6 +1272,7 @@ describe('App shell', () => {
     } as unknown as PracticePaymentState;
     const api = {
       getPracticePayment: async () => legacyPayment,
+      getMyUnpaidPractices: async () => [],
       markPracticePaymentPaid: async () => legacyPayment,
     } as unknown as Phase1Api;
 
@@ -1317,6 +1319,7 @@ describe('App shell', () => {
       markPracticePaymentPaid: async () => {
         throw new Error('not used');
       },
+      getMyUnpaidPractices: async () => [],
     } as unknown as Phase1Api;
 
     const { rerender } = render(<HomePage api={api} members={[currentMember]} selectedMember={currentMember} onSwitchProfile={() => undefined} />);

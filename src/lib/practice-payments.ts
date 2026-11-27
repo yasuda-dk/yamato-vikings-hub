@@ -45,6 +45,8 @@ export type PracticePaymentState = {
 
 export type PracticePaymentTotals = PracticePaymentState['totals'];
 
+export type UnpaidPractice = PracticePaymentEvent & { amount_dkk: number };
+
 export type PracticePaymentHistoryEvent = {
   event: PracticePaymentEvent;
   payments: PracticePaymentMember[];

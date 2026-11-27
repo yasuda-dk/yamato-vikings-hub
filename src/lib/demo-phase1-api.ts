@@ -1102,15 +1102,30 @@ export const demoPhase1Api: Phase1Api = {
     return buildDemoPracticePayment().practiceHistory;
   },
 
+  async getMyUnpaidPractices() {
+    const member = state.selectedMember;
+    if (!state.hasAccess || !member) throw new Error('No active member profile selected');
+    if (member.practice_payment_rule === 'Exempt' || getPracticeAmount(member) <= 0) return [];
+    const today = new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Copenhagen', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
+    return demoEvents.filter((event) => /^Practice/i.test(event.title) && event.event_type === 'Football'
+      && !['Draft', 'Cancelled'].includes(event.status) && event.event_date <= today
+      && demoRsvps[event.id]?.member_id === member.id && demoRsvps[event.id]?.rsvp_status === 'Going'
+      && !demoPracticePaidAt[`${event.id}:${member.id}`])
+      .sort((a, b) => a.event_date.localeCompare(b.event_date) || a.start_time.localeCompare(b.start_time) || a.id.localeCompare(b.id))
+      .map((event) => ({ ...event, amount_dkk: getPracticeAmount(member), payment_deadline_date: event.event_date }));
+  },
+
   async markPracticePaymentPaid(eventId: string) {
     const selectedMember = state.selectedMember;
     if (!selectedMember) throw new Error('Select a member profile before reporting payment');
+    const event = demoEvents.find((item) => item.id === eventId);
+    if (!event || event.status === 'Cancelled') throw new Error('Practice event not found');
     if (selectedMember.practice_payment_rule === 'Exempt') throw new Error('This member is exempt from Practice payment.');
     const rsvp = demoRsvps[eventId];
     if (!rsvp || rsvp.member_id !== selectedMember.id || rsvp.rsvp_status !== 'Going') {
       throw new Error('Only Going members can mark practice payment paid.');
     }
-    demoPracticePaidAt[`${eventId}:${selectedMember.id}`] = new Date().toISOString();
+    demoPracticePaidAt[`${eventId}:${selectedMember.id}`] ??= new Date().toISOString();
     return buildDemoPracticePayment();
   },
 };

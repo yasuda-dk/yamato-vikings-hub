@@ -11,6 +11,7 @@ import type { Phase1Api } from '../lib/phase1-api';
 import type { PracticePaymentState } from '../lib/practice-payments';
 import { getPracticeVenueCost, STANDARD_PRACTICE_COST_DKK } from '../lib/practice-payments';
 import { normalizeFirstName } from '../lib/member-options';
+import { MyUnpaidPractices } from './MyUnpaidPractices';
 
 const GENKI_MOBILEPAY_NUMBER = '+4521282316';
 const INSTAGRAM_URL = 'https://www.instagram.com/yamato_vikings?igsh=YTE0Y3J4enpubmNu&utm_source=qr';
@@ -118,6 +119,12 @@ export function HomePage({ api, members, selectedMember, onSwitchProfile }: Home
         isMarkingPaid={isMarkingPaid}
         onMarkPaid={markPracticePaid}
       />
+
+      {paymentLoadState === 'ready' && !(practicePayment?.canTrackPayments ?? (selectedMember.application_role === 'Admin' || Boolean(practicePayment?.adminPayments?.length))) ? (
+        <div key={`${selectedMember.id}:${paymentProfileVersion}`} data-testid="personal-unpaid"><DeferredContent placeholder={<div className="min-h-40 px-4 py-5" role="status" aria-label="Loading your unpaid Practices"><h2 className="text-xl font-bold text-navy">Your unpaid Practices</h2></div>}>
+          <MyUnpaidPractices api={api} refreshKey={`${practicePayment?.event?.id ?? ''}:${practicePayment?.myPayment?.paid_at ?? ''}`} onRecorded={setPracticePayment} />
+        </DeferredContent></div>
+      ) : null}
 
       {selectedMember.application_role === 'Admin' && paymentLoadState !== 'loading' ? (
         <DeferredContent placeholder={

@@ -1,5 +1,6 @@
 import { handleCors, jsonResponse } from '../_shared/cors.ts';
 import { requireUser } from '../_shared/supabase.ts';
+import { practicePaymentRequest } from '../_shared/practice-payment-state.ts';
 
 Deno.serve(async (req) => {
   const cors = handleCors(req);
@@ -13,20 +14,14 @@ Deno.serve(async (req) => {
       return jsonResponse({ ok: false, error: 'Team is required' }, 400);
     }
 
-    const isHistory = body.section === 'history';
-    const { data, error } = await supabase.rpc(
-      isHistory ? 'get_practice_payment_history' : 'get_practice_payment_state',
-      {
-        target_team_id: body.teamId,
-        ...(!isHistory && body.section === 'current' ? { include_history: false } : {}),
-      },
-    );
+    const request = practicePaymentRequest(body);
+    const { data, error } = await supabase.rpc(request.rpc, request.args);
 
     if (error) {
       return jsonResponse({ ok: false, error: error.message }, 400);
     }
 
-    return jsonResponse(isHistory ? { ok: true, practiceHistory: data } : { ok: true, practicePayment: data });
+    return jsonResponse({ ok: true, [request.field]: data });
   } catch (error) {
     return jsonResponse({ ok: false, error: error instanceof Error ? error.message : 'Unexpected error' }, 500);
   }

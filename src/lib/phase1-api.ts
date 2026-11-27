@@ -24,6 +24,7 @@ import { DEFAULT_TEAM_ID, type AdminMemberUpdateInput, type MemberProfile, type 
 import type { PracticePaymentState } from './practice-payments';
 import type { AnnualAwardsState, AnnualAwardsResults, AwardVote, ManageAwardSurvey } from './annual-awards';
 import type { AttendanceRanking } from './attendance-ranking';
+import type { UnpaidPractice } from './practice-payments';
 
 export type SessionState = {
   hasAccess: boolean;
@@ -65,6 +66,7 @@ export type Phase1Api = {
   updateFineType: (input: UpdateFineTypeInput) => Promise<FineBoxState>;
   getPracticePayment: () => Promise<PracticePaymentState>;
   getPracticePaymentHistory: () => Promise<PracticePaymentState['practiceHistory']>;
+  getMyUnpaidPractices: () => Promise<UnpaidPractice[]>;
   markPracticePaymentPaid: (eventId: string) => Promise<PracticePaymentState>;
   getAnnualAwards: (year: number) => Promise<AnnualAwardsState>;
   saveAnnualAwardVote: (surveyId: string, vote: AwardVote) => Promise<void>;
@@ -308,6 +310,10 @@ export const phase1Api: Phase1Api = {
   async getPracticePaymentHistory() {
     const data = await invokeFunction<{ practiceHistory: PracticePaymentState['practiceHistory'] }>('practice-payment-state', { section: 'history' });
     return Array.isArray(data.practiceHistory) ? data.practiceHistory : [];
+  },
+
+  async getMyUnpaidPractices() {
+    return (await invokeFunction<{ unpaidPractices: UnpaidPractice[] }>('practice-payment-state', { section: 'my-unpaid' })).unpaidPractices;
   },
 
   async markPracticePaymentPaid(eventId: string) {
